@@ -158,6 +158,26 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 .sell-confirm-name{font-family:'Cinzel',serif;font-size:7px;font-weight:700;color:var(--text);text-align:center;}
 .sell-confirm-price{font-family:'Cinzel',serif;font-size:11px;color:var(--gold);}
 .sell-confirm-btns{display:flex;gap:5px;}
+.item-info-panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:6px;min-height:60px;transition:all .15s;}
+.iip-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.iip-icon{font-size:20px;}
+.iip-name{font-family:'Cinzel',serif;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--text);flex:1;}
+.iip-rarity{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.1em;padding:2px 6px;border-radius:4px;}
+.iip-rarity-beginner{background:rgba(96,160,96,.15);color:#60a060;border:1px solid rgba(96,160,96,.3);}
+.iip-rarity-intermediate{background:rgba(64,112,192,.15);color:#4070c0;border:1px solid rgba(64,112,192,.3);}
+.iip-rarity-advanced{background:rgba(144,80,176,.15);color:#9050b0;border:1px solid rgba(144,80,176,.3);}
+.iip-rarity-mastered{background:rgba(192,120,32,.15);color:#c07820;border:1px solid rgba(192,120,32,.3);}
+.iip-meta{font-family:'Cinzel',serif;font-size:8px;color:var(--dim);margin-bottom:6px;letter-spacing:.04em;}
+.iip-desc{font-size:10px;color:var(--text);line-height:1.6;margin-bottom:4px;}
+.iip-flavor{font-size:9px;color:var(--dim);font-style:italic;margin-bottom:6px;}
+.iip-status{display:flex;gap:6px;flex-wrap:wrap;min-height:0;}
+.iip-stat{font-size:8px;padding:2px 6px;border-radius:3px;font-family:'Cinzel',serif;}
+.iip-burn{background:rgba(255,112,48,.15);color:#ff7030;}
+.iip-poison{background:rgba(80,224,80,.15);color:#50e050;}
+.iip-haste{background:rgba(240,192,64,.15);color:#f0c040;}
+.iip-slow{background:rgba(64,160,255,.15);color:#40a0ff;}
+.dc-info{font-size:8px;color:var(--dim);cursor:pointer;margin-top:3px;padding:1px 4px;border-radius:3px;border:1px solid var(--border);}
+.dc-info:hover{color:var(--text);border-color:var(--glow);}
 </style>
 </head>
 <body>
@@ -266,6 +286,17 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
       <div class="board-row"><div class="rl f">FRONT</div><div class="slots" id="frontSlots"></div></div>
       <div class="board-row"><div class="rl b">BACK</div><div class="slots" id="backSlots"></div></div>
     </div>
+  </div>
+  <div id="itemInfoPanel" class="item-info-panel" style="display:none">
+    <div class="iip-header">
+      <span class="iip-icon" id="iipIcon"></span>
+      <span class="iip-name" id="iipName"></span>
+      <span class="iip-rarity" id="iipRarity"></span>
+    </div>
+    <div class="iip-meta" id="iipMeta"></div>
+    <div class="iip-desc" id="iipDesc"></div>
+    <div class="iip-flavor" id="iipFlavor"></div>
+    <div class="iip-status" id="iipStatus"></div>
   </div>
 </div>
 
@@ -928,7 +959,14 @@ function renderRow(cid,slots,rowType){
       const hc=hp>60?'#50e080':hp>30?'#e0a030':'#e84040';
       const upgLabel=item.upgradeLevel>0?'<span style="font-size:6px;color:var(--gold)"> ['+UPGRADE_NAMES[item.upgradeLevel]+']</span>':'';
       card.innerHTML='<div class="card-df"></div><div class="card-hf"></div><div class="ci"><div class="cicon">'+item.icon+'</div><div class="cname">'+item.name+upgLabel+'</div><div class="ctag">'+item.tag+'</div><div class="cstat" id="cst-'+item.id+'">'+(item.maxHp>0?item.hp+'/'+item.maxHp:item.uses!==null?item.uses+'/'+item.maxUses+' use':'food')+'</div><div class="cshield" id="csh-'+item.id+'" style="'+(item.shield>0?'':'display:none')+'">🛡'+item.shield+'</div><div class="sts" id="sts-'+item.id+'"></div></div><div class="cbars"><div class="bt"><div class="bf sbf" id="sh-'+item.id+'" style="width:'+sh+'%"></div></div>'+(item.maxHp>0?'<div class="bt"><div class="bf hbf" id="hp-'+item.id+'" style="width:'+hp+'%;background:'+hc+'"></div></div>':'')+'<div class="bt"><div class="bf abf" id="act-'+item.id+'" style="width:'+act+'%"></div></div></div>';
-      card.onclick=()=>handleSlotClick(rowType,idx,item);
+      card.onclick=(e)=>{
+        e.stopPropagation();
+        if(G.selectedSlot!==null){
+          handleSlotClick(rowType,idx,item);
+          return;
+        }
+        showItemInfo(item);
+      };
       card.oncontextmenu=(e)=>{
         e.preventDefault();
         if(G.battleRunning)return;
@@ -960,6 +998,7 @@ function updateBattleBars(){
     if(item.broken){const cards=document.querySelectorAll('[data-item-id="'+item.id+'"]');cards.forEach(c=>{if(!c.classList.contains('broken-c'))needRebuild=true;});}
   });
   if(needRebuild)renderBoard();
+  if(currentInfoItem)updateItemInfoStatus(currentInfoItem);
 }
 
 function handleSlotClick(row,idx,item){
@@ -1005,13 +1044,15 @@ function activateCurrentNode(){
 // ENCOUNTER
 // ============================================================
 function setEncTitle(t){document.getElementById('encTitle').textContent=t;}
-function setEncBody(html){document.getElementById('encBody').innerHTML=html;}
+function setEncBody(html){document.getElementById('encBody').innerHTML=html;hideItemInfo();}
 
 function showEncounterShop(poolIdx){
   const isMom=poolIdx===0&&!G.rivalDefeated;
   const isLocalStall=poolIdx===2&&G.day===1;
   const isRoadsideStall=poolIdx===2&&G.day>1;
   const isMarket=poolIdx===1;
+
+  shopItemCache={};
 
   if(isMom){
     if(!G.momGiftGiven){
@@ -1020,8 +1061,8 @@ function showEncounterShop(poolIdx){
       const shuffled=[...momKeys].sort(()=>Math.random()-.5).slice(0,3);
       const dialogue='<div class="dialogue"><div class="dlg-name">MOM</div>"You\'re really going through with this, huh? Take something useful. And come back safe."</div>';
       const cards=shuffled.map(key=>{
-        const t=MOM_ITEMS[key]();
-        return '<div class="dc" onclick="buyMomItem(\''+key+'\',true,false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div>'+(t.flavorText?'<div style="font-size:7px;color:var(--dim);font-style:italic;margin-top:2px">'+t.flavorText+'</div>':'')+'<div class="dp">✦ FREE</div></div>';
+        const t=MOM_ITEMS[key]();shopItemCache[key]=t;
+        return '<div class="dc" onclick="buyMomItem(\''+key+'\',true,false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div>'+(t.flavorText?'<div style="font-size:7px;color:var(--dim);font-style:italic;margin-top:2px">'+t.flavorText+'</div>':'')+'<div class="dp">✦ FREE</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
       }).join('');
       setEncBody(dialogue+'<div class="draft-row">'+cards+'</div>');
     }else{
@@ -1030,8 +1071,8 @@ function showEncounterShop(poolIdx){
       const shuffled=[...conKeys].sort(()=>Math.random()-.5).slice(0,3);
       const dialogue='<div class="dialogue"><div class="dlg-name">MOM</div>"I told you, you weren\'t ready. Here — wipe the dust off."</div>';
       const cards=shuffled.map(key=>{
-        const t=MOM_CONSOLATION_ITEMS[key]();
-        return '<div class="dc" onclick="buyMomItem(\''+key+'\',true,true)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div>'+(t.flavorText?'<div style="font-size:7px;color:var(--dim);font-style:italic;margin-top:2px">'+t.flavorText+'</div>':'')+'<div class="dp">✦ FREE</div></div>';
+        const t=MOM_CONSOLATION_ITEMS[key]();shopItemCache[key]=t;
+        return '<div class="dc" onclick="buyMomItem(\''+key+'\',true,true)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div>'+(t.flavorText?'<div style="font-size:7px;color:var(--dim);font-style:italic;margin-top:2px">'+t.flavorText+'</div>':'')+'<div class="dp">✦ FREE</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
       }).join('');
       setEncBody(dialogue+'<div class="draft-row">'+cards+'</div>');
     }
@@ -1053,8 +1094,8 @@ function showEncounterShop(poolIdx){
     const shuffled=[...pool].sort(()=>Math.random()-.5).slice(0,3);
     const cards=shuffled.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
-      const t=f();const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div></div>';
+      const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody(dialogue+'<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -1070,8 +1111,8 @@ function showEncounterShop(poolIdx){
     }
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
-      const t=f();const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div></div>';
+      const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -1082,8 +1123,8 @@ function showEncounterShop(poolIdx){
     const slots=generateShopSlots(G.day);
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
-      const t=f();const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div></div>';
+      const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -1192,6 +1233,10 @@ function renderERow(cid,slots){
       card.dataset.itemId=item.id;
       const hp=item.maxHp>0?(item.hp/item.maxHp*100):100;const sh=item.maxShield>0?(item.shield/item.maxShield*100):0;const act=item.actPct||0;const hc=hp>60?'#50e080':hp>30?'#e0a030':'#e84040';
       card.innerHTML='<div class="card-df"></div>'+(item.broken?'<div class="ebrk">✕</div>':'')+'<div class="eci" style="'+(item.broken?'opacity:.25':'')+'"><div class="eicon">'+item.icon+'</div><div class="ename" id="en-'+item.id+'">'+item.name+'</div><div class="etag">'+item.tag+'</div><div style="font-size:6px;color:var(--gold);font-family:Cinzel,serif" id="est-'+item.id+'">'+(item.maxHp>0?item.hp+'/'+item.maxHp:item.uses!==null?item.uses+'u':'')+'</div>'+(item.shield>0?'<div style="font-size:6px;color:var(--shield)" id="esh-'+item.id+'">🛡'+item.shield+'</div>':'')+'<div class="sts" id="ests-'+item.id+'"></div></div><div class="ebars">'+(item.shield>0?'<div class="bt"><div class="bf sbf" id="esh-bar-'+item.id+'" style="width:'+sh+'%"></div></div>':'')+(item.maxHp>0?'<div class="bt"><div class="bf hbf" id="ehp-bar-'+item.id+'" style="width:'+hp+'%;background:'+hc+'"></div></div>':'')+'<div class="bt"><div class="bf abf" id="eact-'+item.id+'" style="width:'+act+'%"></div></div></div>';
+      card.onclick=(e)=>{
+        e.stopPropagation();
+        showItemInfo(item);
+      };
     }
     el.appendChild(card);
   });
@@ -1211,6 +1256,7 @@ function updateEnemyBars(){
     if(item.broken)needRebuild=true;
   });
   if(needRebuild)renderEnemyBoard();
+  if(currentInfoItem)updateItemInfoStatus(currentInfoItem);
 }
 
 // ============================================================
@@ -1564,6 +1610,72 @@ function advanceDay(){
 }
 
 // ============================================================
+// ITEM INFO PANEL
+// ============================================================
+let currentInfoItem=null;
+let shopItemCache={};
+
+function showItemInfo(item){
+  if(currentInfoItem===item){hideItemInfo();return;}
+  currentInfoItem=item;
+  const panel=document.getElementById('itemInfoPanel');
+  panel.style.display='block';
+
+  // Icon and name
+  document.getElementById('iipIcon').textContent=item.icon||'';
+  const upgNames=['','UPGRADED','ADVANCED','MASTERED'];
+  const upgSuffix=item.upgradeLevel>0?' ['+upgNames[item.upgradeLevel]+']':'';
+  document.getElementById('iipName').textContent=(item.name||'')+upgSuffix;
+
+  // Rarity badge
+  const rarityEl=document.getElementById('iipRarity');
+  const rar=item.itemRarity||'beginner';
+  rarityEl.textContent=rar.toUpperCase();
+  rarityEl.className='iip-rarity iip-rarity-'+rar;
+
+  // Meta line — type, cooldown, hp
+  const typeLabel=item.itemType?item.itemType.charAt(0).toUpperCase()+item.itemType.slice(1):'';
+  const cdLabel=item.baseActMs?(item.baseActMs/1000).toFixed(1)+'s cooldown':'';
+  const hpLabel=item.maxHp>0?item.maxHp+' hp':'';
+  const usesLabel=item.maxUses!==null&&item.maxUses!==undefined?item.uses+'/'+item.maxUses+' uses':'';
+  const metaParts=[typeLabel,cdLabel,hpLabel||usesLabel].filter(Boolean);
+  document.getElementById('iipMeta').textContent=metaParts.join(' · ');
+
+  // Description
+  document.getElementById('iipDesc').textContent=item.desc||'';
+
+  // Flavor text
+  const flavorEl=document.getElementById('iipFlavor');
+  if(item.flavorText){
+    flavorEl.textContent='"'+item.flavorText+'"';
+    flavorEl.style.display='';
+  }else{
+    flavorEl.style.display='none';
+  }
+
+  // Active status effects
+  updateItemInfoStatus(item);
+}
+
+function updateItemInfoStatus(item){
+  if(!item||currentInfoItem!==item)return;
+  const el=document.getElementById('iipStatus');
+  const parts=[];
+  if((item.burnStack||0)>0)parts.push('<span class="iip-stat iip-burn">🔥 '+item.burnStack+' burn</span>');
+  if((item.poisonStack||0)>0)parts.push('<span class="iip-stat iip-poison">☠️ '+item.poisonStack+' poison</span>');
+  if((item.hasteMs||0)>0)parts.push('<span class="iip-stat iip-haste">⚡ '+(item.hasteMs/1000).toFixed(1)+'s haste</span>');
+  if((item.slowMs||0)>0)parts.push('<span class="iip-stat iip-slow">💧 '+(item.slowMs/1000).toFixed(1)+'s slow</span>');
+  if((item.hp!==undefined)&&item.maxHp>0)parts.push('<span class="iip-stat" style="color:var(--dim)">'+item.hp+'/'+item.maxHp+' hp</span>');
+  if((item.shield||0)>0)parts.push('<span class="iip-stat" style="color:var(--shield)">🛡 '+item.shield+' plating</span>');
+  el.innerHTML=parts.join('');
+}
+
+function hideItemInfo(){
+  currentInfoItem=null;
+  document.getElementById('itemInfoPanel').style.display='none';
+}
+
+// ============================================================
 // LOG / UI
 // ============================================================
 function log(type,msg){const el=document.getElementById('battleLog');if(!el)return;const div=document.createElement('div');const t=(battleMs/1000).toFixed(1);const cls={d:'ld',h:'lh',s:'ls',a:'la',b:'lb',x:'lx'}[type]||'lx';div.innerHTML='<span class="lt">'+t+'s</span><span class="'+cls+'">'+msg+'</span>';el.appendChild(div);el.scrollTop=el.scrollHeight;}
@@ -1623,6 +1735,7 @@ function resetRun(){
 treeState['head']=SKILLS.prestige[0];
 activeSkills=[SKILLS.prestige[0]];
 updateUI();renderBoard();renderSkillTree();renderTrack();activateCurrentNode();
+document.getElementById('page')?.addEventListener('click',()=>{hideItemInfo();});
 </script>
 </body>
 </html>
