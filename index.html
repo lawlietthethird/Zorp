@@ -378,6 +378,40 @@ function initBattleState(){
   };
 }
 
+function registerSkillHandlers(){
+  activeSkills.forEach(sk=>{
+    if(sk.id==='momentum'){
+      sk._battleHandler=(event)=>{
+        if(event.type==='ITEM_ACTIVATED'&&event.side==='player'){
+          battleState.momentumBonus+=4;
+        }
+      };
+    }
+    if(sk.id==='resilience'){
+      sk._battleHandler=(event)=>{
+        if(event.type==='DAMAGE_RECEIVED'&&event.side==='player'&&!battleState.resilienceUsed){
+          event.item.shield=(event.item.shield||0)+15;
+          event.item.maxShield=Math.max(event.item.maxShield||0,event.item.shield);
+          battleState.resilienceUsed=true;
+          log('s','Resilience! '+event.item.name+' gains +15 plating');
+        }
+      };
+    }
+    if(sk.id==='last_stand'){
+      sk._battleHandler=(event)=>{
+        if(event.type==='ITEM_BROKEN'&&event.side==='player'){
+          const alive=aliveItems('player').filter(i=>i.maxHp>0);
+          if(alive.length===1&&!alive[0]._lastStandApplied){
+            alive[0].maxHp+=50;
+            alive[0].hp=Math.min(alive[0].hp+50,alive[0].maxHp);
+            alive[0]._lastStandApplied=true;
+            log('s','Last Stand! '+alive[0].name+' surges!');
+          }
+        }
+      };
+    }
+  });
+}
 function getNodeById(id){ return TREE_NODES.find(n=>n.id===id); }
 function isNodeUnlockable(id){
   const node=getNodeById(id); if(!node)return false;
@@ -450,7 +484,8 @@ function makeItem(key,name,icon,tag,maxHp,actMs,desc,effectFn,cost=0,uses=null,b
   return{id:key+'_'+Math.random().toString(36).slice(2,7),itemKey:key,name,icon,tag,maxHp,baseMaxHp:maxHp,actMs,baseActMs:actMs,
     baseEffect,effectAmt:baseEffect,
     desc,effectFn,cost,uses,maxUses:uses,upgradeLevel:0,
-    itemType,itemRarity,flavorText:'',sellOverride:null,onBreak:null,
+    itemType,itemRarity,flavorText:'',sellOverride:null,
+    handleEvent:null,baseSlowDuration:0,slowDuration:0,
     hp:maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,
     hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0};
 }
@@ -518,7 +553,12 @@ const MOM_ITEMS={
         if(t)applyBurn(t,2,'Worn Locket');
       },0,null,35,'armor','intermediate');
     item.flavorText="She made you promise to keep it close.";
-    item.onBreak=(side)=>{healAll(side,20,'Worn Locket');log('h','Worn Locket breaks — heals all 20hp.');};
+    item.handleEvent=(event)=>{
+      if(event.type==='ITEM_BROKEN'&&event.item===item){
+        healAll(event.side,20,'Worn Locket');
+        log('h','Worn Locket breaks — heals all allies 20hp.');
+      }
+    };
     return item;
   },
   knitted_cap:()=>{
@@ -689,6 +729,24 @@ function targetable(i){return i&&!i.broken&&i.maxHp>0;}
 // ============================================================
 // DAMAGE / HEAL / SHIELD
 // ============================================================
+function checkAndBreak(item,side){
+  if(item.hp<=0&&!item.broken){
+    if(side==='player'&&battleState.ironHideActive){
+      item.hp=1;
+      return;
+    }
+    if(side==='player'&&activeSkills.some(s=>s.id==='unbreakable')&&!battleState.unbreakableUsed[item.id]){
+      item.hp=1;
+      battleState.unbreakableUsed[item.id]=true;
+      log('s','Unbreakable! '+item.name+' survives!');
+      return;
+    }
+    // Fire ITEM_BROKEN before marking broken — handlers fire while item still exists
+    fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
+    item.broken=true;
+    log('b',item.name+' BROKEN!');
+  }
+}
 function applyDmgTo(target,dmg,src,side){
   // Iron hide — player items can't break in first 10s
   if(side==='player'&&battleState.ironHideActive){
@@ -702,21 +760,10 @@ function applyDmgTo(target,dmg,src,side){
     target.hp=Math.max(0,target.hp-r);
     log('d',src+'→'+target.name+' -'+r+' ('+target.hp+'/'+target.maxHp+')');
     flashCard(target.id,side,'d');
-    // Resilience — first hit gives shield
-    if(isPlayer&&!battleState.resilienceUsed&&activeSkills.some(s=>s.id==='resilience')){
-      target.shield=(target.shield||0)+15;target.maxShield=Math.max(target.maxShield||0,target.shield);
-      battleState.resilienceUsed=true;log('s','Resilience! '+target.name+' gains +15 plating');
-    }
+    fireEvent({type:'DAMAGE_DEALT',item:target,side:side,value:r,source:null});
+    fireEvent({type:'DAMAGE_RECEIVED',item:target,side:side,value:r,source:null});
     if(target.hp<=0){
-      // Iron hide prevents break in first 10s
-      if(isPlayer&&battleState.ironHideActive){target.hp=1;log('s','Iron Hide protects '+target.name+'!');}
-      // Unbreakable — one free break per item
-      else if(isPlayer&&activeSkills.some(s=>s.id==='unbreakable')&&!battleState.unbreakableUsed[target.id]){
-        target.hp=1;battleState.unbreakableUsed[target.id]=true;log('s','Unbreakable! '+target.name+' survives!');
-      }else{
-        if(target.onBreak)target.onBreak(side);
-        target.broken=true;log('b',target.name+' BROKEN!');
-      }
+      checkAndBreak(target,side);
     }
   }
 }
@@ -741,11 +788,13 @@ function healItem(side,amount,src){
   const t=alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
   const actual=Math.min(t.maxHp-t.hp,Math.round(amount*(side==='player'?potMult():1)));
   t.hp+=actual;log('h',src+' heals '+t.name+' +'+actual);flashCard(t.id,side,'h');
+  fireEvent({type:'ITEM_HEALED',item:t,side:side,value:actual,source:null});
 }
 function healAll(side,amount,src){
   const mult=side==='player'?potMult():1;
   aliveItems(side).filter(i=>i.maxHp>0).forEach(item=>{const actual=Math.min(item.maxHp-item.hp,Math.round(amount*mult));item.hp+=actual;});
   log('h',src+' heals all +'+amount);
+  fireEvent({type:'ITEM_HEALED',item:null,side:side,value:amount,source:null});
 }
 function applyShield(side,amount,src){
   const alive=aliveItems(side).filter(i=>i.maxHp>0);if(!alive.length)return;
@@ -754,6 +803,7 @@ function applyShield(side,amount,src){
   const actual=Math.round(amount*mods.globalMult*mods.platingMult);
   t.shield=(t.shield||0)+actual;t.maxShield=Math.max(t.maxShield||0,t.shield);
   log('s',src+' plates '+t.name+' +'+actual);
+  fireEvent({type:'ITEM_SHIELDED',item:t,side:side,value:actual,source:null});
 }
 function dealDmgTwoRandom(side,base,src){
   const attackerMods=side==='player'?null:getSkillMods();
@@ -802,21 +852,25 @@ function applyHaste(item,durationMs,src){
   if(!item||item.broken)return;
   item.hasteMs=Math.max(item.hasteMs,durationMs);
   log('a','⚡ '+src+' HASTE '+item.name+' '+(durationMs/1000).toFixed(1)+'s');
+  fireEvent({type:'HASTE_APPLIED',item:item,side:item._side||null,value:durationMs,source:null});
 }
 function applySlow(item,durationMs,src){
   if(!item||item.broken)return;
   item.slowMs=Math.max(item.slowMs,durationMs);
   log('s','💧 '+src+' SLOW '+item.name+' '+(durationMs/1000).toFixed(1)+'s');
+  fireEvent({type:'SLOW_APPLIED',item:item,side:item._side||null,value:durationMs,source:null});
 }
 function applyBurn(item,stacks,src){
   if(!item||item.broken)return;
   item.burnStack=(item.burnStack||0)+stacks;
   log('d','🔥 '+src+' BURN '+item.name+' +'+stacks);
+  fireEvent({type:'BURN_APPLIED',item:item,side:item._side||null,value:stacks,source:null});
 }
 function applyPoison(item,stacks,src){
   if(!item||item.broken)return;
   item.poisonStack=(item.poisonStack||0)+stacks;
   log('d','☠️ '+src+' POISON '+item.name+' +'+stacks);
+  fireEvent({type:'POISON_APPLIED',item:item,side:item._side||null,value:stacks,source:null});
 }
 // Pick a random living enemy item to target for debuffs
 function randomEnemyItem(side){
@@ -1041,7 +1095,7 @@ function buyMomItem(key,free,isConsolation){
   const t=f();
   if(!isConsolation)G.momGiftGiven=true;
   const item={...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,
-    hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0};
+    hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'player'};
   const max=maxActiveSlots();let placed=false;
   for(let i=0;i<max&&!placed;i++){if(!board.front[i]){board.front[i]=item;placed=true;}}
   if(!placed)for(let i=0;i<max&&!placed;i++){if(!board.back[i]){board.back[i]=item;placed=true;}}
@@ -1061,7 +1115,7 @@ function buyItem(key,free){
     return;
   }
   const item={...t,baseMaxHp:t.maxHp,baseActMs:t.actMs,upgradeLevel:0,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,
-    hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0};
+    hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'player'};
   const max=maxActiveSlots();let placed=false;
   for(let i=0;i<max&&!placed;i++){if(!board.front[i]){board.front[i]=item;placed=true;}}
   if(!placed)for(let i=0;i<max&&!placed;i++){if(!board.back[i]){board.back[i]=item;placed=true;}}
@@ -1108,8 +1162,8 @@ function showEncounterWildPick(){
 }
 function startWild(idx){
   G.wildChoice=idx;const m=WILD_MONSTERS[idx];
-  enemyBoard.front=m.front.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses}:null);
-  enemyBoard.back=m.back.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses}:null);
+  enemyBoard.front=m.front.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses,_side:'enemy'}:null);
+  enemyBoard.back=m.back.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses,_side:'enemy'}:null);
   showEncounterBattle('wild',m);
 }
 
@@ -1118,7 +1172,7 @@ function showEncounterBattle(type,wildMonster=null){
   resetItemBattleState(board);
   renderBoard();
   const isWild=type==='wild';
-  if(!isWild){const mi=key=>{const t=ITEMS[key]();return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses};};enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null,null,null];enemyBoard.back=[mi('basic_berry'),null,null,null,null];}
+  if(!isWild){const mi=key=>{const t=ITEMS[key]();return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,_side:'enemy'};};enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null,null,null];enemyBoard.back=[mi('basic_berry'),null,null,null,null];}
   const enemy=isWild?wildMonster:{name:'THE RIVAL',icon:'😤',tag:'Your old neighbour'};
   const dlg=isWild?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>':'<div class="dialogue"><div class="dlg-name">RIVAL</div>"You don\'t even have a type yet. A monster without identity is nothing. Let me show you."</div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — THE RIVAL');
@@ -1160,6 +1214,50 @@ function updateEnemyBars(){
 }
 
 // ============================================================
+// EVENT SYSTEM
+// ============================================================
+let firingEvent=false;
+
+function fireEvent(event){
+  if(firingEvent)return;
+  firingEvent=true;
+  // Notify skill handlers
+  activeSkills.forEach(sk=>{
+    if(sk._battleHandler){
+      try{sk._battleHandler(event);}
+      catch(e){console.error('skill handler error',e);}
+    }
+  });
+  // Notify item handlers
+  [...board.front,...board.back,...enemyBoard.front,...enemyBoard.back].forEach(item=>{
+    if(item&&!item.broken&&item.handleEvent){
+      try{item.handleEvent(event);}
+      catch(e){console.error('handleEvent error on '+item.name,e);}
+    }
+  });
+  firingEvent=false;
+}
+
+function getNeighbors(item){
+  const boards=[{b:board,side:'player'},{b:enemyBoard,side:'enemy'}];
+  for(const {b,side} of boards){
+    for(const row of ['front','back']){
+      const idx=b[row].indexOf(item);
+      if(idx===-1)continue;
+      const otherRow=row==='front'?'back':'front';
+      return{
+        side,row,index:idx,
+        left:b[row][idx-1]||null,
+        right:b[row][idx+1]||null,
+        behind:b[otherRow][idx]||null,
+        inFront:b[otherRow][idx]||null,
+      };
+    }
+  }
+  return null;
+}
+
+// ============================================================
 // BATTLE ENGINE
 // ============================================================
 let battleInterval=null,fatigueInterval=null,battleMs=0,currentBattleType='rival';
@@ -1168,6 +1266,8 @@ function runBattle(type){
   const sb=document.getElementById('startBattleBtn');if(sb)sb.disabled=true;
   const speedBtn=document.getElementById('speedBtn');if(speedBtn)speedBtn.disabled=true;
   resetItemBattleState(board);resetItemBattleState(enemyBoard);
+  registerSkillHandlers();
+  fireEvent({type:'BATTLE_START',item:null,side:null,value:null,source:null});
   clearLog();log('x','Battle starts!');battleMs=0;
   const TICK=100,FATIGUE_START=30000;
   battleInterval=setInterval(()=>{
@@ -1193,8 +1293,10 @@ function resetItemBattleState(b){
     item.actMs=item.baseActMs||item.actMs; // always reset to base speed
     item.hp=item.maxHp;item.shield=0;item.maxShield=0;item.actElapsed=0;item.actPct=0;item.broken=false;item.uses=item.maxUses;item._lastStandApplied=false;
     item.hasteMs=0;item.slowMs=0;item.burnStack=0;item.burnTickMs=0;item.poisonStack=0;item.poisonTickMs=0;
+    item._side=b===board?'player':'enemy';
     if(item._firstActivation!==undefined)item._firstActivation=true;
   });
+  firingEvent=false;
   if(isPlayer)initBattleState();
 }
 function tickSide(b,side,tickMs){
@@ -1221,11 +1323,7 @@ function tickSide(b,side,tickMs){
       item.actElapsed=0;item.actPct=0;
       log('a',item.icon+' '+item.name+' activates!');
       item.effectFn(side,item.effectAmt||item.baseEffect||0,item);
-      if(side==='player'&&activeSkills.some(s=>s.id==='momentum')){battleState.momentumBonus+=4;}
-      if(side==='player'&&activeSkills.some(s=>s.id==='last_stand')){
-        const alive=aliveItems('player').filter(i=>i.maxHp>0);
-        if(alive.length===1&&!alive[0]._lastStandApplied){alive[0].maxHp+=50;alive[0].hp=Math.min(alive[0].hp+50,alive[0].maxHp);alive[0]._lastStandApplied=true;}
-      }
+      fireEvent({type:'ITEM_ACTIVATED',item:item,side:side,value:item.effectAmt||item.baseEffect||0,source:null});
       if(item.uses!==null){item.uses--;if(item.uses<=0){item.broken=true;log('b',item.name+' consumed!');}}
     }
     // Burn tick — every 500ms. shield*2 reduces damage first, remainder to HP
@@ -1238,11 +1336,7 @@ function tickSide(b,side,tickMs){
         if(hpDmg>0){item.hp=Math.max(0,item.hp-hpDmg);log('d','🔥 Burn '+item.name+' -'+hpDmg+' HP');}
         else{log('d','🔥 Burn '+item.name+' absorbed by plating');}
         item.burnStack--;
-        if(item.hp<=0&&!item.broken){
-          if(side==='player'&&battleState.ironHideActive){item.hp=1;}
-          else if(side==='player'&&activeSkills.some(s=>s.id==='unbreakable')&&!battleState.unbreakableUsed[item.id]){item.hp=1;battleState.unbreakableUsed[item.id]=true;log('s','Unbreakable! '+item.name+' survives!');}
-          else{if(item.onBreak)item.onBreak(side);item.broken=true;log('b',item.name+' BROKEN by burn!');}
-        }
+        if(item.hp<=0&&!item.broken){checkAndBreak(item,side);}
       }
     }
     // Poison tick — every 1000ms. bypasses shield, straight to HP
@@ -1254,16 +1348,13 @@ function tickSide(b,side,tickMs){
         item.hp=Math.max(0,item.hp-pdmg);
         log('d','☠️ Poison '+item.name+' -'+pdmg+' HP');
         item.poisonStack--;
-        if(item.hp<=0&&!item.broken){
-          if(side==='player'&&battleState.ironHideActive){item.hp=1;}
-          else if(side==='player'&&activeSkills.some(s=>s.id==='unbreakable')&&!battleState.unbreakableUsed[item.id]){item.hp=1;battleState.unbreakableUsed[item.id]=true;}
-          else{if(item.onBreak)item.onBreak(side);item.broken=true;log('b',item.name+' BROKEN by poison!');}
-        }
+        if(item.hp<=0&&!item.broken){checkAndBreak(item,side);}
       }
     }
   });
 }
 function startFatigue(){
+  fireEvent({type:'FATIGUE_START',item:null,side:null,value:null,source:null});
   let fMs=0;const fw=document.getElementById('fatigueWrap');if(fw)fw.style.display='block';
   fatigueInterval=setInterval(()=>{
     fMs+=500;const baseDmg=Math.min(40,2+Math.floor(fMs/2000)*3);
@@ -1279,7 +1370,7 @@ function startFatigue(){
     if(pKO&&eKO)endBattle('win');else if(pKO)endBattle('lose');else if(eKO)endBattle('win');
   },500);
 }
-function stopBattle(){if(battleInterval){clearInterval(battleInterval);battleInterval=null;}if(fatigueInterval){clearInterval(fatigueInterval);fatigueInterval=null;}G.battleRunning=false;battleSpeed=1;}
+function stopBattle(){if(battleInterval){clearInterval(battleInterval);battleInterval=null;}if(fatigueInterval){clearInterval(fatigueInterval);fatigueInterval=null;}G.battleRunning=false;battleSpeed=1;firingEvent=false;}
 function checkKO(side){return aliveItems(side).filter(i=>i.maxHp>0).length===0;}
 
 // ============================================================
@@ -1516,6 +1607,7 @@ function resetRun(){
   board={front:[null,null,null,null,null],back:[null,null,null,null,null]};
   enemyBoard={front:[null,null,null,null,null],back:[null,null,null,null,null]};
   TREE_NODES.forEach(n=>treeState[n.id]=null);
+  activeSkills.forEach(sk=>{sk._battleHandler=null;});
   activeSkills=[];bannedTypes=[];lastOfferedTypes=[];
   // Pre-fill HEAD with Potential — Zorp starts with it
   treeState['head']=SKILLS.prestige[0];
