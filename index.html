@@ -101,7 +101,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 /* ITEM CARD */
 .ic{flex:1;min-width:0;height:108px;border-radius:7px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .ic:hover:not(.locked){border-color:var(--glow);}
-.ic.sel{border-color:var(--sel)!important;box-shadow:0 0 10px rgba(255,224,64,.35);}
+.ic.sel,.ecard.sel{border-color:var(--sel)!important;box-shadow:0 0 10px rgba(255,224,64,.35);}
 .ic.locked{background:rgba(15,10,22,.5);border-style:dashed;opacity:.3;cursor:default;}
 .ic.broken-c{background:var(--broken-bg);border-color:var(--broken-b);}
 .ic.empty-s{border-style:dashed;opacity:.45;}
@@ -158,28 +158,30 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 .sell-confirm-name{font-family:'Cinzel',serif;font-size:7px;font-weight:700;color:var(--text);text-align:center;}
 .sell-confirm-price{font-family:'Cinzel',serif;font-size:11px;color:var(--gold);}
 .sell-confirm-btns{display:flex;gap:5px;}
-.item-info-panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:6px;min-height:60px;transition:all .15s;}
-.iip-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
-.iip-icon{font-size:20px;}
-.iip-name{font-family:'Cinzel',serif;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--text);flex:1;}
+.dc-info{font-size:8px;color:var(--dim);cursor:pointer;margin-top:3px;padding:1px 4px;border-radius:3px;border:1px solid var(--border);}
+.dc-info:hover{color:var(--text);border-color:var(--glow);}
+.item-info-panel{position:fixed;top:48px;left:0;right:0;z-index:200;padding:0 16px;pointer-events:none;}
+.iip-inner{max-width:960px;margin:0 auto;background:var(--panel);border:1px solid var(--border);border-radius:0 0 10px 10px;border-top:none;padding:8px 14px 10px;pointer-events:all;box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.iip-header{display:flex;align-items:center;gap:8px;margin-bottom:3px;}
+.iip-icon{font-size:18px;}
+.iip-name{font-family:'Cinzel',serif;font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text);flex:1;}
 .iip-rarity{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.1em;padding:2px 6px;border-radius:4px;}
 .iip-rarity-beginner{background:rgba(96,160,96,.15);color:#60a060;border:1px solid rgba(96,160,96,.3);}
 .iip-rarity-intermediate{background:rgba(64,112,192,.15);color:#4070c0;border:1px solid rgba(64,112,192,.3);}
 .iip-rarity-advanced{background:rgba(144,80,176,.15);color:#9050b0;border:1px solid rgba(144,80,176,.3);}
 .iip-rarity-mastered{background:rgba(192,120,32,.15);color:#c07820;border:1px solid rgba(192,120,32,.3);}
-.iip-meta{font-family:'Cinzel',serif;font-size:8px;color:var(--dim);margin-bottom:6px;letter-spacing:.04em;}
-.iip-desc{font-size:10px;color:var(--text);line-height:1.6;margin-bottom:4px;}
-.iip-flavor{font-size:9px;color:var(--dim);font-style:italic;margin-bottom:6px;}
-.iip-status{display:flex;gap:6px;flex-wrap:wrap;min-height:0;}
+.iip-close{background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px;padding:0 2px;line-height:1;margin-left:4px;}
+.iip-close:hover{color:var(--text);}
+.iip-meta{font-family:'Cinzel',serif;font-size:8px;color:var(--dim);margin-bottom:4px;letter-spacing:.04em;}
+.iip-desc{font-size:10px;color:var(--text);line-height:1.5;margin-bottom:3px;}
+.iip-flavor{font-size:9px;color:var(--dim);font-style:italic;margin-bottom:5px;}
+.iip-status{display:flex;gap:5px;flex-wrap:wrap;}
 .iip-stat{font-size:8px;padding:2px 6px;border-radius:3px;font-family:'Cinzel',serif;}
 .iip-burn{background:rgba(255,112,48,.15);color:#ff7030;}
 .iip-poison{background:rgba(80,224,80,.15);color:#50e050;}
 .iip-haste{background:rgba(240,192,64,.15);color:#f0c040;}
 .iip-slow{background:rgba(64,160,255,.15);color:#40a0ff;}
-.dc-info{font-size:8px;color:var(--dim);cursor:pointer;margin-top:3px;padding:1px 4px;border-radius:3px;border:1px solid var(--border);}
-.dc-info:hover{color:var(--text);border-color:var(--glow);}
-.iip-swap{font-family:'Cinzel',serif;font-size:8px;letter-spacing:.08em;padding:4px 10px;border-radius:4px;border:1px solid var(--glow);color:var(--text);background:rgba(96,64,160,.2);cursor:pointer;text-align:center;margin-top:4px;}
-.iip-swap:hover{background:rgba(96,64,160,.4);}
+@media(max-width:600px){.item-info-panel{top:auto;bottom:0;}.iip-inner{border-radius:10px 10px 0 0;border-top:1px solid var(--border);border-bottom:none;}}
 </style>
 </head>
 <body>
@@ -193,6 +195,20 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
     <span id="winsDisplay" style="color:var(--gold);font-size:11px">WINS: 0/10</span>
     <span class="pb" id="phaseBadge">DAY 1</span>
     <button class="btn btn-d" style="font-size:8px;padding:4px 10px" onclick="resetRun()">↺ RESET</button>
+  </div>
+</div>
+<div id="itemInfoPanel" class="item-info-panel" style="display:none">
+  <div class="iip-inner">
+    <div class="iip-header">
+      <span class="iip-icon" id="iipIcon"></span>
+      <span class="iip-name" id="iipName"></span>
+      <span class="iip-rarity" id="iipRarity"></span>
+      <button class="iip-close" onclick="hideItemInfo()">✕</button>
+    </div>
+    <div class="iip-meta" id="iipMeta"></div>
+    <div class="iip-desc" id="iipDesc"></div>
+    <div class="iip-flavor" id="iipFlavor"></div>
+    <div class="iip-status" id="iipStatus"></div>
   </div>
 </div>
 <div class="notif" id="notif"></div>
@@ -288,18 +304,6 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
       <div class="board-row"><div class="rl f">FRONT</div><div class="slots" id="frontSlots"></div></div>
       <div class="board-row"><div class="rl b">BACK</div><div class="slots" id="backSlots"></div></div>
     </div>
-  </div>
-  <div id="itemInfoPanel" class="item-info-panel" style="display:none">
-    <div class="iip-header">
-      <span class="iip-icon" id="iipIcon"></span>
-      <span class="iip-name" id="iipName"></span>
-      <span class="iip-rarity" id="iipRarity"></span>
-    </div>
-    <div class="iip-meta" id="iipMeta"></div>
-    <div class="iip-desc" id="iipDesc"></div>
-    <div class="iip-flavor" id="iipFlavor"></div>
-    <div class="iip-status" id="iipStatus"></div>
-    <div id="iipSwap" class="iip-swap" style="display:none">⇄ MOVE ITEM</div>
   </div>
 </div>
 
@@ -951,7 +955,7 @@ function renderRow(cid,slots,rowType){
     const card=document.createElement('div');card.className='ic';
     card.dataset.row=rowType;card.dataset.idx=idx;
     if(idx>=max){card.classList.add('locked');card.innerHTML='<div class="clock">🔒</div>';}
-    else if(!item){card.classList.add('empty-s');card.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--border);font-family:Cinzel,serif;font-size:7px;letter-spacing:.1em">EMPTY</div>';card.onclick=()=>handleSlotClick(rowType,idx,null);}
+    else if(!item){card.classList.add('empty-s');card.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--border);font-family:Cinzel,serif;font-size:7px;letter-spacing:.1em">EMPTY</div>';card.onclick=()=>{if(G.battleRunning)return;if(G.selectedSlot!==null){handleSlotClick(rowType,idx,null);hideItemInfo();}};}
     else if(item.broken){card.classList.add('broken-c');card.dataset.itemId=item.id;card.innerHTML='<div class="cbo">✕</div><div class="ci" style="opacity:.25"><div class="cicon">'+item.icon+'</div><div class="cname">'+item.name+'</div></div><div class="card-df"></div>';card.onclick=()=>handleSlotClick(rowType,idx,item);}
     else{
       if(G.selectedSlot&&G.selectedSlot.row===rowType&&G.selectedSlot.idx===idx)card.classList.add('sel');
@@ -964,11 +968,27 @@ function renderRow(cid,slots,rowType){
       card.innerHTML='<div class="card-df"></div><div class="card-hf"></div><div class="ci"><div class="cicon">'+item.icon+'</div><div class="cname">'+item.name+upgLabel+'</div><div class="ctag">'+item.tag+'</div><div class="cstat" id="cst-'+item.id+'">'+(item.maxHp>0?item.hp+'/'+item.maxHp:item.uses!==null?item.uses+'/'+item.maxUses+' use':'food')+'</div><div class="cshield" id="csh-'+item.id+'" style="'+(item.shield>0?'':'display:none')+'">🛡'+item.shield+'</div><div class="sts" id="sts-'+item.id+'"></div></div><div class="cbars"><div class="bt"><div class="bf sbf" id="sh-'+item.id+'" style="width:'+sh+'%"></div></div>'+(item.maxHp>0?'<div class="bt"><div class="bf hbf" id="hp-'+item.id+'" style="width:'+hp+'%;background:'+hc+'"></div></div>':'')+'<div class="bt"><div class="bf abf" id="act-'+item.id+'" style="width:'+act+'%"></div></div></div>';
       card.onclick=(e)=>{
         e.stopPropagation();
-        if(G.selectedSlot!==null){
+        if(G.battleRunning)return;
+
+        // If a different slot is already selected — complete the swap
+        if(G.selectedSlot!==null&&
+          !(G.selectedSlot.row===rowType&&G.selectedSlot.idx===idx)){
           handleSlotClick(rowType,idx,item);
+          showItemInfo(item);
           return;
         }
-        showItemInfo(item,true,rowType,idx);
+
+        // If this item is already selected — deselect and close panel
+        if(G.selectedSlot!==null&&
+          G.selectedSlot.row===rowType&&G.selectedSlot.idx===idx){
+          hideItemInfo();
+          return;
+        }
+
+        // Fresh click — select this item, open panel, highlight card
+        G.selectedSlot={row:rowType,idx:idx};
+        showItemInfo(item);
+        renderBoard();
       };
       card.oncontextmenu=(e)=>{
         e.preventDefault();
@@ -1240,8 +1260,16 @@ function renderERow(cid,slots){
       card.dataset.itemId=item.id;
       const hp=item.maxHp>0?(item.hp/item.maxHp*100):100;const sh=item.maxShield>0?(item.shield/item.maxShield*100):0;const act=item.actPct||0;const hc=hp>60?'#50e080':hp>30?'#e0a030':'#e84040';
       card.innerHTML='<div class="card-df"></div>'+(item.broken?'<div class="ebrk">✕</div>':'')+'<div class="eci" style="'+(item.broken?'opacity:.25':'')+'"><div class="eicon">'+item.icon+'</div><div class="ename" id="en-'+item.id+'">'+item.name+'</div><div class="etag">'+item.tag+'</div><div style="font-size:6px;color:var(--gold);font-family:Cinzel,serif" id="est-'+item.id+'">'+(item.maxHp>0?item.hp+'/'+item.maxHp:item.uses!==null?item.uses+'u':'')+'</div>'+(item.shield>0?'<div style="font-size:6px;color:var(--shield)" id="esh-'+item.id+'">🛡'+item.shield+'</div>':'')+'<div class="sts" id="ests-'+item.id+'"></div></div><div class="ebars">'+(item.shield>0?'<div class="bt"><div class="bf sbf" id="esh-bar-'+item.id+'" style="width:'+sh+'%"></div></div>':'')+(item.maxHp>0?'<div class="bt"><div class="bf hbf" id="ehp-bar-'+item.id+'" style="width:'+hp+'%;background:'+hc+'"></div></div>':'')+'<div class="bt"><div class="bf abf" id="eact-'+item.id+'" style="width:'+act+'%"></div></div></div>';
+      if(currentInfoItem===item)card.classList.add('sel');
       card.onclick=(e)=>{
         e.stopPropagation();
+        // Clear player selection when clicking enemy item
+        G.selectedSlot=null;
+        // Toggle — click same enemy item closes panel
+        if(currentInfoItem===item){hideItemInfo();return;}
+        // Highlight this card
+        document.querySelectorAll('.ecard.sel').forEach(el=>el.classList.remove('sel'));
+        card.classList.add('sel');
         showItemInfo(item);
       };
     }
@@ -1321,7 +1349,7 @@ function runBattle(type){
   resetItemBattleState(board);resetItemBattleState(enemyBoard);
   registerSkillHandlers();
   fireEvent({type:'BATTLE_START',item:null,side:null,value:null,source:null});
-  clearLog();log('x','Battle starts!');battleMs=0;
+  clearLog();hideItemInfo();log('x','Battle starts!');battleMs=0;
   const TICK=100,FATIGUE_START=30000;
   battleInterval=setInterval(()=>{
     const step=TICK*battleSpeed;
@@ -1622,8 +1650,7 @@ function advanceDay(){
 let currentInfoItem=null;
 let shopItemCache={};
 
-function showItemInfo(item,isPlayerBoard=false,rowType=null,idx=null){
-  if(currentInfoItem===item){hideItemInfo();return;}
+function showItemInfo(item){
   currentInfoItem=item;
   const panel=document.getElementById('itemInfoPanel');
   panel.style.display='block';
@@ -1640,18 +1667,18 @@ function showItemInfo(item,isPlayerBoard=false,rowType=null,idx=null){
   rarityEl.textContent=rar.toUpperCase();
   rarityEl.className='iip-rarity iip-rarity-'+rar;
 
-  // Meta line — type, cooldown, hp
+  // Meta line
   const typeLabel=item.itemType?item.itemType.charAt(0).toUpperCase()+item.itemType.slice(1):'';
   const cdLabel=item.baseActMs?(item.baseActMs/1000).toFixed(1)+'s cooldown':'';
   const hpLabel=item.maxHp>0?item.maxHp+' hp':'';
-  const usesLabel=item.maxUses!==null&&item.maxUses!==undefined?item.uses+'/'+item.maxUses+' uses':'';
+  const usesLabel=(item.maxUses!==null&&item.maxUses!==undefined)?item.uses+'/'+item.maxUses+' uses':'';
   const metaParts=[typeLabel,cdLabel,hpLabel||usesLabel].filter(Boolean);
   document.getElementById('iipMeta').textContent=metaParts.join(' · ');
 
   // Description
   document.getElementById('iipDesc').textContent=item.desc||'';
 
-  // Flavor text
+  // Flavor
   const flavorEl=document.getElementById('iipFlavor');
   if(item.flavorText){
     flavorEl.textContent='"'+item.flavorText+'"';
@@ -1660,26 +1687,7 @@ function showItemInfo(item,isPlayerBoard=false,rowType=null,idx=null){
     flavorEl.style.display='none';
   }
 
-  // Active status effects
   updateItemInfoStatus(item);
-
-  // Swap button — only for player board items
-  const swapEl=document.getElementById('iipSwap');
-  if(isPlayerBoard&&rowType!==null&&idx!==null){
-    swapEl.style.display='';
-    swapEl.onclick=()=>{
-      hideItemInfo();
-      if(G.selectedSlot===null){
-        G.selectedSlot={row:rowType,idx:idx};
-        showNotif(item.name+' selected — tap destination slot');
-        renderBoard();
-      }else{
-        handleSlotClick(rowType,idx,item);
-      }
-    };
-  }else{
-    swapEl.style.display='none';
-  }
 }
 
 function updateItemInfoStatus(item){
@@ -1690,14 +1698,16 @@ function updateItemInfoStatus(item){
   if((item.poisonStack||0)>0)parts.push('<span class="iip-stat iip-poison">☠️ '+item.poisonStack+' poison</span>');
   if((item.hasteMs||0)>0)parts.push('<span class="iip-stat iip-haste">⚡ '+(item.hasteMs/1000).toFixed(1)+'s haste</span>');
   if((item.slowMs||0)>0)parts.push('<span class="iip-stat iip-slow">💧 '+(item.slowMs/1000).toFixed(1)+'s slow</span>');
-  if((item.hp!==undefined)&&item.maxHp>0)parts.push('<span class="iip-stat" style="color:var(--dim)">'+item.hp+'/'+item.maxHp+' hp</span>');
+  if(item.maxHp>0)parts.push('<span class="iip-stat" style="color:var(--dim)">'+item.hp+'/'+item.maxHp+' hp</span>');
   if((item.shield||0)>0)parts.push('<span class="iip-stat" style="color:var(--shield)">🛡 '+item.shield+' plating</span>');
   el.innerHTML=parts.join('');
 }
 
 function hideItemInfo(){
   currentInfoItem=null;
+  G.selectedSlot=null;
   document.getElementById('itemInfoPanel').style.display='none';
+  document.querySelectorAll('.ic.sel,.ecard.sel').forEach(el=>el.classList.remove('sel'));
 }
 
 // ============================================================
@@ -1760,7 +1770,13 @@ function resetRun(){
 treeState['head']=SKILLS.prestige[0];
 activeSkills=[SKILLS.prestige[0]];
 updateUI();renderBoard();renderSkillTree();renderTrack();activateCurrentNode();
-document.getElementById('page')?.addEventListener('click',()=>{hideItemInfo();});
+document.addEventListener('click',(e)=>{
+  if(!e.target.closest('.ic')&&
+     !e.target.closest('.ecard')&&
+     !e.target.closest('.item-info-panel')){
+    hideItemInfo();
+  }
+});
 </script>
 </body>
 </html>
