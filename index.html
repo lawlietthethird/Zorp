@@ -1167,6 +1167,7 @@ function buyMomItem(key,free,isConsolation){
   if(!placed)for(let i=0;i<max&&!placed;i++){if(!board.back[i]){board.back[i]=item;placed=true;}}
   if(!placed){showNotif('Board full! Sell something first.');return;}
   showNotif(item.name+' received!');
+  logEvent({event:'mom_pick',item_key:key,is_consolation:isConsolation});
   updateUI();
   renderBoard();
   skipShop();
@@ -1188,9 +1189,11 @@ function buyItem(key,free){
   for(let i=0;i<max&&!placed;i++){if(!board.front[i]){board.front[i]=item;placed=true;}}
   if(!placed)for(let i=0;i<max&&!placed;i++){if(!board.back[i]){board.back[i]=item;placed=true;}}
   if(!placed){showNotif('Board full! Swap items first.');return;}
-  showNotif(item.name+' added!');updateUI();renderBoard();skipShop();
+  showNotif(item.name+' added!');
+  logEvent({event:'shop_buy',item_key:key,item_rarity:t.itemRarity||'',item_type:t.itemType||'',gold_spent:t.cost,gold_remaining:G.gold,upgraded:!!existing});
+  updateUI();renderBoard();skipShop();
 }
-function skipShop(){G.dayStep++;updateUI();renderTrack();activateCurrentNode();}
+function skipShop(){logEvent({event:'shop_skip',gold:G.gold});G.dayStep++;updateUI();renderTrack();activateCurrentNode();}
 function generateShopSlots(day,typeFilter,excludeKeys){
   excludeKeys=excludeKeys||[];
   const slots=[];
@@ -1466,14 +1469,17 @@ function endBattle(result){
       const butcher=reward===4?'"You really beat the meat on this one." Coins in your hand, pity in his eyes.':reward===5?'"Decent enough." Coins on the counter, no further conversation.':'"Near perfect condition. They grade these now, you know. PSA 10, this one." You walk out richer than expected.';
       G.gold+=reward;title='MONSTER DEFEATED';
       sub='You haul the '+WILD_MONSTERS[G.wildChoice||0].name+' to the butcher.<br><br><em>'+butcher+'</em><br><br>Earned 🪙'+reward+' gold.';
+      logEvent({event:'wild_battle',result:'win',wild_monster:WILD_MONSTERS[G.wildChoice||0].name,gold_reward:reward,board:boardSnapshot(),battle_duration_ms:battleMs});
     }else{
       G.wins++;G.rivalDefeated=true;title='VICTORY';
       if(G.wins>=10){sub='10 wins. The run is complete.';btnText='PLAY AGAIN';}
       else{sub='Win '+G.wins+' of 10.';}
+      logEvent({event:'trainer_battle',result:'win',win_number:G.wins,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
     }
   }else{
     if(currentBattleType==='wild'){
       title='DEFEATED';
+      logEvent({event:'wild_battle',result:'lose',wild_monster:WILD_MONSTERS[G.wildChoice||0].name,board:boardSnapshot(),battle_duration_ms:battleMs});
       if(G.day===1){
         sub='You are literally in the tutorial. We\'re going to pretend that didn\'t happen.';btnText='TRY AGAIN →';
       }else{
@@ -1483,6 +1489,7 @@ function endBattle(result){
       const hl=G.day;G.honor=Math.max(0,G.honor-hl);title='DEFEATED';
       sub='Lost '+hl+' honor. '+G.honor+' remaining.'+(G.honor<=0?' SECOND WIND!':'');
       btnText=G.honor<=0?'SECOND WIND...':'TRY AGAIN →';
+      logEvent({event:'trainer_battle',result:'lose',win_number:G.wins,honor_lost:hl,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
     }
   }
   updateUI();setEncTitle(title);
@@ -1550,6 +1557,7 @@ function showTypeSelect(){
 function pickType(id){
   if(id==='typeless'){
     // HEAD stays as Potential — check ban screen eligibility
+    logEvent({event:'type_select',chosen:'typeless',offered:lastOfferedTypes,win_number:G.wins,banned:bannedTypes});
     const nonBanned=TYPES.filter(t=>!bannedTypes.includes(t.id));
     if(nonBanned.length>=2&&lastOfferedTypes.length>0){
       showBanScreen();
@@ -1569,6 +1577,7 @@ function pickType(id){
     badge.style.cssText=TYPE_COLORS[id]||'';
     showNotif(t.name+' chosen! Typed items now appear in shops.');
     renderSkillTree();
+    logEvent({event:'type_select',chosen:id,offered:lastOfferedTypes,win_number:G.wins});
     advanceDay(); // no node pick this win for typed players
   }
 }
@@ -1633,6 +1642,7 @@ function pickSkill(nodeId,skillId){
   if(!skill)return;
   treeState[nodeId]=skill;
   activeSkills.push(skill);
+  logEvent({event:'skill_pick',skill_id:skillId,skill_rarity:node.rarity,node_id:nodeId,win_number:G.wins});
   renderSkillTree();
   showNotif(skill.name+' learned!');
   advanceDay();
@@ -1762,6 +1772,37 @@ function resetRun(){
   const badge=document.getElementById('typeBadge');
   badge.textContent='✦ POTENTIAL';badge.className='type-badge type-pot';badge.style.cssText='';
   updateUI();renderBoard();renderSkillTree();renderTrack();activateCurrentNode();
+  sessionId=Math.random().toString(36).slice(2,10);
+  logEvent({event:'run_start'});
+}
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+const ANALYTICS_URL='https://script.google.com/macros/s/AKfycbwmw5uU2M3iRpx2lMbF5tLm1qKokwvQhFAvey6PSxVBjfY0OjgqRauray0TPyCC33-3/exec';
+let sessionId=Math.random().toString(36).slice(2,10);
+
+function boardSnapshot(){
+  return[...board.front,...board.back].filter(Boolean).map(i=>({
+    key:i.itemKey||i.id,
+    tier:i.upgradeLevel||0,
+    type:i.itemType||'',
+    row:board.front.includes(i)?'front':'back'
+  }));
+}
+
+function logEvent(data){
+  try{
+    data.session_id=sessionId;
+    data.timestamp=Date.now();
+    data.day=G.day;
+    data.wins=G.wins;
+    data.type=G.type||'typeless';
+    data.honor=G.honor;
+    navigator.sendBeacon(ANALYTICS_URL,JSON.stringify(data));
+  }catch(e){
+    console.log('analytics error',e);
+  }
 }
 
 // ============================================================
@@ -1770,6 +1811,10 @@ function resetRun(){
 treeState['head']=SKILLS.prestige[0];
 activeSkills=[SKILLS.prestige[0]];
 updateUI();renderBoard();renderSkillTree();renderTrack();activateCurrentNode();
+logEvent({event:'run_start'});
+window.addEventListener('beforeunload',()=>{
+  logEvent({event:'session_end',board:boardSnapshot(),skills:activeSkills.map(s=>s.id),gold:G.gold});
+});
 document.addEventListener('click',(e)=>{
   if(!e.target.closest('.ic')&&
      !e.target.closest('.ecard')&&
