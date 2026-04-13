@@ -154,10 +154,6 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 .ic.poisoned{animation:poisonpulse 1.2s ease infinite;}
 .ecard.burning{animation:burnpulse 1s ease infinite;}
 .ecard.poisoned{animation:poisonpulse 1.2s ease infinite;}
-.sell-confirm{position:absolute;inset:0;background:rgba(10,8,18,.93);z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border-radius:7px;padding:6px;}
-.sell-confirm-name{font-family:'Cinzel',serif;font-size:7px;font-weight:700;color:var(--text);text-align:center;}
-.sell-confirm-price{font-family:'Cinzel',serif;font-size:11px;color:var(--gold);}
-.sell-confirm-btns{display:flex;gap:5px;}
 .dc-info{font-size:8px;color:var(--dim);cursor:pointer;margin-top:3px;padding:1px 4px;border-radius:3px;border:1px solid var(--border);}
 .dc-info:hover{color:var(--text);border-color:var(--glow);}
 .item-info-panel{position:fixed;top:48px;left:0;right:0;z-index:200;padding:0 16px;pointer-events:none;}
@@ -181,6 +177,9 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 .iip-poison{background:rgba(80,224,80,.15);color:#50e050;}
 .iip-haste{background:rgba(240,192,64,.15);color:#f0c040;}
 .iip-slow{background:rgba(64,160,255,.15);color:#40a0ff;}
+.iip-sell-row{margin-top:6px;display:none;}
+.iip-sell-btn{font-family:'Cinzel',serif;font-size:8px;font-weight:700;letter-spacing:.06em;padding:4px 12px;background:rgba(220,60,60,.15);color:#dc4040;border:1px solid rgba(220,60,60,.4);border-radius:5px;cursor:pointer;}
+.iip-sell-btn:hover{background:rgba(220,60,60,.3);border-color:rgba(220,60,60,.7);}
 @media(max-width:600px){.item-info-panel{top:auto;bottom:0;}.iip-inner{border-radius:10px 10px 0 0;border-top:1px solid var(--border);border-bottom:none;}}
 </style>
 </head>
@@ -209,6 +208,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
     <div class="iip-desc" id="iipDesc"></div>
     <div class="iip-flavor" id="iipFlavor"></div>
     <div class="iip-status" id="iipStatus"></div>
+    <div class="iip-sell-row" id="iipSellRow"><button class="iip-sell-btn" id="iipSellBtn">SELL</button></div>
   </div>
 </div>
 <div class="notif" id="notif"></div>
@@ -974,7 +974,7 @@ function renderRow(cid,slots,rowType){
         if(G.selectedSlot!==null&&
           !(G.selectedSlot.row===rowType&&G.selectedSlot.idx===idx)){
           handleSlotClick(rowType,idx,item);
-          showItemInfo(item);
+          showItemInfo(item,true,rowType,idx);
           return;
         }
 
@@ -987,13 +987,8 @@ function renderRow(cid,slots,rowType){
 
         // Fresh click — select this item, open panel, highlight card
         G.selectedSlot={row:rowType,idx:idx};
-        showItemInfo(item);
+        showItemInfo(item,true,rowType,idx);
         renderBoard();
-      };
-      card.oncontextmenu=(e)=>{
-        e.preventDefault();
-        if(G.battleRunning)return;
-        showSellConfirm(rowType,idx,item);
       };
     }
     el.appendChild(card);
@@ -1118,7 +1113,7 @@ function showEncounterShop(poolIdx){
     const cards=shuffled.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
       const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody(dialogue+'<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -1135,7 +1130,7 @@ function showEncounterShop(poolIdx){
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
       const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -1147,7 +1142,7 @@ function showEncounterShop(poolIdx){
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
       const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -1165,7 +1160,7 @@ function buyMomItem(key,free,isConsolation){
   const max=maxActiveSlots();let placed=false;
   for(let i=0;i<max&&!placed;i++){if(!board.front[i]){board.front[i]=item;placed=true;}}
   if(!placed)for(let i=0;i<max&&!placed;i++){if(!board.back[i]){board.back[i]=item;placed=true;}}
-  if(!placed){showNotif('Board full! Sell something first.');return;}
+  if(!placed){showNotif('Board full! Open an item and hit SELL to make room.',4000);return;}
   showNotif(item.name+' received!');
   logEvent({event:'mom_pick',item_key:key,is_consolation:isConsolation});
   updateUI();
@@ -1188,7 +1183,7 @@ function buyItem(key,free){
   const max=maxActiveSlots();let placed=false;
   for(let i=0;i<max&&!placed;i++){if(!board.front[i]){board.front[i]=item;placed=true;}}
   if(!placed)for(let i=0;i<max&&!placed;i++){if(!board.back[i]){board.back[i]=item;placed=true;}}
-  if(!placed){showNotif('Board full! Swap items first.');return;}
+  if(!placed){showNotif('Board full! Open an item and hit SELL, or swap positions.',4000);return;}
   showNotif(item.name+' added!');
   logEvent({event:'shop_buy',item_key:key,item_rarity:t.itemRarity||'',item_type:t.itemType||'',gold_spent:t.cost,gold_remaining:G.gold,upgraded:!!existing});
   updateUI();renderBoard();skipShop();
@@ -1205,27 +1200,6 @@ function generateShopSlots(day,typeFilter,excludeKeys){
   }
   return slots;
 }
-function showSellConfirm(rowType,idx,item){
-  document.querySelectorAll('.sell-confirm').forEach(el=>el.remove());
-  const cardEl=document.querySelector('.ic[data-row="'+rowType+'"][data-idx="'+idx+'"]');
-  if(!cardEl)return;
-  const val=getSellValue(item);
-  const div=document.createElement('div');div.className='sell-confirm';
-  div.innerHTML='<div class="sell-confirm-name">'+item.name+'</div><div class="sell-confirm-price">🪙 '+val+'g</div><div class="sell-confirm-btns"><button class="btn btn-d" style="font-size:8px;padding:4px 8px" id="sellConfirmBtn">SELL</button><button class="btn btn-p" style="font-size:8px;padding:4px 8px" id="sellCancelBtn">✕</button></div>';
-  cardEl.appendChild(div);
-  document.getElementById('sellConfirmBtn').onclick=(e)=>{
-    e.stopPropagation();
-    const arr=rowType==='front'?board.front:board.back;
-    arr[idx]=null;
-    G.gold+=val;
-    showNotif(item.name+' sold for 🪙'+val+'g');
-    updateUI();renderBoard();
-  };
-  document.getElementById('sellCancelBtn').onclick=(e)=>{
-    e.stopPropagation();div.remove();
-  };
-}
-
 function showEncounterWildPick(){
   setEncTitle('WILD ENCOUNTER — Choose Your Prey');
   const cards=WILD_MONSTERS.map((m,i)=>'<div class="wp" onclick="startWild('+i+')"><div class="wpi">'+m.icon+'</div><div class="wpn">'+m.name+'</div><div class="wpd">'+m.tag+'</div></div>').join('');
@@ -1660,7 +1634,7 @@ function advanceDay(){
 let currentInfoItem=null;
 let shopItemCache={};
 
-function showItemInfo(item){
+function showItemInfo(item, isPlayerBoard=false, rowType=null, idx=null){
   currentInfoItem=item;
   const panel=document.getElementById('itemInfoPanel');
   panel.style.display='block';
@@ -1698,6 +1672,26 @@ function showItemInfo(item){
   }
 
   updateItemInfoStatus(item);
+
+  // Sell button — only show for player board items, not during battle
+  const sellRow=document.getElementById('iipSellRow');
+  const sellBtn=document.getElementById('iipSellBtn');
+  if(isPlayerBoard && rowType!==null && idx!==null && !G.battleRunning){
+    const val=getSellValue(item);
+    sellBtn.textContent='SELL FOR 🪙'+val+'g';
+    sellBtn.onclick=()=>{
+      const arr=rowType==='front'?board.front:board.back;
+      arr[idx]=null;
+      G.gold+=val;
+      logEvent({event:'item_sold',item_key:item.itemKey||item.id,item_rarity:item.itemRarity||'',gold_gained:val});
+      hideItemInfo();
+      showNotif(item.name+' sold for 🪙'+val+'g');
+      updateUI();renderBoard();refreshShopAffordability();
+    };
+    sellRow.style.display='block';
+  }else{
+    sellRow.style.display='none';
+  }
 }
 
 function updateItemInfoStatus(item){
@@ -1723,9 +1717,18 @@ function hideItemInfo(){
 // ============================================================
 // LOG / UI
 // ============================================================
+function refreshShopAffordability(){
+  document.querySelectorAll('.dc[data-item-cost]').forEach(el=>{
+    const cost=parseInt(el.dataset.itemCost,10);
+    if(cost>0){
+      if(G.gold>=cost)el.classList.remove('cant');
+      else el.classList.add('cant');
+    }
+  });
+}
 function log(type,msg){const el=document.getElementById('battleLog');if(!el)return;const div=document.createElement('div');const t=(battleMs/1000).toFixed(1);const cls={d:'ld',h:'lh',s:'ls',a:'la',b:'lb',x:'lx'}[type]||'lx';div.innerHTML='<span class="lt">'+t+'s</span><span class="'+cls+'">'+msg+'</span>';el.appendChild(div);el.scrollTop=el.scrollHeight;}
 function clearLog(){const el=document.getElementById('battleLog');if(el)el.innerHTML='';}
-function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/10';document.getElementById('phaseBadge').textContent='DAY '+G.day;}
+function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/10';document.getElementById('phaseBadge').textContent='DAY '+G.day;refreshShopAffordability();}
 function showTreeTip(node,e){
   const tip=document.getElementById('treeTip');
   const nameEl=document.getElementById('treeTipName');
@@ -1753,7 +1756,7 @@ function showTreeTip(node,e){
 }
 function hideTreeTip(){document.getElementById('treeTip').classList.remove('show');}
 let notifTimer;
-function showNotif(msg){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');clearTimeout(notifTimer);notifTimer=setTimeout(()=>el.classList.remove('show'),2400);}
+function showNotif(msg,duration=2400){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');clearTimeout(notifTimer);notifTimer=setTimeout(()=>el.classList.remove('show'),duration);}
 
 // ============================================================
 // RESET
