@@ -178,6 +178,8 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 .iip-slow{background:rgba(64,160,255,.15);color:#40a0ff;}
 .dc-info{font-size:8px;color:var(--dim);cursor:pointer;margin-top:3px;padding:1px 4px;border-radius:3px;border:1px solid var(--border);}
 .dc-info:hover{color:var(--text);border-color:var(--glow);}
+.iip-swap{font-family:'Cinzel',serif;font-size:8px;letter-spacing:.08em;padding:4px 10px;border-radius:4px;border:1px solid var(--glow);color:var(--text);background:rgba(96,64,160,.2);cursor:pointer;text-align:center;margin-top:4px;}
+.iip-swap:hover{background:rgba(96,64,160,.4);}
 </style>
 </head>
 <body>
@@ -297,6 +299,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
     <div class="iip-desc" id="iipDesc"></div>
     <div class="iip-flavor" id="iipFlavor"></div>
     <div class="iip-status" id="iipStatus"></div>
+    <div id="iipSwap" class="iip-swap" style="display:none">⇄ MOVE ITEM</div>
   </div>
 </div>
 
@@ -965,7 +968,7 @@ function renderRow(cid,slots,rowType){
           handleSlotClick(rowType,idx,item);
           return;
         }
-        showItemInfo(item);
+        showItemInfo(item,true,rowType,idx);
       };
       card.oncontextmenu=(e)=>{
         e.preventDefault();
@@ -1135,13 +1138,17 @@ function buyMomItem(key,free,isConsolation){
   const f=pool[key];if(!f)return;
   const t=f();
   if(!isConsolation)G.momGiftGiven=true;
-  const item={...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,
-    hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'player'};
+  const item={...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+    broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
+    burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,
+    _side:'player'};
   const max=maxActiveSlots();let placed=false;
   for(let i=0;i<max&&!placed;i++){if(!board.front[i]){board.front[i]=item;placed=true;}}
   if(!placed)for(let i=0;i<max&&!placed;i++){if(!board.back[i]){board.back[i]=item;placed=true;}}
   if(!placed){showNotif('Board full! Sell something first.');return;}
   showNotif(item.name+' received!');
+  updateUI();
+  renderBoard();
   skipShop();
 }
 function buyItem(key,free){
@@ -1615,7 +1622,7 @@ function advanceDay(){
 let currentInfoItem=null;
 let shopItemCache={};
 
-function showItemInfo(item){
+function showItemInfo(item,isPlayerBoard=false,rowType=null,idx=null){
   if(currentInfoItem===item){hideItemInfo();return;}
   currentInfoItem=item;
   const panel=document.getElementById('itemInfoPanel');
@@ -1655,6 +1662,24 @@ function showItemInfo(item){
 
   // Active status effects
   updateItemInfoStatus(item);
+
+  // Swap button — only for player board items
+  const swapEl=document.getElementById('iipSwap');
+  if(isPlayerBoard&&rowType!==null&&idx!==null){
+    swapEl.style.display='';
+    swapEl.onclick=()=>{
+      hideItemInfo();
+      if(G.selectedSlot===null){
+        G.selectedSlot={row:rowType,idx:idx};
+        showNotif(item.name+' selected — tap destination slot');
+        renderBoard();
+      }else{
+        handleSlotClick(rowType,idx,item);
+      }
+    };
+  }else{
+    swapEl.style.display='none';
+  }
 }
 
 function updateItemInfoStatus(item){
