@@ -177,6 +177,12 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 .iip-poison{background:rgba(80,224,80,.15);color:#50e050;}
 .iip-haste{background:rgba(240,192,64,.15);color:#f0c040;}
 .iip-slow{background:rgba(64,160,255,.15);color:#40a0ff;}
+.tome-modal{position:fixed;inset:0;background:rgba(10,8,18,.85);z-index:500;display:flex;align-items:center;justify-content:center;}
+.tome-inner{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px 28px;max-width:360px;width:90%;text-align:center;display:flex;flex-direction:column;gap:12px;box-shadow:0 12px 40px rgba(0,0,0,.6);}
+.tome-title{font-family:'Cinzel',serif;font-size:13px;font-weight:700;letter-spacing:.1em;color:var(--gold);}
+.tome-body{font-size:11px;color:var(--dim);line-height:1.7;font-style:italic;}
+.tome-reaction{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.06em;color:var(--text);}
+.ctag-technique{color:#c0a0ff;font-style:normal;font-family:'Cinzel',serif;font-size:6px;letter-spacing:.08em;}
 .iip-sell-row{margin-top:6px;display:none;}
 .iip-sell-btn{font-family:'Cinzel',serif;font-size:8px;font-weight:700;letter-spacing:.06em;padding:4px 12px;background:rgba(220,60,60,.15);color:#dc4040;border:1px solid rgba(220,60,60,.4);border-radius:5px;cursor:pointer;}
 .iip-sell-btn:hover{background:rgba(220,60,60,.3);border-color:rgba(220,60,60,.7);}
@@ -209,6 +215,25 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
     <div class="iip-flavor" id="iipFlavor"></div>
     <div class="iip-status" id="iipStatus"></div>
     <div class="iip-sell-row" id="iipSellRow"><button class="iip-sell-btn" id="iipSellBtn">SELL</button></div>
+  </div>
+</div>
+<div id="tomeModal" class="tome-modal" style="display:none">
+  <div class="tome-inner">
+    <div class="tome-title" id="tomeTitle"></div>
+    <div class="tome-body" id="tomeBody"></div>
+    <div class="tome-reaction" id="tomeReaction"></div>
+    <button class="btn btn-p" onclick="closeTomeModal()">CONTINUE</button>
+  </div>
+</div>
+<div id="techSellModal" class="tome-modal" style="display:none">
+  <div class="tome-inner">
+    <div class="tome-title" id="techSellTitle"></div>
+    <div class="tome-body" id="techSellBody"></div>
+    <div class="tome-reaction" id="techSellReaction"></div>
+    <div class="btn-row">
+      <button class="btn btn-d" id="techSellConfirmBtn">CONFIRM SELL</button>
+      <button class="btn btn-p" onclick="closeTechSellModal()">KEEP</button>
+    </div>
   </div>
 </div>
 <div class="notif" id="notif"></div>
@@ -413,6 +438,7 @@ function initBattleState(){
     ironHideExpired:false,
     resilienceUsed:false,
     unbreakableUsed:{},
+    fatigueDamageMultiplier:1,
   };
 }
 
@@ -504,7 +530,7 @@ function renderSkillTree(){
 // ============================================================
 // STATE
 // ============================================================
-const G={gold:8,honor:20,maxHonor:20,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false};
+const G={gold:8,honor:20,maxHonor:20,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip'};
 let bannedTypes=[];
 let lastOfferedTypes=[];
 let board={front:[null,null,null,null,null],back:[null,null,null,null,null]};
@@ -524,6 +550,7 @@ function makeItem(key,name,icon,tag,maxHp,actMs,desc,effectFn,cost=0,uses=null,b
     desc,effectFn,cost,uses,maxUses:uses,upgradeLevel:0,
     itemType,itemRarity,flavorText:'',sellOverride:null,
     handleEvent:null,baseSlowDuration:0,slowDuration:0,
+    hitCount:null,baseHitCount:null,isTargetable:false,isTechnique:false,sellPopup:null,
     hp:maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,
     hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0};
 }
@@ -546,6 +573,8 @@ const SHOP_POOLS=[
   ['bubble_shield','basic_berry','iron_paw'],
   ['hard_shell','berry_pouch','iron_paw','bubble_shield'],
 ];
+const NEGATIVE_STATUSES=new Set(['BURN_APPLIED','POISON_APPLIED','SLOW_APPLIED']);
+
 // ---- TYPED ITEMS ----
 const TYPED_ITEMS={
   // ELECTRIC ⚡
@@ -676,10 +705,170 @@ const MOM_CONSOLATION_ITEMS={
     return item;
   },
 };
-function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||null;}
+function getTechniqueReading(key){
+  const readings={
+    solidarity:'You read to '+G.monsterName+' of the one who stood in the cold so another could be warm, who gave without keeping count, who asked for nothing back...',
+    patience:'You read to '+G.monsterName+' of the one who rolled the boulder up the hill for eternity and found himself, whole...',
+  };
+  return readings[key]||'You read to '+G.monsterName+' from the tome...';
+}
+
+function getTechniqueReaction(key){
+  const reactions={
+    solidarity:G.monsterName+' leans into you slightly.',
+    patience:G.monsterName+' feels oddly at ease.',
+  };
+  return reactions[key]||G.monsterName+' feels different.';
+}
+
+const PACIFIST_ITEMS={
+
+  solidarity:()=>{
+    const item=makeItem('solidarity','Solidarity','📜','Technique',0,0,
+      'When a left or right neighbor is hit, deal 5 damage to the attacker.',
+      null,4,null,5,'technique','beginner');
+    item.isTechnique=true;
+    item.isTargetable=false;
+    item.flavorText='It feels every blow.';
+    item.sellPopup={
+      title:'You close the Tome of Solidarity.',
+      body:'Maturity costs something.',
+      reaction:''
+    };
+    item.handleEvent=(event)=>{
+      if(event.type!=='DAMAGE_RECEIVED')return;
+      if(event.side!==item._side)return;
+      const neighbors=getNeighbors(item);
+      if(event.item===neighbors.left||event.item===neighbors.right){
+        if(event.source){
+          applyDmgTo(event.source,item.effectAmt||5,'Solidarity',opp(item._side));
+        }
+      }
+    };
+    return item;
+  },
+
+  emergency_ration:()=>{
+    const item=makeItem('emergency_ration','Emergency Ration','🧰','Provision',0,0,
+      'When any ally drops to 50% HP or below, heal it for 45. 3 uses.',
+      null,2,3,45,'provision','beginner');
+    item.flavorText='For when it gets bad.';
+    item.uses=3;item.maxUses=3;
+    item.handleEvent=(event)=>{
+      if(event.type!=='DAMAGE_RECEIVED')return;
+      if(event.side!==item._side)return;
+      if(item.uses<=0)return;
+      if(event.item.maxHp>0&&(event.item.hp/event.item.maxHp)<=0.5){
+        const actual=Math.min(event.item.maxHp-event.item.hp,item.effectAmt||45);
+        event.item.hp+=actual;
+        item.uses--;
+        log('h','Emergency Ration heals '+event.item.name+' +'+actual+' ('+item.uses+' uses left)');
+        if(item.uses<=0){item.broken=true;log('b','Emergency Ration exhausted!');}
+      }
+    };
+    return item;
+  },
+
+  honey_pot:()=>{
+    const item=makeItem('honey_pot','Honey Pot','🍯','Armor',100,0,
+      'When targeted by a negative status effect, deal 50 damage to a random opponent.',
+      null,4,null,50,'armor','intermediate');
+    item.flavorText='Sweet on the outside.';
+    item.handleEvent=(event)=>{
+      if(!NEGATIVE_STATUSES.has(event.type))return;
+      if(event.item!==item)return;
+      if(event.side===item._side)return;
+      dealDmgRandom(opp(item._side),item.effectAmt||50,'Honey Pot');
+    };
+    return item;
+  },
+
+  thorn_mantle:()=>{
+    const item=makeItem('thorn_mantle','Thorn Mantle','🌵','Armor',280,0,
+      'When hit, deal 2x post-shield damage back to the attacker.',
+      null,4,null,2,'armor','intermediate');
+    item.flavorText='It bites back.';
+    item.handleEvent=(event)=>{
+      if(event.type!=='DAMAGE_RECEIVED')return;
+      if(event.item!==item)return;
+      if(!event.source)return;
+      const reflect=Math.round(event.value*2);
+      if(reflect>0){
+        applyDmgTo(event.source,reflect,'Thorn Mantle',opp(item._side));
+        log('d','Thorn Mantle reflects '+reflect+' to '+event.source.name);
+      }
+    };
+    return item;
+  },
+
+  training_dummy:()=>{
+    const item=makeItem('training_dummy','Training Dummy','🪆','Armor',0,0,
+      'Absorbs 5 hits instead of HP. Protects back row. Burn and poison each count as a hit.',
+      null,4,null,5,'armor','intermediate');
+    item.flavorText="It's taken worse.";
+    item.isTargetable=true;
+    item.maxHp=0;
+    item.hitCount=5;
+    item.baseHitCount=5;
+    return item;
+  },
+
+  chrysalis:()=>{
+    const item=makeItem('chrysalis','Chrysalis','🫧','Armor',1,1000,
+      'Gains 8 plating every second. Breaks instantly if hit before building plating.',
+      (s,a,self)=>{
+        self.shield=(self.shield||0)+(self.effectAmt||8);
+        self.maxShield=Math.max(self.maxShield||0,self.shield);
+        log('s','Chrysalis hardens +'+(self.effectAmt||8)+' plating (total: '+self.shield+')');
+      },4,null,8,'armor','intermediate');
+    item.flavorText="Don't touch it.";
+    return item;
+  },
+
+  patience:()=>{
+    const item=makeItem('patience','Patience','⏳','Technique',0,0,
+      'When fatigue starts, enemy takes 1.5x fatigue damage for the rest of the battle.',
+      null,8,null,1.5,'technique','advanced');
+    item.isTechnique=true;
+    item.isTargetable=false;
+    item.flavorText='It can wait.';
+    item.sellPopup={
+      title:'You close the Tome of Patience.',
+      body:'The boulder rolls back down.',
+      reaction:'Kip is slightly unsettled.'
+    };
+    item.handleEvent=(event)=>{
+      if(event.type!=='FATIGUE_START')return;
+      battleState.fatigueDamageMultiplier=item.effectAmt||1.5;
+      log('x','Patience — enemy fatigue x'+(item.effectAmt||1.5));
+    };
+    return item;
+  },
+
+  callus:()=>{
+    const item=makeItem('callus','Callus','🪨','Armor',352,0,
+      'When hit, gain plating equal to damage received.',
+      null,8,null,1,'armor','advanced');
+    item.flavorText='It grows back stronger.';
+    item.handleEvent=(event)=>{
+      if(event.type!=='DAMAGE_RECEIVED')return;
+      if(event.item!==item)return;
+      const gained=Math.round(event.value*(item.effectAmt||1));
+      if(gained>0){
+        item.shield=(item.shield||0)+gained;
+        item.maxShield=Math.max(item.maxShield||0,item.shield);
+        log('s','Callus hardens +'+gained+' plating');
+      }
+    };
+    return item;
+  },
+
+};
+
+function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||null;}
 const ITEM_META={};
 (function buildMeta(){
-  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS};
   Object.keys(all).forEach(key=>{
     const t=all[key]();
     ITEM_META[key]={itemRarity:t.itemRarity,itemType:t.itemType};
@@ -704,7 +893,7 @@ function rollRarity(day){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 function getItemsOfRarity(rarity,typeFilter){
-  const all={...ITEMS,...TYPED_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS};
   const filtered=Object.keys(all).filter(key=>{
     const t=all[key]();
     if(t.itemRarity!==rarity)return false;
@@ -738,6 +927,9 @@ function upgradeItem(item){
   // actMs stays at baseActMs — no speed change on upgrade
   item.actMs=item.baseActMs;
   item.effectAmt=Math.round((item.baseEffect||0)*m);
+  if(item.baseHitCount!==null&&item.baseHitCount!==undefined){
+    item.hitCount=Math.round(item.baseHitCount*m);
+  }
   item.hp=item.maxHp;
   return true;
 }
@@ -762,7 +954,7 @@ function potMult(){
   return 1.0;
 }
 function maxActiveSlots(){if(G.day<=2)return 2;if(G.day<=4)return 3;if(G.day<=6)return 4;return 5;}
-function targetable(i){return i&&!i.broken&&i.maxHp>0;}
+function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
 
 // ============================================================
 // DAMAGE / HEAL / SHIELD
@@ -786,6 +978,17 @@ function checkAndBreak(item,side){
   }
 }
 function applyDmgTo(target,dmg,src,side){
+  // Training Dummy — hitCount item, absorbs damage
+  if(target.hitCount!==undefined&&target.hitCount!==null){
+    target.hitCount--;
+    log('d','Hit absorbed by '+target.name+' ('+target.hitCount+' hits remaining)');
+    if(target.hitCount<=0){
+      fireEvent({type:'ITEM_BROKEN',item:target,side:side,value:0,source:null});
+      target.broken=true;
+      log('b',target.name+' BROKEN!');
+    }
+    return; // damage absorbed, nothing passes through
+  }
   // Iron hide — player items can't break in first 10s
   if(side==='player'&&battleState.ironHideActive){
     // still take damage, just won't break
@@ -965,7 +1168,7 @@ function renderRow(cid,slots,rowType){
       const act=item.actPct||0;
       const hc=hp>60?'#50e080':hp>30?'#e0a030':'#e84040';
       const upgLabel=item.upgradeLevel>0?'<span style="font-size:6px;color:var(--gold)"> ['+UPGRADE_NAMES[item.upgradeLevel]+']</span>':'';
-      card.innerHTML='<div class="card-df"></div><div class="card-hf"></div><div class="ci"><div class="cicon">'+item.icon+'</div><div class="cname">'+item.name+upgLabel+'</div><div class="ctag">'+item.tag+'</div><div class="cstat" id="cst-'+item.id+'">'+(item.maxHp>0?item.hp+'/'+item.maxHp:item.uses!==null?item.uses+'/'+item.maxUses+' use':'food')+'</div><div class="cshield" id="csh-'+item.id+'" style="'+(item.shield>0?'':'display:none')+'">🛡'+item.shield+'</div><div class="sts" id="sts-'+item.id+'"></div></div><div class="cbars"><div class="bt"><div class="bf sbf" id="sh-'+item.id+'" style="width:'+sh+'%"></div></div>'+(item.maxHp>0?'<div class="bt"><div class="bf hbf" id="hp-'+item.id+'" style="width:'+hp+'%;background:'+hc+'"></div></div>':'')+'<div class="bt"><div class="bf abf" id="act-'+item.id+'" style="width:'+act+'%"></div></div></div>';
+      card.innerHTML='<div class="card-df"></div><div class="card-hf"></div><div class="ci"><div class="cicon">'+item.icon+'</div><div class="cname">'+item.name+upgLabel+'</div><div class="ctag'+(item.isTechnique?' ctag-technique':'')+'">'+item.tag+'</div><div class="cstat" id="cst-'+item.id+'">'+(item.hitCount!==null?item.hitCount+' hits':item.maxHp>0?item.hp+'/'+item.maxHp:item.uses!==null?item.uses+'/'+item.maxUses+' use':'food')+'</div><div class="cshield" id="csh-'+item.id+'" style="'+(item.shield>0?'':'display:none')+'">🛡'+item.shield+'</div><div class="sts" id="sts-'+item.id+'"></div></div><div class="cbars"><div class="bt"><div class="bf sbf" id="sh-'+item.id+'" style="width:'+sh+'%"></div></div>'+(item.maxHp>0?'<div class="bt"><div class="bf hbf" id="hp-'+item.id+'" style="width:'+hp+'%;background:'+hc+'"></div></div>':'')+(item.hitCount!==null?'<div class="hit-counter" style="font-family:Cinzel,serif;font-size:7px;color:var(--gold);text-align:center;padding:1px 0">'+item.hitCount+' hits</div>':'')+'<div class="bt"><div class="bf abf" id="act-'+item.id+'" style="width:'+act+'%"></div></div></div>';
       card.onclick=(e)=>{
         e.stopPropagation();
         if(G.battleRunning)return;
@@ -1011,7 +1214,13 @@ function updateBattleBars(){
     if(hpEl&&item.maxHp>0){const p=item.hp/item.maxHp*100;hpEl.style.width=p+'%';hpEl.style.background=p>60?'#50e080':p>30?'#e0a030':'#e84040';}
     if(shEl){const sp=item.maxShield>0?item.shield/item.maxShield*100:0;shEl.style.width=sp+'%';}
     if(cstEl&&item.maxHp>0)cstEl.textContent=item.hp+'/'+item.maxHp;
+    if(cstEl&&item.hitCount!==null&&item.hitCount!==undefined)cstEl.textContent=item.hitCount+' hits';
     if(cshEl){if(item.shield>0){cshEl.style.display='';cshEl.textContent='🛡'+item.shield;}else{cshEl.style.display='none';}}
+    // Update hitCount display
+    if(item.hitCount!==null&&item.hitCount!==undefined){
+      const card=document.querySelector('.ic[data-item-id="'+item.id+'"]');
+      if(card){const hitEl=card.querySelector('.hit-counter');if(hitEl)hitEl.textContent=item.hitCount+' hits';}
+    }
     updateStatusDisplay(item,'');
     if(item.broken){const cards=document.querySelectorAll('[data-item-id="'+item.id+'"]');cards.forEach(c=>{if(!c.classList.contains('broken-c'))needRebuild=true;});}
   });
@@ -1186,7 +1395,18 @@ function buyItem(key,free){
   if(!placed){showNotif('Board full! Open an item and hit SELL, or swap positions.',4000);return;}
   showNotif(item.name+' added!');
   logEvent({event:'shop_buy',item_key:key,item_rarity:t.itemRarity||'',item_type:t.itemType||'',gold_spent:t.cost,gold_remaining:G.gold,upgraded:!!existing});
-  updateUI();renderBoard();skipShop();
+  updateUI();renderBoard();
+  // Technique tome — show popup before advancing
+  if(item.isTechnique){
+    const tomeName='Tome of '+item.name;
+    const readingText=getTechniqueReading(item.itemKey||item.id);
+    const reactionText=getTechniqueReaction(item.itemKey||item.id);
+    showTomeModal(tomeName,readingText,reactionText,()=>{
+      skipShop();
+    });
+    return; // don't call skipShop yet — modal callback handles it
+  }
+  skipShop();
 }
 function skipShop(){logEvent({event:'shop_skip',gold:G.gold});G.dayStep++;updateUI();renderTrack();activateCurrentNode();}
 function generateShopSlots(day,typeFilter,excludeKeys){
@@ -1352,6 +1572,9 @@ function resetItemBattleState(b){
     item.hp=item.maxHp;item.shield=0;item.maxShield=0;item.actElapsed=0;item.actPct=0;item.broken=false;item.uses=item.maxUses;item._lastStandApplied=false;
     item.hasteMs=0;item.slowMs=0;item.burnStack=0;item.burnTickMs=0;item.poisonStack=0;item.poisonTickMs=0;
     item._side=b===board?'player':'enemy';
+    if(item.baseHitCount!==null&&item.baseHitCount!==undefined){
+      item.hitCount=Math.round(item.baseHitCount*(UPGRADE_MULTS[item.upgradeLevel||0]||1));
+    }
     if(item._firstActivation!==undefined)item._firstActivation=true;
   });
   firingEvent=false;
@@ -1389,6 +1612,17 @@ function tickSide(b,side,tickMs){
       item.burnTickMs+=tickMs;
       while(item.burnTickMs>=500&&item.burnStack>0){
         item.burnTickMs-=500;
+        if(item.hitCount!==undefined&&item.hitCount!==null){
+          item.hitCount--;
+          log('d','Burn hit absorbed by '+item.name+' ('+item.hitCount+' hits remaining)');
+          if(item.hitCount<=0){
+            fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
+            item.broken=true;
+            log('b',item.name+' BROKEN by burn!');
+          }
+          item.burnStack--;
+          continue;
+        }
         const shieldReduction=(item.shield||0)*2;
         const hpDmg=Math.max(0,item.burnStack-shieldReduction);
         if(hpDmg>0){item.hp=Math.max(0,item.hp-hpDmg);log('d','🔥 Burn '+item.name+' -'+hpDmg+' HP');}
@@ -1402,6 +1636,17 @@ function tickSide(b,side,tickMs){
       item.poisonTickMs+=tickMs;
       while(item.poisonTickMs>=1000&&item.poisonStack>0){
         item.poisonTickMs-=1000;
+        if(item.hitCount!==undefined&&item.hitCount!==null){
+          item.hitCount--;
+          log('d','Poison hit absorbed by '+item.name+' ('+item.hitCount+' hits remaining)');
+          if(item.hitCount<=0){
+            fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
+            item.broken=true;
+            log('b',item.name+' BROKEN by poison!');
+          }
+          item.poisonStack--;
+          continue;
+        }
         const pdmg=item.poisonStack;
         item.hp=Math.max(0,item.hp-pdmg);
         log('d','☠️ Poison '+item.name+' -'+pdmg+' HP');
@@ -1422,7 +1667,7 @@ function startFatigue(){
     const tt=document.getElementById('timerTxt');if(tt)tt.textContent='FATIGUE +'+playerDmg+'/'+(baseDmg);
     const ff=document.getElementById('fatigueFill');if(ff)ff.style.width=Math.min(100,fMs/12000*100)+'%';
     [...board.front,...board.back].forEach(item=>{if(item&&item.maxHp>0&&!item.broken)applyDmgTo(item,playerDmg,'Fatigue','player');});
-    [...enemyBoard.front,...enemyBoard.back].forEach(item=>{if(item&&item.maxHp>0&&!item.broken)applyDmgTo(item,dmg,'Fatigue','enemy');});
+    [...enemyBoard.front,...enemyBoard.back].forEach(item=>{if(item&&item.maxHp>0&&!item.broken)applyDmgTo(item,Math.round(dmg*battleState.fatigueDamageMultiplier),'Fatigue','enemy');});
     updateBattleBars();updateEnemyBars();
     const pKO=checkKO('player'),eKO=checkKO('enemy');
     if(pKO&&eKO)endBattle('win');else if(pKO)endBattle('lose');else if(eKO)endBattle('win');
@@ -1680,13 +1925,20 @@ function showItemInfo(item, isPlayerBoard=false, rowType=null, idx=null){
     const val=getSellValue(item);
     sellBtn.textContent='SELL FOR 🪙'+val+'g';
     sellBtn.onclick=()=>{
-      const arr=rowType==='front'?board.front:board.back;
-      arr[idx]=null;
-      G.gold+=val;
-      logEvent({event:'item_sold',item_key:item.itemKey||item.id,item_rarity:item.itemRarity||'',gold_gained:val});
-      hideItemInfo();
-      showNotif(item.name+' sold for 🪙'+val+'g');
-      updateUI();renderBoard();refreshShopAffordability();
+      if(item.isTechnique){
+        showTechSellModal(item,rowType,idx);
+      }else{
+        const sellVal=getSellValue(item);
+        const arr=rowType==='front'?board.front:board.back;
+        arr[idx]=null;
+        G.gold+=sellVal;
+        logEvent({event:'item_sold',item_key:item.itemKey||item.id,item_rarity:item.itemRarity||'',gold_received:sellVal,upgrade_level:item.upgradeLevel||0});
+        showNotif(item.name+' sold for 🪙'+sellVal+'g');
+        hideItemInfo();
+        updateUI();
+        renderBoard();
+        refreshShopAffordability();
+      }
     };
     sellRow.style.display='block';
   }else{
@@ -1705,6 +1957,46 @@ function updateItemInfoStatus(item){
   if(item.maxHp>0)parts.push('<span class="iip-stat" style="color:var(--dim)">'+item.hp+'/'+item.maxHp+' hp</span>');
   if((item.shield||0)>0)parts.push('<span class="iip-stat" style="color:var(--shield)">🛡 '+item.shield+' plating</span>');
   el.innerHTML=parts.join('');
+}
+
+let pendingTomeCallback=null;
+
+function showTomeModal(title,body,reaction,callback){
+  document.getElementById('tomeTitle').textContent=title;
+  document.getElementById('tomeBody').textContent=body;
+  document.getElementById('tomeReaction').textContent=reaction;
+  pendingTomeCallback=callback;
+  document.getElementById('tomeModal').style.display='flex';
+}
+
+function closeTomeModal(){
+  document.getElementById('tomeModal').style.display='none';
+  if(pendingTomeCallback){pendingTomeCallback();pendingTomeCallback=null;}
+}
+
+function showTechSellModal(item,row,idx){
+  const popup=item.sellPopup||{title:'',body:'',reaction:''};
+  document.getElementById('techSellTitle').textContent=popup.title||'';
+  document.getElementById('techSellBody').textContent=popup.body||'';
+  document.getElementById('techSellReaction').textContent=popup.reaction||'';
+  document.getElementById('techSellConfirmBtn').onclick=()=>{
+    const arr=row==='front'?board.front:board.back;
+    const val=getSellValue(item);
+    arr[idx]=null;
+    G.gold+=val;
+    logEvent({event:'technique_sold',item_key:item.itemKey||item.id,gold_received:val});
+    showNotif(item.name+' sold for 🪙'+val+'g');
+    closeTechSellModal();
+    hideItemInfo();
+    updateUI();
+    renderBoard();
+    refreshShopAffordability();
+  };
+  document.getElementById('techSellModal').style.display='flex';
+}
+
+function closeTechSellModal(){
+  document.getElementById('techSellModal').style.display='none';
 }
 
 function hideItemInfo(){

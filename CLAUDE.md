@@ -147,3 +147,21 @@ The battle engine uses a global event bus. `fireEvent(event)` dispatches to all 
 **`item._side`** is set in `resetItemBattleState` — use this to know which board an item belongs to inside handlers.
 
 **Do not call `fireEvent` from inside action functions** — applyDmgTo, applyShield, healItem etc already fire their own events. Calling fireEvent again inside a handler creates re-entrant loops caught by the guard and silently dropped.
+
+---
+
+## New Item Mechanics
+
+**hitCount items:** Training Dummy uses `hitCount` instead of HP. `targetable()` checks `isTargetable===true` as override. `applyDmgTo` checks for `hitCount` before shield logic and absorbs damage entirely. Burn and poison each decrement hitCount per tick.
+
+**Technique items:** `isTechnique=true`. Purchased as tomes, consumed on buy, placed on board as passive items. Show tome modal popup on purchase. Sell via `showTechSellModal` with unique popup text. Use `handleEvent` for all effects.
+
+**Chrysalis:** 1 HP, 1s activation, gains plating each tick. Breaks instantly from any damage.
+
+**NEGATIVE_STATUSES:** Set of event types considered debuffs — `BURN_APPLIED`, `POISON_APPLIED`, `SLOW_APPLIED`. Add new debuff event types here when created.
+
+**battleState.fatigueDamageMultiplier:** Default 1. Set by Patience on `FATIGUE_START`. Applied to enemy fatigue damage in `startFatigue`.
+
+**G.monsterName:** Defaults to `'Kip'`. Used in technique popup text via `getTechniqueReading()` and `getTechniqueReaction()`.
+
+**PACIFIST_ITEMS pool:** Contains Solidarity, Emergency Ration, Honey Pot, Thorn Mantle, Training Dummy, Chrysalis, Patience, Callus. Included in shopPool and ITEM_META.
