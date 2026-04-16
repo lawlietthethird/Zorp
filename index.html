@@ -1284,19 +1284,25 @@ function showEncounterShop(poolIdx){
     setEncTitle('LOCAL STALL');
     const dialogue='<div class="dialogue"><div class="dlg-name">SHOPKEEPER</div>"So kid, you\'re going off on an adventure? I know exactly what you need."</div>';
     const boardItems=[...board.front,...board.back].filter(Boolean);
-    const ownedTypes=new Set(boardItems.map(i=>i.itemType));
-    const typeFilter=[];
-    if(!ownedTypes.has('weapon'))typeFilter.push('weapon');
-    if(!ownedTypes.has('armor'))typeFilter.push('armor');
-    // provision intentionally excluded from Local Stall day 1
-    if(typeFilter.length===0)typeFilter.push('weapon');
-    const ownedKeys=new Set(boardItems.map(i=>i.itemKey));
-    const pool=getItemsOfRarity('beginner',typeFilter).filter(k=>!ownedKeys.has(k));
-    const shuffled=[...pool].sort(()=>Math.random()-.5).slice(0,3);
-    const cards=shuffled.map(key=>{
+    const upgradeKeys=[];
+    boardItems.forEach(item=>{
+      const key=item.itemKey||item.id;
+      if(item.upgradeLevel<3&&!upgradeKeys.includes(key)){upgradeKeys.push(key);}
+    });
+    let slots=[];
+    if(upgradeKeys.length>0){
+      slots=upgradeKeys.slice(0,3);
+    }else{
+      const ownedKeys=new Set(boardItems.map(i=>i.itemKey||i.id));
+      const pool=getItemsOfRarity('beginner',['weapon','armor']).filter(k=>!ownedKeys.has(k));
+      slots=[...pool].sort(()=>Math.random()-.5).slice(0,3);
+    }
+    const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
       const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key));
+      const label=existing?'⬆ UPGRADE':'NEW';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div style="font-size:6px;font-family:Cinzel,serif;color:var(--gold);margin-bottom:2px">'+label+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div></div>';
     }).join('');
     setEncBody(dialogue+'<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -1321,7 +1327,8 @@ function showEncounterShop(poolIdx){
 
   if(isMarket){
     setEncTitle('TOWN MARKET');
-    const slots=generateShopSlots(G.day);
+    const typeFilter=G.day<=1?['weapon','armor']:null;
+    const slots=generateShopSlots(G.day,[],typeFilter);
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
       const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
@@ -1354,7 +1361,7 @@ function buyItem(key,free){
   const f=getItemFactory(key);if(!f)return;
   const t=f();if(!free&&G.gold<t.cost)return;if(!free)G.gold-=t.cost;
   const allSlots=[...board.front,...board.back];
-  const existing=allSlots.find(i=>i&&i.itemKey===key&&i.upgradeLevel<3);
+  const existing=allSlots.find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
   if(existing){
     upgradeItem(existing);
     showNotif(existing.name+' upgraded to '+UPGRADE_NAMES[existing.upgradeLevel]+'!');
@@ -1383,12 +1390,12 @@ function buyItem(key,free){
   skipShop();
 }
 function skipShop(){logEvent({event:'shop_skip',gold:G.gold});G.dayStep++;updateUI();renderTrack();activateCurrentNode();}
-function generateShopSlots(day,typeFilter,excludeKeys){
+function generateShopSlots(day,excludeKeys,typeFilter){
   excludeKeys=excludeKeys||[];
   const slots=[];
   for(let i=0;i<3;i++){
     const rarity=rollRarity(day);
-    const pool=getItemsOfRarity(rarity,typeFilter).filter(k=>!excludeKeys.includes(k)&&!slots.includes(k));
+    const pool=getItemsOfRarity(rarity,typeFilter||null).filter(k=>!excludeKeys.includes(k)&&!slots.includes(k));
     if(!pool.length)continue;
     slots.push(pool[Math.floor(Math.random()*pool.length)]);
   }
@@ -1411,7 +1418,20 @@ function showEncounterBattle(type,wildMonster=null){
   resetItemBattleState(board);
   renderBoard();
   const isWild=type==='wild';
-  if(!isWild){const mi=key=>{const t=ITEMS[key]();return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,_side:'enemy'};};enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];enemyBoard.back=[mi('basic_berry'),null,null];}
+  if(!isWild){
+    const mi=key=>{
+      const t=ITEMS[key]();
+      return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,
+        hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
+    };
+    if(G.day<=1){
+      enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];
+      enemyBoard.back=[null,null,null];
+    }else{
+      enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];
+      enemyBoard.back=[mi('basic_berry'),null,null];
+    }
+  }
   const enemy=isWild?wildMonster:{name:'THE RIVAL',icon:'😤',tag:'Your old neighbour'};
   const dlg=isWild?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>':'<div class="dialogue"><div class="dlg-name">RIVAL</div>"You don\'t even have a type yet. A monster without identity is nothing. Let me show you."</div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — THE RIVAL');
@@ -1714,8 +1734,15 @@ function continueAfterResult(){
         G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
       }
     }else{
-      // Trainer loss: retry
-      renderBoard();updateUI();renderTrack();activateCurrentNode();
+      // Trainer loss
+      if(!G.rivalDefeated){
+        // Day 1 loss — show Mom consolation before retry
+        renderBoard();updateUI();renderTrack();
+        showEncounterShop(0); // Mom checks in with consolation item
+      }else{
+        // Day 2+ trainer loss — retry
+        renderBoard();updateUI();renderTrack();activateCurrentNode();
+      }
     }
   }
 }
