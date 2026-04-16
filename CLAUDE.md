@@ -64,7 +64,7 @@ Status fields must be reset to zero in `resetItemBattleState`. New items created
 
 ## Post-Win Flow
 
-After every trainer win (wins 1–9 only, not win 10):
+After every trainer win (wins 1–5 only, not win 6):
 
 ```
 postTrainerWin()
@@ -77,18 +77,23 @@ postTrainerWin()
   └─ G.type !== null → showSkillPick() → selectNode() → pickSkill() → advanceDay()
 ```
 
-Win 10 → game over. `continueAfterResult` calls `resetRun()` when `G.wins >= 10`.
+Win 6 → game over. `continueAfterResult` calls `resetRun()` when `G.wins >= 6`.
+Perfect run (6-0, G.honor===13 at completion) → FLAWLESS screen with gold glow.
 
 `advanceDay()` only increments the day and fires `activateCurrentNode()`. It does NOT trigger type select — that happens entirely in the post-win chain before `advanceDay` is called.
 
 ---
 
-## Node / Skill Tree
+## Node Tree — 6 nodes
+
+HEAD (prestige, pre-filled), NECK (beginner), SPINE1 (intermediate), SPINE2 (intermediate), FRONT_UPPER (advanced, branches from SPINE1), SPINE3 (advanced, end of spine).
+
+Typed players fill 5 nodes — win spent on type pick gives no node.
+Typeless players fill all 5 remaining nodes across 5 wins.
+
+Deleted nodes — do not reference: `tail`, `back_upper`, `front_foot`, `back_foot`.
 
 - HEAD node is pre-filled with Potential at init and on every reset. Never leave HEAD empty.
-- Typeless players: HEAD has Potential skill. All 10 nodes fillable across 9 wins (HEAD filled at start = win 0).
-- Typed players: HEAD has Type Awakening. The win they pick their type gives no node pick. They can fill 8 nodes maximum across 9 wins; at least one node permanently stays locked.
-- NECK is NOT skipped by typed players. It becomes unlockable on the next win after they type.
 - `getAvailableNodes()` returns all nodes where parent is filled and self is empty (excluding HEAD).
 
 ---
@@ -96,13 +101,23 @@ Win 10 → game over. `continueAfterResult` calls `resetRun()` when `G.wins >= 1
 ## Key State Objects
 
 ```js
-G          // global game state: gold, honor, wins, day, type, rivalDefeated, dayStep
-board      // {front: [5 items], back: [5 items]} — player board
+G          // global game state: gold, honor(13), wins, day, type, rivalDefeated, dayStep
+board      // {front: [3 items], back: [3 items]} — player board
 enemyBoard // same shape — enemy board
 treeState  // {nodeId: skill object or null} — skill tree state
 activeSkills // array of skill objects currently active on player
 bannedTypes  // array of type id strings banned from future offerings
 ```
+
+## Honor and run length
+
+Honor: 13. Win target: 6. Max days: 11.
+Perfect run (6-0): FLAWLESS screen — triggered when `G.honor===13` at `G.wins>=6`.
+
+## Board size
+
+Max 6 slots — 3 front, 3 back. Arrays are length 3.
+Expansion: day 1 = 1 per row, day 2 = 2 per row, day 3+ = 3 per row.
 
 ---
 

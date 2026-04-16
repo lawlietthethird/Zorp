@@ -65,7 +65,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 /* RESULT */
 .result-enc{text-align:center;padding:20px;}
 .re-title{font-family:'Cinzel',serif;font-size:26px;font-weight:900;letter-spacing:.15em;margin-bottom:6px;}
-.re-win{color:#50e080;}.re-lose{color:#e84040;}
+.re-win{color:#50e080;}.re-lose{color:#e84040;}.re-flawless{color:var(--gold);text-shadow:0 0 20px rgba(240,192,64,.8),0 0 40px rgba(240,192,64,.4);}
 .re-sub{color:var(--dim);font-size:12px;margin-bottom:16px;line-height:1.6;}
 /* DAY TRACK */
 .day-track{background:rgba(10,8,18,.8);border-left:1px solid var(--border);border-right:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:0;position:relative;}
@@ -194,10 +194,10 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
   <div class="ts">🪙 <span class="gv" id="goldDisplay">8</span> GOLD</div>
   <div class="hw">
     <div class="hl">HONOR</div>
-    <div class="hbar"><div class="hfill" id="honorFill" style="width:100%"></div><div class="htxt" id="honorText">20/20</div></div>
+    <div class="hbar"><div class="hfill" id="honorFill" style="width:100%"></div><div class="htxt" id="honorText">13/13</div></div>
   </div>
   <div class="ts" style="gap:10px">
-    <span id="winsDisplay" style="color:var(--gold);font-size:11px">WINS: 0/10</span>
+    <span id="winsDisplay" style="color:var(--gold);font-size:11px">WINS: 0/6</span>
     <span class="pb" id="phaseBadge">DAY 1</span>
     <button class="btn btn-d" style="font-size:8px;padding:4px 10px" onclick="resetRun()">↺ RESET</button>
   </div>
@@ -253,71 +253,49 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
       </div>
       <div class="skill-panel">
         <div class="sp-title">BOND TREE</div>
-        <!-- Fox silhouette skill tree SVG — 10 nodes, fox body shape -->
-        <svg class="sp-svg" viewBox="0 0 310 60" id="skillSvg">
+        <!-- Fox silhouette skill tree SVG — 6 nodes -->
+        <svg class="sp-svg" viewBox="0 0 280 60" id="skillSvg">
           <!-- Spine line -->
-          <line x1="60" y1="22" x2="230" y2="22" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
-          <!-- Tail -->
-          <line x1="230" y1="22" x2="270" y2="8" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
-          <!-- Front leg -->
-          <line x1="95" y1="22" x2="95" y2="52" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
-          <!-- Back leg -->
-          <line x1="165" y1="22" x2="165" y2="52" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
+          <line x1="40" y1="25" x2="200" y2="25" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
+          <!-- Front leg down -->
+          <line x1="100" y1="25" x2="100" y2="50" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
+          <!-- Tail suggestion -->
+          <line x1="200" y1="25" x2="235" y2="10" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
           <!-- Connection lines drawn by JS -->
           <g id="treeLines"></g>
-          <!-- HEAD — prestige -->
+          <!-- HEAD -->
           <g id="tn-head" data-node="head">
-            <circle cx="30" cy="22" r="10" fill="#1a1525" stroke="#3a2f50" stroke-width="1.5"/>
-            <text x="30" y="26" text-anchor="middle" font-size="9" fill="#5030a0">✦</text>
+            <circle cx="40" cy="25" r="10" fill="#1a1525" stroke="#3a2f50" stroke-width="1.5"/>
+            <text x="40" y="29" text-anchor="middle" font-size="9" fill="#5030a0">✦</text>
           </g>
-          <!-- NECK — beginner -->
+          <!-- NECK -->
           <g id="tn-neck" data-node="neck">
-            <circle cx="60" cy="22" r="8" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="60" y="26" text-anchor="middle" font-size="7" fill="#2a1040">○</text>
+            <circle cx="80" cy="25" r="8" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
+            <text x="80" y="29" text-anchor="middle" font-size="7" fill="#2a1040">○</text>
           </g>
-          <!-- SPINE-1 — intermediate (front leg branches here) -->
+          <!-- SPINE1 -->
           <g id="tn-spine1" data-node="spine1">
-            <circle cx="95" cy="22" r="8" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="95" y="26" text-anchor="middle" font-size="7" fill="#2a1040">○</text>
+            <circle cx="120" cy="25" r="8" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
+            <text x="120" y="29" text-anchor="middle" font-size="7" fill="#2a1040">○</text>
           </g>
-          <!-- SPINE-2 — intermediate (back leg branches here) -->
+          <!-- SPINE2 -->
           <g id="tn-spine2" data-node="spine2">
-            <circle cx="135" cy="22" r="8" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="135" y="26" text-anchor="middle" font-size="7" fill="#2a1040">○</text>
+            <circle cx="160" cy="25" r="8" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
+            <text x="160" y="29" text-anchor="middle" font-size="7" fill="#2a1040">○</text>
           </g>
-          <!-- FRONT-UPPER — intermediate -->
+          <!-- FRONT_UPPER — branches down from SPINE1 -->
           <g id="tn-front_upper" data-node="front_upper">
-            <circle cx="95" cy="38" r="7" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="95" y="42" text-anchor="middle" font-size="6" fill="#1a0830">○</text>
+            <circle cx="100" cy="50" r="7" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
+            <text x="100" y="54" text-anchor="middle" font-size="6" fill="#1a0830">◇</text>
           </g>
-          <!-- SPINE-3 — advanced -->
+          <!-- SPINE3 — end of spine, tail direction -->
           <g id="tn-spine3" data-node="spine3">
-            <circle cx="165" cy="22" r="8" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="165" y="26" text-anchor="middle" font-size="7" fill="#1a0830">◇</text>
+            <circle cx="200" cy="25" r="9" fill="#1a1525" stroke="#3a2f50" stroke-width="1.5"/>
+            <text x="200" y="29" text-anchor="middle" font-size="8" fill="#1a0830">◇</text>
           </g>
-          <!-- BACK-UPPER — advanced (from spine-2) -->
-          <g id="tn-back_upper" data-node="back_upper">
-            <circle cx="135" cy="38" r="7" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="135" y="42" text-anchor="middle" font-size="6" fill="#1a0830">◇</text>
-          </g>
-          <!-- FRONT-FOOT — advanced -->
-          <g id="tn-front_foot" data-node="front_foot">
-            <circle cx="95" cy="53" r="6" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="95" y="57" text-anchor="middle" font-size="5" fill="#1a0830">◇</text>
-          </g>
-          <!-- TAIL-TIP — mastered -->
-          <g id="tn-tail" data-node="tail">
-            <circle cx="260" cy="8" r="9" fill="#1a1525" stroke="#3a2f50" stroke-width="1.5"/>
-            <text x="260" y="12" text-anchor="middle" font-size="8" fill="#1a0830">★</text>
-          </g>
-          <!-- BACK-FOOT — advanced -->
-          <g id="tn-back_foot" data-node="back_foot">
-            <circle cx="135" cy="53" r="6" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="135" y="57" text-anchor="middle" font-size="5" fill="#1a0830">◇</text>
-          </g>
-          <!-- Node labels -->
-          <text x="30" y="37" text-anchor="middle" font-size="4.5" fill="#3a2f50" font-family="Cinzel">HEAD</text>
-          <text x="260" y="20" text-anchor="middle" font-size="4.5" fill="#3a2f50" font-family="Cinzel">TAIL</text>
+          <!-- Labels -->
+          <text x="40" y="40" text-anchor="middle" font-size="4.5" fill="#3a2f50" font-family="Cinzel">HEAD</text>
+          <text x="200" y="39" text-anchor="middle" font-size="4.5" fill="#3a2f50" font-family="Cinzel">SPINE</text>
         </svg>
       </div>
       <div style="text-align:right">
@@ -336,17 +314,13 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 // ============================================================
 // SKILL TREE ARCHITECTURE
 // ============================================================
-const TREE_NODES = [
-  { id:'head',       rarity:'prestige',     parent:null,         label:'HEAD'  },
-  { id:'neck',       rarity:'beginner',     parent:'head',       label:'NECK'  },
-  { id:'spine1',     rarity:'intermediate', parent:'neck',       label:'SPINE' },
-  { id:'spine2',     rarity:'intermediate', parent:'spine1',     label:'SPINE' },
-  { id:'front_upper',rarity:'intermediate', parent:'spine1',     label:'FORELEG'},
-  { id:'spine3',     rarity:'advanced',     parent:'spine2',     label:'SPINE' },
-  { id:'back_upper', rarity:'advanced',     parent:'spine2',     label:'HINDLEG'},
-  { id:'front_foot', rarity:'advanced',     parent:'front_upper',label:'FOREPAW'},
-  { id:'tail',       rarity:'mastered',     parent:'spine3',     label:'TAIL'  },
-  { id:'back_foot',  rarity:'advanced',     parent:'back_upper', label:'HINDPAW'},
+const TREE_NODES=[
+  {id:'head',       rarity:'prestige',     parent:null,      label:'HEAD'},
+  {id:'neck',       rarity:'beginner',     parent:'head',    label:'NECK'},
+  {id:'spine1',     rarity:'intermediate', parent:'neck',    label:'SPINE'},
+  {id:'spine2',     rarity:'intermediate', parent:'spine1',  label:'SPINE'},
+  {id:'front_upper',rarity:'advanced',     parent:'spine1',  label:'FORELEG'},
+  {id:'spine3',     rarity:'advanced',     parent:'spine2',  label:'SPINE'},
 ];
 
 // Which nodes are unlocked (filled with a skill)
@@ -488,7 +462,7 @@ function getAvailableNodes(){
 function drawTreeLines(){
   const g=document.getElementById('treeLines'); if(!g)return; g.innerHTML='';
   // Node center positions matching SVG
-  const pos={head:[30,22],neck:[60,22],spine1:[95,22],spine2:[135,22],front_upper:[95,38],spine3:[165,22],back_upper:[135,38],front_foot:[95,53],tail:[260,8],back_foot:[135,53]};
+  const pos={head:[40,25],neck:[80,25],spine1:[120,25],spine2:[160,25],front_upper:[100,50],spine3:[200,25]};
   TREE_NODES.forEach(n=>{
     if(!n.parent)return;
     const [x1,y1]=pos[n.parent]||[0,0]; const [x2,y2]=pos[n.id]||[0,0];
@@ -530,11 +504,11 @@ function renderSkillTree(){
 // ============================================================
 // STATE
 // ============================================================
-const G={gold:8,honor:20,maxHonor:20,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip'};
+const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip'};
 let bannedTypes=[];
 let lastOfferedTypes=[];
-let board={front:[null,null,null,null,null],back:[null,null,null,null,null]};
-let enemyBoard={front:[null,null,null,null,null],back:[null,null,null,null,null]};
+let board={front:[null,null,null],back:[null,null,null]};
+let enemyBoard={front:[null,null,null],back:[null,null,null]};
 
 const DAY1_NODES=[{id:'mom',icon:'🎁',label:"MOM'S GIFT"},{id:'shop1',icon:'🏪',label:'MARKET'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'shop2',icon:'🏪',label:'ROAD STALL'},{id:'rival',icon:'🏆',label:'RIVAL'}];
 const DAY2_NODES=[{id:'shop1',icon:'🏪',label:'MARKET'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'shop2',icon:'🏪',label:'ROAD STALL'},{id:'rival',icon:'🏆',label:'TRAINER'}];
@@ -935,9 +909,9 @@ function upgradeItem(item){
 }
 function mk(key){const t=ITEMS[key]();return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,effectAmt:t.baseEffect};}
 const WILD_MONSTERS=[
-  {name:'Thornback',icon:'🦔',tag:'Prickly Fighter',front:[mk('left_claws'),mk('spark_charm'),null,null,null],back:[null,null,null,null,null]},
-  {name:'Mudpup',icon:'🐊',tag:'Swamp Crawler',front:[mk('bubble_shield'),mk('left_claws'),null,null,null],back:[null,null,null,null,null]},
-  {name:'Gloomwing',icon:'🦇',tag:'Shadow Flyer',front:[mk('spark_charm'),mk('hard_shell'),null,null,null],back:[null,null,null,null,null]},
+  {name:'Thornback',icon:'🦔',tag:'Prickly Fighter',front:[mk('left_claws'),mk('spark_charm'),null],back:[null,null,null]},
+  {name:'Mudpup',icon:'🐊',tag:'Swamp Crawler',front:[mk('bubble_shield'),mk('left_claws'),null],back:[null,null,null]},
+  {name:'Gloomwing',icon:'🦇',tag:'Shadow Flyer',front:[mk('spark_charm'),mk('hard_shell'),null],back:[null,null,null]},
 ];
 
 // ============================================================
@@ -953,7 +927,7 @@ function potMult(){
   if(activeSkills.find(s=>s.id==='alpha'))return 1.3;
   return 1.0;
 }
-function maxActiveSlots(){if(G.day<=2)return 2;if(G.day<=4)return 3;if(G.day<=6)return 4;return 5;}
+function maxActiveSlots(){if(G.day<=1)return 1;if(G.day<=2)return 2;return 3;}
 function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
 
 // ============================================================
@@ -1437,7 +1411,7 @@ function showEncounterBattle(type,wildMonster=null){
   resetItemBattleState(board);
   renderBoard();
   const isWild=type==='wild';
-  if(!isWild){const mi=key=>{const t=ITEMS[key]();return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,_side:'enemy'};};enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null,null,null];enemyBoard.back=[mi('basic_berry'),null,null,null,null];}
+  if(!isWild){const mi=key=>{const t=ITEMS[key]();return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,_side:'enemy'};};enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];enemyBoard.back=[mi('basic_berry'),null,null];}
   const enemy=isWild?wildMonster:{name:'THE RIVAL',icon:'😤',tag:'Your old neighbour'};
   const dlg=isWild?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>':'<div class="dialogue"><div class="dlg-name">RIVAL</div>"You don\'t even have a type yet. A monster without identity is nothing. Let me show you."</div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — THE RIVAL');
@@ -1692,8 +1666,13 @@ function endBattle(result){
       logEvent({event:'wild_battle',result:'win',wild_monster:WILD_MONSTERS[G.wildChoice||0].name,gold_reward:reward,board:boardSnapshot(),battle_duration_ms:battleMs});
     }else{
       G.wins++;G.rivalDefeated=true;title='VICTORY';
-      if(G.wins>=10){sub='10 wins. The run is complete.';btnText='PLAY AGAIN';}
-      else{sub='Win '+G.wins+' of 10.';}
+      if(G.wins>=6){
+        const isPerfect=G.honor===13;
+        if(isPerfect){title='FLAWLESS';sub='Six wins. Zero losses. Kip knew all along.';}
+        else{sub='Six wins. The run is complete.';}
+        btnText='PLAY AGAIN';
+        logEvent({event:'run_complete',wins:G.wins,honor:G.honor,perfect:isPerfect,board:boardSnapshot(),skills:activeSkills.map(s=>s.id)});
+      }else{sub='Win '+G.wins+' of 6.';}
       logEvent({event:'trainer_battle',result:'win',win_number:G.wins,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
     }
   }else{
@@ -1713,7 +1692,8 @@ function endBattle(result){
     }
   }
   updateUI();setEncTitle(title);
-  setEncBody('<div class="result-enc"><div class="re-title '+(result==='win'?'re-win':'re-lose')+'">'+title+'</div><div class="re-sub">'+sub+'</div><div class="btn-row"><button class="btn btn-p" onclick="continueAfterResult()">'+btnText+'</button></div></div>');
+  const titleClass=title==='FLAWLESS'?'re-flawless':result==='win'?'re-win':'re-lose';
+  setEncBody('<div class="result-enc"><div class="re-title '+titleClass+'">'+title+'</div><div class="re-sub">'+sub+'</div><div class="btn-row"><button class="btn btn-p" onclick="continueAfterResult()">'+btnText+'</button></div></div>');
 }
 
 function continueAfterResult(){
@@ -1721,7 +1701,7 @@ function continueAfterResult(){
     if(currentBattleType==='wild'){
       G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
     }else{
-      if(G.wins>=10){resetRun();return;}
+      if(G.wins>=6){resetRun();return;}
       postTrainerWin();
     }
   }else{
@@ -2021,7 +2001,7 @@ function refreshShopAffordability(){
 }
 function log(type,msg){const el=document.getElementById('battleLog');if(!el)return;const div=document.createElement('div');const t=(battleMs/1000).toFixed(1);const cls={d:'ld',h:'lh',s:'ls',a:'la',b:'lb',x:'lx'}[type]||'lx';div.innerHTML='<span class="lt">'+t+'s</span><span class="'+cls+'">'+msg+'</span>';el.appendChild(div);el.scrollTop=el.scrollHeight;}
 function clearLog(){const el=document.getElementById('battleLog');if(el)el.innerHTML='';}
-function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/10';document.getElementById('phaseBadge').textContent='DAY '+G.day;refreshShopAffordability();}
+function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/6';document.getElementById('phaseBadge').textContent='DAY '+G.day;refreshShopAffordability();}
 function showTreeTip(node,e){
   const tip=document.getElementById('treeTip');
   const nameEl=document.getElementById('treeTipName');
@@ -2056,9 +2036,9 @@ function showNotif(msg,duration=2400){const el=document.getElementById('notif');
 // ============================================================
 function resetRun(){
   stopBattle();
-  G.gold=8;G.honor=20;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;
-  board={front:[null,null,null,null,null],back:[null,null,null,null,null]};
-  enemyBoard={front:[null,null,null,null,null],back:[null,null,null,null,null]};
+  G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;
+  board={front:[null,null,null],back:[null,null,null]};
+  enemyBoard={front:[null,null,null],back:[null,null,null]};
   TREE_NODES.forEach(n=>treeState[n.id]=null);
   activeSkills.forEach(sk=>{sk._battleHandler=null;});
   activeSkills=[];bannedTypes=[];lastOfferedTypes=[];
