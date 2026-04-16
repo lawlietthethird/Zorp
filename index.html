@@ -183,6 +183,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;min-
 .tome-body{font-size:11px;color:var(--dim);line-height:1.7;font-style:italic;}
 .tome-reaction{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.06em;color:var(--text);}
 .ctag-technique{color:#c0a0ff;font-style:normal;font-family:'Cinzel',serif;font-size:6px;letter-spacing:.08em;}
+.ctag-relic{color:#e0a040;font-style:normal;font-family:'Cinzel',serif;font-size:6px;letter-spacing:.08em;}
 .iip-sell-row{margin-top:6px;display:none;}
 .iip-sell-btn{font-family:'Cinzel',serif;font-size:8px;font-weight:700;letter-spacing:.06em;padding:4px 12px;background:rgba(220,60,60,.15);color:#dc4040;border:1px solid rgba(220,60,60,.4);border-radius:5px;cursor:pointer;}
 .iip-sell-btn:hover{background:rgba(220,60,60,.3);border-color:rgba(220,60,60,.7);}
@@ -850,10 +851,93 @@ const PACIFIST_ITEMS={
 
 };
 
-function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||null;}
+const HEADBUTT_ITEMS={
+
+  headbutt:()=>{
+    const item=makeItem('headbutt','Headbutt','🦬','Weapon',90,4000,
+      '22 dmg to leftmost enemy front row. Takes 11 self-damage per activation.',
+      (s,a,self)=>{
+        const oSide=opp(s);
+        const b=getBoard(oSide);
+        let t=null;
+        for(let i=0;i<b.front.length;i++){if(targetable(b.front[i])){t=b.front[i];break;}}
+        if(!t){
+          for(let i=0;i<b.back.length;i++){if(targetable(b.back[i])){t=b.back[i];break;}}
+        }
+        if(t){
+          const attackerMods=s==='player'?getSkillMods():null;
+          let dmg=self.effectAmt||22;
+          if(attackerMods)dmg=Math.round(dmg*attackerMods.globalMult+attackerMods.dmgBonus+battleState.momentumBonus);
+          battleState.momentumBonus=0;
+          applyDmgTo(t,dmg,'Headbutt',oSide);
+        }
+        const selfDmg=Math.floor((self.effectAmt||22)/2);
+        applyDmgTo(self,selfDmg,'Headbutt (recoil)',s);
+      },2,null,22,'weapon','beginner');
+    item.flavorText='If it burns, it\'s working.';
+    return item;
+  },
+
+  ricochet:()=>{
+    const item=makeItem('ricochet','Ricochet','💥','Untargetable',0,0,
+      'When the item directly behind this takes damage, deal 3 damage to a random enemy.',
+      null,2,null,3,'weapon','beginner');
+    item.flavorText='It finds a way.';
+    item.isTargetable=false;
+    item.handleEvent=(event)=>{
+      if(event.type!=='DAMAGE_RECEIVED')return;
+      if(event.side!==item._side)return;
+      const neighbors=getNeighbors(item);
+      if(event.item===neighbors.behind){
+        dealDmgRandom(opp(item._side),item.effectAmt||3,'Ricochet');
+      }
+    };
+    return item;
+  },
+
+  arsonist:()=>{
+    const item=makeItem('arsonist','Arsonist','🔥','Relic',160,0,
+      'At battle start, apply 5 burn to every item on both boards.',
+      null,4,null,5,'relic','intermediate');
+    item.flavorText='Someone did this.';
+    item.handleEvent=(event)=>{
+      if(event.type!=='BATTLE_START')return;
+      const allItems=[
+        ...board.front,...board.back,
+        ...enemyBoard.front,...enemyBoard.back
+      ].filter(i=>i&&!i.broken);
+      allItems.forEach(i=>{
+        if(i.burnStack===0)i.burnTickMs=500;
+        i.burnStack=(i.burnStack||0)+(item.effectAmt||5);
+      });
+      log('d','🔥 Arsonist — '+(item.effectAmt||5)+' burn applied to all items');
+    };
+    return item;
+  },
+
+  spite:()=>{
+    const item=makeItem('spite','Spite','😤','Weapon',50,1000,
+      '1 dmg/s to random enemy. Gains +1 damage permanently each time any ally takes damage this battle.',
+      (s,a,self)=>{
+        dealDmgRandom(opp(s),self._spiteCounter||1,'Spite');
+      },8,null,1,'weapon','advanced');
+    item.flavorText='It remembers.';
+    item._spiteCounter=1;
+    item.handleEvent=(event)=>{
+      if(event.type!=='DAMAGE_RECEIVED')return;
+      if(event.side!==item._side)return;
+      if(event.item===item)return;
+      item._spiteCounter=(item._spiteCounter||1)+1;
+    };
+    return item;
+  },
+
+};
+
+function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||HEADBUTT_ITEMS[key]||MOM_ITEMS[key]||MOM_CONSOLATION_ITEMS[key]||null;}
 const ITEM_META={};
 (function buildMeta(){
-  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS};
   Object.keys(all).forEach(key=>{
     const t=all[key]();
     ITEM_META[key]={itemRarity:t.itemRarity,itemType:t.itemType};
@@ -878,7 +962,7 @@ function rollRarity(day){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 function getItemsOfRarity(rarity,typeFilter){
-  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS};
   const filtered=Object.keys(all).filter(key=>{
     const t=all[key]();
     if(t.itemRarity!==rarity)return false;
@@ -1600,6 +1684,7 @@ function resetItemBattleState(b){
       item.hitCount=Math.round(item.baseHitCount*(UPGRADE_MULTS[item.upgradeLevel||0]||1));
     }
     if(item._firstActivation!==undefined)item._firstActivation=true;
+    if(item._spiteCounter!==undefined)item._spiteCounter=1;
   });
   firingEvent=false;
   if(isPlayer)initBattleState();

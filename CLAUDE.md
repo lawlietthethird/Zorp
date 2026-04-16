@@ -180,3 +180,19 @@ The battle engine uses a global event bus. `fireEvent(event)` dispatches to all 
 **G.monsterName:** Defaults to `'Kip'`. Used in technique popup text via `getTechniqueReading()` and `getTechniqueReaction()`.
 
 **PACIFIST_ITEMS pool:** Contains Solidarity, Emergency Ration, Honey Pot, Thorn Mantle, Training Dummy, Chrysalis, Patience, Callus. Included in shopPool and ITEM_META.
+
+---
+
+## HEADBUTT_ITEMS pool
+
+Contains: headbutt, ricochet, arsonist, spite.
+
+**Headbutt:** Deals damage to leftmost enemy front row then takes half that damage as self-damage. Self-damage fires full DAMAGE_RECEIVED events so items like Emergency Ration and Solidarity can respond.
+
+**Ricochet:** No HP, no activation timer. handleEvent on DAMAGE_RECEIVED — fires when item directly BEHIND it (neighbors.behind) takes damage. Deals 3 to random enemy.
+
+**Arsonist:** No activation timer, handleEvent on BATTLE_START. Applies 5 burn to every non-broken item on both boards. Has 160hp so it can be targeted and killed.
+
+**Spite:** 50hp, 1s activation. Uses `_spiteCounter` instead of effectAmt for current damage value. handleEvent on DAMAGE_RECEIVED where side matches and item is not itself — increments `_spiteCounter` by 1. Counter resets to 1 in resetItemBattleState.
+
+**Relic** is a new item type tag for items like Arsonist that have passive world-altering effects.
