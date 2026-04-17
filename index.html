@@ -82,7 +82,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
 .track-connector{flex:1;height:2px;background:var(--border);min-width:16px;max-width:40px;margin-top:-22px;position:relative;z-index:0;}
 .track-connector.done-conn{background:rgba(80,224,128,.3);}
 /* PLAYER SECTION */
-.player-section{background:var(--panel);border:1px solid var(--border);border-radius:0 0 10px 10px;border-top:none;padding:8px 10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
+.player-section{background:var(--panel);border:1px solid var(--border);border-radius:0 0 10px 10px;border-top:none;padding:8px 10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;height:340px;}
 .player-header{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .zorp-mini{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:55px;}
 .zorp-icon{font-size:22px;filter:drop-shadow(0 0 8px rgba(64,192,255,.4));animation:breathe 3s ease-in-out infinite;}
@@ -1398,7 +1398,7 @@ function showEncounterShop(poolIdx){
       const dialogue='<div class="dialogue"><div class="dlg-name">MOM</div>"You\'re really going through with this, huh? Take something useful. And come back safe."</div>';
       const cards=shuffled.map(key=>{
         const t=MOM_ITEMS[key]();shopItemCache[key]=t;
-        return '<div class="dc" onclick="buyMomItem(\''+key+'\',true,false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div>'+(t.flavorText?'<div style="font-size:7px;color:var(--dim);font-style:italic;margin-top:2px">'+t.flavorText+'</div>':'')+'<div class="dp">✦ FREE</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+        return '<div class="dc" onclick="buyMomItem(\''+key+'\',true,false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div>'+(t.flavorText?'<div style="font-size:7px;color:var(--dim);font-style:italic;margin-top:2px">'+t.flavorText+'</div>':'')+'<div class="dp">✦ FREE</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
       }).join('');
       setEncBody(dialogue+'<div class="draft-row">'+cards+'</div>');
     }else{
@@ -1408,7 +1408,7 @@ function showEncounterShop(poolIdx){
       const dialogue='<div class="dialogue"><div class="dlg-name">MOM</div>"I told you, you weren\'t ready. Here — wipe the dust off."</div>';
       const cards=shuffled.map(key=>{
         const t=MOM_CONSOLATION_ITEMS[key]();shopItemCache[key]=t;
-        return '<div class="dc" onclick="buyMomItem(\''+key+'\',true,true)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div>'+(t.flavorText?'<div style="font-size:7px;color:var(--dim);font-style:italic;margin-top:2px">'+t.flavorText+'</div>':'')+'<div class="dp">✦ FREE</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+        return '<div class="dc" onclick="buyMomItem(\''+key+'\',true,true)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div>'+(t.flavorText?'<div style="font-size:7px;color:var(--dim);font-style:italic;margin-top:2px">'+t.flavorText+'</div>':'')+'<div class="dp">✦ FREE</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
       }).join('');
       setEncBody(dialogue+'<div class="draft-row">'+cards+'</div>');
     }
@@ -1439,7 +1439,7 @@ function showEncounterShop(poolIdx){
       const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
       const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key));
       const label=existing?'⬆ UPGRADE':'NEW';
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div style="font-size:6px;font-family:Cinzel,serif;color:var(--gold);margin-bottom:2px">'+label+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div></div>';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div style="font-size:6px;font-family:Cinzel,serif;color:var(--gold);margin-bottom:2px">'+label+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div></div>';
     }).join('');
     setEncBody(dialogue+'<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -1456,7 +1456,7 @@ function showEncounterShop(poolIdx){
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
       const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -1469,7 +1469,7 @@ function showEncounterShop(poolIdx){
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
       const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+t.icon+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -2051,7 +2051,10 @@ function showItemInfo(item, isPlayerBoard=false, rowType=null, idx=null){
   panel.style.display='block';
 
   // Icon and name
-  document.getElementById('iipIcon').textContent=item.icon||'';
+  const iconEl=document.getElementById('iipIcon');
+  const iconContent=getItemIcon(item);
+  if(iconContent.startsWith('<img')){iconEl.innerHTML=iconContent;iconEl.textContent='';}
+  else{iconEl.textContent=item.icon||'';iconEl.innerHTML='';}
   const upgNames=['','UPGRADED','ADVANCED','MASTERED'];
   const upgSuffix=item.upgradeLevel>0?' ['+upgNames[item.upgradeLevel]+']':'';
   const brokenSuffix=item.broken?' [BROKEN]':'';
