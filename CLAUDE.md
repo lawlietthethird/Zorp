@@ -196,3 +196,25 @@ Contains: headbutt, ricochet, arsonist, spite.
 **Spite:** 50hp, 1s activation. Uses `_spiteCounter` instead of effectAmt for current damage value. handleEvent on DAMAGE_RECEIVED where side matches and item is not itself — increments `_spiteCounter` by 1. Counter resets to 1 in resetItemBattleState.
 
 **Relic** is a new item type tag for items like Arsonist that have passive world-altering effects.
+
+---
+
+## Second Wind — Part 2
+
+`pickSecondWindBuff(id)`: routes to `showSecondWindItemSelect` if `requiresItemSelect`, else calls `applySecondWindBuff` directly.
+
+`showSecondWindItemSelect(buff)`: shows all non-broken board items as selectable cards. Calls `selectSecondWindItem` on tap.
+
+`selectSecondWindItem(buffId,row,idx)`: stores pending selection in `pendingSecondWindBuff/Row/Idx`, shows confirm/back screen.
+
+`confirmSecondWindItem`: calls `applySecondWindBuff` with stored pending item, then clears pending state.
+
+`applySecondWindBuff(buff,targetItem)`: switch on `buff.id`. All non-Clarity buffs call `advanceDay()` at end. Clarity sets `secondWindClarityPending=true` then calls `showSkillPick()`.
+
+`secondWindClarityPending`: module-level flag checked at top of `advanceDay`. If true, clears flag, increments `dayStep`, and calls `activateCurrentNode()` (advances within current day without incrementing day counter).
+
+`renderSecondWindNode()`: inserts/updates red badge in player header next to type badge. Called from `updateUI` so it persists across all screen changes. Clicking badge shows notif with buff name and description.
+
+`G.steadfastActive`: checked in `startFatigue`. If true, player fatigue damage is halved via `actualPlayerDmg`.
+
+`G.secondWindBuff`: stores the chosen buff object for the run. Used by `renderSecondWindNode` and persists until `resetRun`.

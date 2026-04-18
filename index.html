@@ -535,6 +535,10 @@ let bannedTypes=[];
 let lastOfferedTypes=[];
 let board={front:[null,null,null],back:[null,null,null]};
 let enemyBoard={front:[null,null,null],back:[null,null,null]};
+let pendingSecondWindBuff=null;
+let pendingSecondWindRow=null;
+let pendingSecondWindIdx=null;
+let secondWindClarityPending=false;
 
 const DAY1_NODES=[{id:'mom',icon:'🎁',label:"MOM'S GIFT"},{id:'shop1',icon:'🏪',label:'MARKET'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'shop2',icon:'🏪',label:'ROAD STALL'},{id:'rival',icon:'🏆',label:'RIVAL'}];
 const DAY2_NODES=[{id:'shop1',icon:'🏪',label:'MARKET'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'shop2',icon:'🏪',label:'ROAD STALL'},{id:'rival',icon:'🏆',label:'TRAINER'}];
@@ -1874,7 +1878,8 @@ function startFatigue(){
     const dmg=baseDmg;
     const tt=document.getElementById('timerTxt');if(tt)tt.textContent='FATIGUE +'+playerDmg+'/'+(baseDmg);
     const ff=document.getElementById('fatigueFill');if(ff)ff.style.width=Math.min(100,fMs/12000*100)+'%';
-    [...board.front,...board.back].forEach(item=>{if(item&&item.maxHp>0&&!item.broken)applyDmgTo(item,playerDmg,'Fatigue','player');});
+    const actualPlayerDmg=G.steadfastActive?Math.round(playerDmg*0.5):playerDmg;
+    [...board.front,...board.back].forEach(item=>{if(item&&item.maxHp>0&&!item.broken)applyDmgTo(item,actualPlayerDmg,'Fatigue','player');});
     [...enemyBoard.front,...enemyBoard.back].forEach(item=>{if(item&&item.maxHp>0&&!item.broken)applyDmgTo(item,Math.round(dmg*battleState.fatigueDamageMultiplier),'Fatigue','enemy');});
     updateBattleBars();updateEnemyBars();
     const pKO=checkKO('player'),eKO=checkKO('enemy');
@@ -2005,8 +2010,138 @@ function showSecondWind(){
   setEncBody(dialogue+'<div style="font-family:Cinzel,serif;font-size:8px;letter-spacing:.1em;color:var(--dim);text-align:center;margin:6px 0">CHOOSE WHAT CHANGED</div><div class="draft-row">'+cards+'</div>');
 }
 function pickSecondWindBuff(id){
-  // Placeholder — Part 2 will implement full buff application
-  showNotif('Second Wind: '+id+' selected — Part 2 pending');
+  const buff=SECOND_WIND_BUFFS.find(b=>b.id===id);
+  if(!buff)return;
+  if(buff.requiresItemSelect){
+    showSecondWindItemSelect(buff);
+    return;
+  }
+  applySecondWindBuff(buff,null);
+}
+function showSecondWindItemSelect(buff){
+  setEncTitle('SECOND WIND — '+buff.name);
+  const boardItems=[...board.front,...board.back].filter(i=>i&&!i.broken);
+  const cards=boardItems.map(item=>{
+    const row=board.front.includes(item)?'front':'back';
+    const idx=row==='front'?board.front.indexOf(item):board.back.indexOf(item);
+    return'<div class="dc" onclick="selectSecondWindItem(\''+buff.id+'\',\''+row+'\','+idx+')">'+
+      '<div class="di">'+getItemIcon(item)+'</div>'+
+      '<div class="dn">'+item.name+'</div>'+
+      '<div class="dd">'+buff.desc+'</div>'+
+      renderStatRow(item.stats,item)+
+      '</div>';
+  }).join('');
+  setEncBody(
+    '<div class="dialogue"><div class="dlg-name">'+buff.name+'</div>'+buff.desc+'</div>'+
+    '<div class="draft-row">'+cards+'</div>'
+  );
+}
+function selectSecondWindItem(buffId,row,idx){
+  const buff=SECOND_WIND_BUFFS.find(b=>b.id===buffId);
+  if(!buff)return;
+  const arr=row==='front'?board.front:board.back;
+  const item=arr[idx];
+  if(!item)return;
+  pendingSecondWindBuff=buff;
+  pendingSecondWindRow=row;
+  pendingSecondWindIdx=idx;
+  setEncTitle('SECOND WIND — CONFIRM');
+  setEncBody(
+    '<div class="dialogue"><div class="dlg-name">'+buff.name+'</div>'+
+    '"'+item.name+'" — '+buff.desc+'</div>'+
+    '<div class="btn-row">'+
+    '<button class="btn btn-p" onclick="confirmSecondWindItem()">CONFIRM</button>'+
+    '<button class="btn btn-d" onclick="showSecondWind()">BACK</button>'+
+    '</div>'
+  );
+}
+function confirmSecondWindItem(){
+  if(!pendingSecondWindBuff)return;
+  const arr=pendingSecondWindRow==='front'?board.front:board.back;
+  const item=arr[pendingSecondWindIdx];
+  applySecondWindBuff(pendingSecondWindBuff,item);
+  pendingSecondWindBuff=null;
+  pendingSecondWindRow=null;
+  pendingSecondWindIdx=null;
+}
+function applySecondWindBuff(buff,targetItem){
+  G.secondWindBuff=buff;
+  switch(buff.id){
+    case'clarity':
+      secondWindClarityPending=true;
+      renderSecondWindNode();
+      showSkillPick();
+      return; // showSkillPick handles flow
+    case'hardened':
+      [...board.front,...board.back].filter(Boolean).forEach(item=>{
+        if(item.maxHp>0){
+          item.maxHp=Math.round(item.maxHp*1.5);
+          item.baseMaxHp=Math.round(item.baseMaxHp*1.5);
+          item.hp=item.maxHp;
+        }
+      });
+      showNotif('HARDENED — all items +50% HP');
+      break;
+    case'unleashed':
+      if(targetItem){
+        targetItem.baseActMs=Math.round(targetItem.baseActMs*0.75);
+        targetItem.actMs=targetItem.baseActMs;
+        showNotif('UNLEASHED — '+targetItem.name+' activates 25% faster');
+      }
+      break;
+    case'conviction':
+      if(targetItem){
+        targetItem.baseEffect=Math.round((targetItem.baseEffect||0)*1.5);
+        targetItem.effectAmt=Math.round((targetItem.effectAmt||0)*1.5);
+        showNotif('CONVICTION — '+targetItem.name+' effects +50%');
+      }
+      break;
+    case'veteran':
+      [...board.front,...board.back].filter(Boolean).forEach(item=>{
+        if((item.upgradeLevel||0)<3)upgradeItem(item);
+      });
+      showNotif('VETERAN — all items upgraded one tier');
+      break;
+    case'double_down':
+      if(targetItem){
+        const f=getItemFactory(targetItem.itemKey||targetItem.id);
+        if(f){
+          const copy={...f(),
+            upgradeLevel:targetItem.upgradeLevel||0,
+            maxHp:targetItem.maxHp,
+            baseMaxHp:targetItem.baseMaxHp,
+            effectAmt:targetItem.effectAmt,
+            baseEffect:targetItem.baseEffect,
+            baseActMs:targetItem.baseActMs,
+            actMs:targetItem.baseActMs,
+            hp:targetItem.maxHp,
+            shield:0,maxShield:0,
+            actElapsed:0,actPct:0,
+            broken:false,
+            uses:targetItem.maxUses,
+            burnStack:0,burnTickMs:0,
+            poisonStack:0,poisonTickMs:0,
+            hasteMs:0,slowMs:0,
+          };
+          const maxFront=maxFrontSlots();
+          const maxBack=maxBackSlots();
+          let placed=false;
+          for(let i=0;i<maxFront&&!placed;i++){if(!board.front[i]){board.front[i]=copy;placed=true;}}
+          if(!placed)for(let i=0;i<maxBack&&!placed;i++){if(!board.back[i]){board.back[i]=copy;placed=true;}}
+          if(!placed)showNotif('Board full — no room for copy');
+          else showNotif('DOUBLE DOWN — '+copy.name+' copied!');
+        }
+      }
+      break;
+    case'steadfast':
+      G.steadfastActive=true;
+      showNotif('STEADFAST — fatigue deals half damage this run');
+      break;
+  }
+  renderSecondWindNode();
+  renderBoard();
+  updateUI();
+  advanceDay();
 }
 function showTypeSelect(){
   setEncTitle('ZORP AWAKENS — CHOOSE YOUR PATH');
@@ -2112,6 +2247,12 @@ function pickSkill(nodeId,skillId){
 }
 
 function advanceDay(){
+  if(secondWindClarityPending){
+    secondWindClarityPending=false;
+    G.dayStep++;
+    updateUI();renderBoard();renderTrack();activateCurrentNode();
+    return;
+  }
   if(G.consolationPending){
     G.consolationPending=false;
     G.day++;
@@ -2282,7 +2423,23 @@ function refreshShopAffordability(){
 }
 function log(type,msg){const el=document.getElementById('battleLog');if(!el)return;const div=document.createElement('div');const t=(battleMs/1000).toFixed(1);const cls={d:'ld',h:'lh',s:'ls',a:'la',b:'lb',x:'lx'}[type]||'lx';div.innerHTML='<span class="lt">'+t+'s</span><span class="'+cls+'">'+msg+'</span>';el.appendChild(div);el.scrollTop=el.scrollHeight;}
 function clearLog(){const el=document.getElementById('battleLog');if(el)el.innerHTML='';}
-function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/6';document.getElementById('phaseBadge').textContent='DAY '+G.day;refreshShopAffordability();}
+function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/6';document.getElementById('phaseBadge').textContent='DAY '+G.day;refreshShopAffordability();renderSecondWindNode();}
+function renderSecondWindNode(){
+  let el=document.getElementById('secondWindNode');
+  if(!G.secondWindBuff){
+    if(el)el.remove();
+    return;
+  }
+  if(!el){
+    el=document.createElement('div');
+    el.id='secondWindNode';
+    el.style.cssText='display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-family:Cinzel,serif;font-size:7px;font-weight:700;letter-spacing:.1em;border:1px solid rgba(232,64,64,.5);background:rgba(232,64,64,.1);color:#e84040;cursor:pointer;margin-top:2px;';
+    el.onclick=()=>showNotif(G.secondWindBuff.name+' — '+G.secondWindBuff.desc);
+    const badge=document.getElementById('typeBadge');
+    if(badge&&badge.parentNode)badge.parentNode.insertBefore(el,badge.nextSibling);
+  }
+  el.textContent=G.secondWindBuff.icon+' '+G.secondWindBuff.name;
+}
 function showTreeTip(node,e){
   const tip=document.getElementById('treeTip');
   const nameEl=document.getElementById('treeTipName');
