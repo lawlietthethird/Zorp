@@ -530,7 +530,7 @@ function renderSkillTree(){
 // ============================================================
 // STATE
 // ============================================================
-const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip'};
+const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',secondWindUsed:false,secondWindBuff:null,steadfastActive:false};
 let bannedTypes=[];
 let lastOfferedTypes=[];
 let board={front:[null,null,null],back:[null,null,null]};
@@ -1948,12 +1948,16 @@ function continueAfterResult(){
     if(currentBattleType==='wild'){
       G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
     }else{
-      // Trainer loss — check for Mom consolation on day 1 before rival defeated
       if(!G.rivalDefeated){
         renderBoard();updateUI();renderTrack();
         showEncounterShop(0);
+      }else if(G.honor<=0&&!G.secondWindUsed){
+        renderBoard();updateUI();renderTrack();
+        showSecondWind();
+      }else if(G.honor<=0&&G.secondWindUsed){
+        setEncTitle('DEFEATED');
+        setEncBody('<div class="result-enc"><div class="re-title re-lose">DEFEATED</div><div class="re-sub">Kip gave everything.<br><br>'+G.wins+' wins.</div><div class="btn-row"><button class="btn btn-p" onclick="resetRun()">PLAY AGAIN</button></div></div>');
       }else{
-        // Day 2+ trainer loss — advance day
         G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
       }
     }
@@ -1985,6 +1989,27 @@ const TYPES=[
   {id:'steel',name:'STEEL',icon:'🛡️',desc:'Massive plating and bulk. Steel items unlock.'},
   {id:'toxic',name:'TOXIC',icon:'☠️',desc:'Poison bypasses all plating and stacks high. Toxic items unlock.'},
 ];
+const SECOND_WIND_BUFFS=[
+  {id:'clarity',name:'CLARITY',icon:'✦',desc:'Unlock a bond node. Pick a skill.',requiresItemSelect:false},
+  {id:'hardened',name:'HARDENED',icon:'🪨',desc:'All items gain +50% max HP permanently.',requiresItemSelect:false},
+  {id:'unleashed',name:'UNLEASHED',icon:'⚡',desc:'One item activates 25% faster permanently.',requiresItemSelect:true},
+  {id:'conviction',name:'CONVICTION',icon:'🔥',desc:'One item\'s effects increase by 50% permanently.',requiresItemSelect:true},
+  {id:'veteran',name:'VETERAN',icon:'⚔️',desc:'All items upgrade one tier immediately.',requiresItemSelect:false},
+  {id:'double_down',name:'DOUBLE DOWN',icon:'♊',desc:'Copy one item and add the duplicate to your board.',requiresItemSelect:true},
+  {id:'steadfast',name:'STEADFAST',icon:'🛡',desc:'Fatigue deals half damage to your items for the rest of this run.',requiresItemSelect:false},
+];
+function showSecondWind(){
+  G.secondWindUsed=true;
+  setEncTitle('SECOND WIND');
+  const dialogue='<div class="dialogue"><div class="dlg-name">—</div>Kip hits the ground.<br><br>You kneel beside them. No words. Just the two of you and the sound of something ending.<br><br>Then Kip gets up.<br><br>Not because they have to. Not because you asked.<br><br>Something let go. Something that had been held a long time.<br><br>Kip looks different. You\'re not sure how. You\'re not sure it matters.</div>';
+  const offered=[...SECOND_WIND_BUFFS].sort(()=>Math.random()-.5).slice(0,3);
+  const cards=offered.map(b=>'<div class="dc" onclick="pickSecondWindBuff(\''+b.id+'\')"><div class="di">'+b.icon+'</div><div class="dn">'+b.name+'</div><div class="dd">'+b.desc+'</div></div>').join('');
+  setEncBody(dialogue+'<div style="font-family:Cinzel,serif;font-size:8px;letter-spacing:.1em;color:var(--dim);text-align:center;margin:6px 0">CHOOSE WHAT CHANGED</div><div class="draft-row">'+cards+'</div>');
+}
+function pickSecondWindBuff(id){
+  // Placeholder — Part 2 will implement full buff application
+  showNotif('Second Wind: '+id+' selected — Part 2 pending');
+}
 function showTypeSelect(){
   setEncTitle('ZORP AWAKENS — CHOOSE YOUR PATH');
   const nonBanned=TYPES.filter(t=>!bannedTypes.includes(t.id));
@@ -2284,7 +2309,7 @@ function showNotif(msg,duration=2400){const el=document.getElementById('notif');
 // ============================================================
 function resetRun(){
   stopBattle();
-  G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;
+  G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;
   board={front:[null,null,null],back:[null,null,null]};
   enemyBoard={front:[null,null,null],back:[null,null,null]};
   TREE_NODES.forEach(n=>treeState[n.id]=null);
