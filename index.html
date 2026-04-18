@@ -921,7 +921,6 @@ const HEADBUTT_ITEMS={
     item.flavorText='It finds a way.';
     item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||3,cls:'dmg'}];
     item.isTargetable=false;
-    item.stats=[{icon:'✚',value:45,cls:'heal'}];
     item.handleEvent=(event)=>{
       if(event.type!=='DAMAGE_RECEIVED')return;
       if(event.side!==item._side)return;
@@ -1611,8 +1610,8 @@ function showEncounterWildPick(){
 }
 function startWild(idx){
   G.wildChoice=idx;const m=WILD_MONSTERS[idx];
-  enemyBoard.front=m.front.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses,_side:'enemy'}:null);
-  enemyBoard.back=m.back.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses,_side:'enemy'}:null);
+  enemyBoard.front=m.front.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses,hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'}:null);
+  enemyBoard.back=m.back.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses,hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'}:null);
   showEncounterBattle('wild',m);
 }
 
@@ -1920,7 +1919,7 @@ function endBattle(result){
       const monsterName=G.wildChoice===-1?DAY1_WILD.name:WILD_MONSTERS[G.wildChoice||0].name;
       logEvent({event:'wild_battle',result:'lose',wild_monster:monsterName,board:boardSnapshot(),battle_duration_ms:battleMs});
       if(G.day===1){
-        sub='You are literally in the tutorial. We\'re going to pretend that didn\'t happen.';btnText='TRY AGAIN →';
+        sub='You are literally in the tutorial. We\'re going to pretend that didn\'t happen.';btnText='MOVE ON →';
       }else{
         sub='Nothing for the butcher today.';btnText='MOVE ON →';
       }
