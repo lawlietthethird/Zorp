@@ -1898,7 +1898,7 @@ function checkKO(side){return aliveItems(side).filter(i=>i.maxHp>0).length===0;}
 // ============================================================
 function endBattle(result){
   stopBattle();G.lastResult=result;
-  let title,sub,btnText='CONTINUE →';
+  let title,sub,btnText='CONTINUE →',btnOnclick='continueAfterResult()';
   if(result==='win'){
     if(currentBattleType==='wild'){
       const roll=Math.random();const reward=roll<0.25?4:roll<0.75?5:6;
@@ -1913,7 +1913,7 @@ function endBattle(result){
         const isPerfect=G.honor===13;
         if(isPerfect){title='FLAWLESS';sub='Six wins. Zero losses. Kip knew all along.';}
         else{sub='Six wins. The run is complete.';}
-        btnText='PLAY AGAIN';
+        btnText='PLAY AGAIN';btnOnclick='resetRun()';
         logEvent({event:'run_complete',wins:G.wins,honor:G.honor,perfect:isPerfect,board:boardSnapshot(),skills:activeSkills.map(s=>s.id)});
       }else{sub='Win '+G.wins+' of 6.';}
       logEvent({event:'trainer_battle',result:'win',win_number:G.wins,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
@@ -1937,7 +1937,7 @@ function endBattle(result){
   }
   updateUI();setEncTitle(title);
   const titleClass=title==='FLAWLESS'?'re-flawless':result==='win'?'re-win':'re-lose';
-  setEncBody('<div class="result-enc"><div class="re-title '+titleClass+'">'+title+'</div><div class="re-sub">'+sub+'</div><div class="btn-row"><button class="btn btn-p" onclick="continueAfterResult()">'+btnText+'</button></div></div>');
+  setEncBody('<div class="result-enc"><div class="re-title '+titleClass+'">'+title+'</div><div class="re-sub">'+sub+'</div><div class="btn-row"><button class="btn btn-p" onclick="'+btnOnclick+'">'+btnText+'</button></div></div>');
 }
 
 function continueAfterResult(){
@@ -1947,7 +1947,6 @@ function continueAfterResult(){
     if(currentBattleType==='wild'){
       G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
     }else{
-      if(G.wins>=6){resetRun();return;}
       postTrainerWin();
     }
   }else{
