@@ -530,7 +530,7 @@ function renderSkillTree(){
 // ============================================================
 // STATE
 // ============================================================
-const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationMode:false};
+const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false};
 let bannedTypes=[];
 let lastOfferedTypes=[];
 let board={front:[null,null,null],back:[null,null,null]};
@@ -1451,7 +1451,7 @@ function showEncounterShop(poolIdx){
         const t=MOM_CONSOLATION_ITEMS[key]();shopItemCache[key]=t;
         return '<div class="dc" onclick="buyMomItem(\''+key+'\',true,true)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div>'+(t.flavorText?'<div style="font-size:7px;color:var(--dim);font-style:italic;margin-top:2px">'+t.flavorText+'</div>':'')+'<div class="dp">✦ FREE</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
       }).join('');
-      setEncBody(dialogue+'<div class="draft-row">'+cards+'</div>'+'<div class="btn-row"><button class="btn btn-d" onclick="G.consolationMode=false;activateCurrentNode()">SKIP →</button></div>');
+      setEncBody(dialogue+'<div class="draft-row">'+cards+'</div>'+'<div class="btn-row"><button class="btn btn-d" onclick="skipShop()">SKIP →</button></div>');
     }
     return;
   }
@@ -1533,15 +1533,7 @@ function buyMomItem(key,free,isConsolation){
   logEvent({event:'mom_pick',item_key:key,is_consolation:isConsolation});
   updateUI();
   renderBoard();
-  if(G.consolationMode){
-    G.consolationMode=false;
-    updateUI();
-    renderBoard();
-    renderTrack();
-    activateCurrentNode();
-  }else{
-    skipShop();
-  }
+  skipShop();
 }
 function buyItem(key,free){
   const f=getItemFactory(key);if(!f)return;
@@ -1957,9 +1949,8 @@ function continueAfterResult(){
       G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
     }else{
       if(!G.rivalDefeated){
-        renderBoard();updateUI();renderTrack();
-        G.consolationMode=true;
-        showEncounterShop(0);
+        G.consolationPending=true;
+        G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
       }else if(G.honor<=0&&!G.secondWindUsed){
         renderBoard();updateUI();renderTrack();
         showSecondWind();
@@ -2123,6 +2114,16 @@ function pickSkill(nodeId,skillId){
 }
 
 function advanceDay(){
+  if(G.consolationPending){
+    G.consolationPending=false;
+    G.day++;
+    G.dayStep=0;
+    updateUI();
+    renderBoard();
+    renderTrack();
+    showEncounterShop(0); // Mom consolation as first event of day 2
+    return;
+  }
   G.day++;G.dayStep=0;updateUI();renderBoard();renderTrack();
   showNotif('Day '+G.day+' begins!');
   activateCurrentNode();
@@ -2318,7 +2319,7 @@ function showNotif(msg,duration=2400){const el=document.getElementById('notif');
 // ============================================================
 function resetRun(){
   stopBattle();
-  G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;G.consolationMode=false;
+  G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;G.consolationPending=false;
   board={front:[null,null,null],back:[null,null,null]};
   enemyBoard={front:[null,null,null],back:[null,null,null]};
   TREE_NODES.forEach(n=>treeState[n.id]=null);
