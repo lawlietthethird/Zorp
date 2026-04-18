@@ -1936,6 +1936,8 @@ function endBattle(result){
 }
 
 function continueAfterResult(){
+  resetItemBattleState(board);
+  renderBoard();
   if(G.lastResult==='win'){
     if(currentBattleType==='wild'){
       G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
@@ -1944,21 +1946,17 @@ function continueAfterResult(){
       postTrainerWin();
     }
   }else{
-    // All losses advance — no retries ever
     if(currentBattleType==='wild'){
       G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
     }else{
-      if(!G.rivalDefeated){
-        G.consolationPending=true;
-        G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
-      }else if(G.honor<=0&&!G.secondWindUsed){
+      if(G.honor<=0&&!G.secondWindUsed){
         renderBoard();updateUI();renderTrack();
         showSecondWind();
       }else if(G.honor<=0&&G.secondWindUsed){
         setEncTitle('DEFEATED');
         setEncBody('<div class="result-enc"><div class="re-title re-lose">DEFEATED</div><div class="re-sub">Kip gave everything.<br><br>'+G.wins+' wins.</div><div class="btn-row"><button class="btn btn-p" onclick="resetRun()">PLAY AGAIN</button></div></div>');
       }else{
-        G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+        advanceDay();
       }
     }
   }
