@@ -441,6 +441,9 @@ function initBattleState(){
     fatigueDamageMultiplier:1,
     burnApplicationsToEnemy:0,
     fireworksThreshold:6,
+    slowProcsThisBattle:0,
+    floodTriggered:false,
+    wetDurationMult:1,
   };
 }
 
@@ -588,9 +591,9 @@ const NEGATIVE_STATUSES=new Set(['BURN_APPLIED','POISON_APPLIED','SLOW_APPLIED']
 // ---- TYPED ITEMS ----
 const TYPED_ITEMS={
   // ELECTRIC ⚡
-  lightning_claw:()=>{const item=makeItem('lightning_claw','Lightning Claw','⚡','Weapon',90,2500,'2.5s → 10 dmg · random + self Haste 1.5s',(s,a,self)=>{dealDmgRandom(opp(s),a,'Lightning Claw');applyHaste(self,1500,'Lightning Claw');},8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'⚡',value:'1.5s',cls:'haste'}];return item;},
+  lightning_claw:()=>{const item=makeItem('lightning_claw','Lightning Claw','⚡','Weapon',90,2500,'2.5s → 10 dmg · random + self Jolt 1.5s',(s,a,self)=>{dealDmgRandom(opp(s),a,'Lightning Claw');applyHaste(self,1500,'Lightning Claw');},8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'⚡',value:'1.5s',cls:'haste'}];return item;},
   arc_bolt:()=>{const item=makeItem('arc_bolt','Arc Bolt','🌩️','Weapon',110,5000,'5s → 10 dmg · hits 2 random targets',(s,a)=>dealDmgTwoRandom(s,a,'Arc Bolt'),8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'}];return item;},
-  charge_pack:()=>{const item=makeItem('charge_pack','Charge Pack','🔋','Untargetable',0,9000,'9s → Heal 60 + Haste 2s to slowest ally · 2 uses',(s,a)=>{healItem(s,a,'Charge Pack');const alive=aliveItems(s).filter(i=>i.maxHp>0);if(alive.length){const t=alive.reduce((a,b)=>a.actPct<b.actPct?a:b);applyHaste(t,2000,'Charge Pack');}},4,2,60,'provision','intermediate');item.stats=[{icon:'✚',value:60,cls:'heal'},{icon:'⚡',value:'2s',cls:'haste'}];return item;},
+  charge_pack:()=>{const item=makeItem('charge_pack','Charge Pack','🔋','Untargetable',0,9000,'9s → Heal 60 + Jolt 2s to slowest ally · 2 uses',(s,a)=>{healItem(s,a,'Charge Pack');const alive=aliveItems(s).filter(i=>i.maxHp>0);if(alive.length){const t=alive.reduce((a,b)=>a.actPct<b.actPct?a:b);applyHaste(t,2000,'Charge Pack');}},4,2,60,'provision','intermediate');item.stats=[{icon:'✚',value:60,cls:'heal'},{icon:'⚡',value:'2s',cls:'haste'}];return item;},
   volt_band:()=>{const item=makeItem('volt_band','Volt Band','🫧','Weapon',75,2500,'2.5s → 11 dmg · random (fast striker)',(s,a)=>dealDmgRandom(opp(s),a,'Volt Band'),2,null,11,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||11,cls:'dmg'}];return item;},
   // FIRE 🔥
   ember_fang:()=>{const item=makeItem('ember_fang','Ember Fang','🔥','Weapon',110,4000,'4s → 10 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,10,'Ember Fang','burn',a),4,null,3,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
@@ -598,10 +601,10 @@ const TYPED_ITEMS={
   cinder_claw:()=>{const item=makeItem('cinder_claw','Cinder Claw','🌋','Weapon',90,3000,'3s → 5 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,5,'Cinder Claw','burn',a),2,null,3,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||5,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
   flame_wick:()=>{const item=makeItem('flame_wick','Flame Wick','🕯️','Untargetable',0,10000,'10s → Heal 60 + 2 Burn to enemy · 1 use',(s,a)=>{healItem(s,60,'Flame Wick');const t=randomEnemyItem(opp(s));if(t)applyBurn(t,a,'Flame Wick');},4,1,2,'provision','intermediate');item.stats=[{icon:'✚',value:60,cls:'heal'},{icon:'🔥',value:2,cls:'burn'}];return item;},
   // WATER 💧
-  tide_fang:()=>{const item=makeItem('tide_fang','Tide Fang','🌊','Weapon',105,4000,'4s → 14 dmg + 2s Slow',(s,a)=>dealDmgWithStatus(s,a,'Tide Fang','slow',2000),4,null,14,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||14,cls:'dmg'},{icon:'💧',value:'2s',cls:'slow'}];return item;},
-  tidal_shell:()=>{const item=makeItem('tidal_shell','Tidal Shell','🐌','Armor',180,8000,'8s → Plate random ally +40 + 1.5s Slow to enemy',(s,a)=>{applyShield(s,a,'Tidal Shell');const t=randomEnemyItem(opp(s));if(t)applySlow(t,1500,'Tidal Shell');},4,null,40,'armor','intermediate');item.stats=[{icon:'🛡',value:40,cls:'shield'},{icon:'💧',value:'1.5s',cls:'slow'}];return item;},
+  tide_fang:()=>{const item=makeItem('tide_fang','Tide Fang','🌊','Weapon',105,4000,'4s → 14 dmg + 2s Wet',(s,a)=>dealDmgWithStatus(s,a,'Tide Fang','slow',2000),4,null,14,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||14,cls:'dmg'},{icon:'💧',value:'2s',cls:'slow'}];return item;},
+  tidal_shell:()=>{const item=makeItem('tidal_shell','Tidal Shell','🐌','Armor',180,8000,'8s → Plate random ally +40 + 1.5s Wet to enemy',(s,a)=>{applyShield(s,a,'Tidal Shell');const t=randomEnemyItem(opp(s));if(t)applySlow(t,1500,'Tidal Shell');},4,null,40,'armor','intermediate');item.stats=[{icon:'🛡',value:40,cls:'shield'},{icon:'💧',value:'1.5s',cls:'slow'}];return item;},
   riptide:()=>{const item=makeItem('riptide','Riptide','🌀','Weapon',120,5000,'5s → 20 dmg · back row',(s,a)=>dealDmgBackRow(s,a,'Riptide'),8,null,20,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||20,cls:'dmg'}];return item;},
-  current_band:()=>{const item=makeItem('current_band','Current Band','💧','Weapon',80,3000,'3s → 9 dmg + 1s Slow',(s,a)=>dealDmgWithStatus(s,a,'Current Band','slow',1000),2,null,9,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||9,cls:'dmg'},{icon:'💧',value:'1s',cls:'slow'}];return item;},
+  current_band:()=>{const item=makeItem('current_band','Current Band','💧','Weapon',80,3000,'3s → 9 dmg + 1s Wet',(s,a)=>dealDmgWithStatus(s,a,'Current Band','slow',1000),2,null,9,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||9,cls:'dmg'},{icon:'💧',value:'1s',cls:'slow'}];return item;},
   // STEEL 🛡️
   iron_carapace:()=>{const item=makeItem('iron_carapace','Iron Carapace','🪨','Armor',260,7000,'7s → Plate random ally +65',(s,a)=>applyShield(s,a,'Iron Carapace'),8,null,65,'armor','advanced');item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||65,cls:'shield'}];return item;},
   bulwark_stance:()=>{const item=makeItem('bulwark_stance','Bulwark Stance','🛡️','Armor',150,5000,'5s → Plate ALL allies +20',(s,a)=>applyShieldAll(s,a,'Bulwark Stance'),8,null,20,'armor','advanced');item.stats=[{icon:'🛡🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];return item;},
@@ -671,7 +674,7 @@ const MOM_ITEMS={
   },
   sharpening_stone:()=>{
     const item=makeItem('sharpening_stone','Sharpening Stone','🪨','Weapon',110,4000,
-      '14 dmg random. Applies 2s haste to self after activation.',
+      '14 dmg random. Applies 2s Jolt to self after activation.',
       (s,a,self)=>{
         dealDmgRandom(opp(s),a,'Sharpening Stone');
         applyHaste(self,2000,'Sharpening Stone');
@@ -682,7 +685,7 @@ const MOM_ITEMS={
   },
   heavy_walking_stick:()=>{
     const item=makeItem('heavy_walking_stick','Heavy Walking Stick','🪵','Weapon',130,5000,
-      '16 dmg random. Applies 2s slow to target hit.',
+      '16 dmg random. Applies 2s Wet to target hit.',
       (s,a,self)=>{
         dealDmgWithStatus(s,a,'Heavy Walking Stick','slow',2000);
       },0,null,16,'weapon','intermediate');
@@ -1055,10 +1058,96 @@ const BURN_ITEMS={
 
 };
 
-function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||HEADBUTT_ITEMS[key]||BURN_ITEMS[key]||MOM_ITEMS[key]||MOM_CONSOLATION_ITEMS[key]||null;}
+const WATER_ITEMS={
+
+  glacier:()=>{
+    const item=makeItem('glacier','Glacier','🧊','Armor',200,4000,
+      'Applies 2s Wet to a random enemy.',
+      (s,a,self)=>{
+        const t=randomEnemyItem(opp(s));
+        if(t)applySlow(t,2000,'Glacier');
+      },2,null,2000,'armor','beginner');
+    item.flavorText='Slow and inevitable.';
+    item.stats=[{icon:'💧',value:'2s',cls:'slow'}];
+    return item;
+  },
+
+  hydro_cannon:()=>{
+    const item=makeItem('hydro_cannon','Hydro Cannon','💦','Weapon',110,4000,
+      '15 dmg to random enemy. 30 dmg if target is Wet.',
+      (s,a,self)=>{
+        const t=randomEnemyItem(opp(s));
+        if(!t)return;
+        const isWet=(t.slowMs||0)>0;
+        const dmg=isWet?Math.round((self.effectAmt||15)*2):self.effectAmt||15;
+        applyDmgTo(t,dmg,'Hydro Cannon',opp(s));
+        log('d','💦 Hydro Cannon — '+(isWet?'WET! ':'')+dmg+' dmg');
+      },4,null,15,'weapon','intermediate');
+    item.flavorText="Hits harder when they can't move.";
+    item.stats=[{icon:'⚔️',value:(i)=>(i.effectAmt||15)+'/'+(( i.effectAmt||15)*2),cls:'dmg'},{icon:'💧',value:'2x wet',cls:'slow'}];
+    return item;
+  },
+
+  whirlpool:()=>{
+    const item=makeItem('whirlpool','Whirlpool','🌀','Armor',140,5000,
+      'Plate random ally +20. +40 if any enemy is currently Wet.',
+      (s,a,self)=>{
+        const anyWet=[...enemyBoard.front,...enemyBoard.back]
+          .some(i=>i&&!i.broken&&(i.slowMs||0)>0);
+        const amount=anyWet?Math.round((self.effectAmt||20)*2):self.effectAmt||20;
+        applyShield(s,amount,'Whirlpool');
+        log('s','🌀 Whirlpool — '+(anyWet?'WET BONUS! ':'')+amount+' plating');
+      },4,null,20,'armor','intermediate');
+    item.flavorText='The current does the work.';
+    item.stats=[{icon:'🛡',value:(i)=>(i.effectAmt||20)+'/'+(( i.effectAmt||20)*2),cls:'shield'},{icon:'💧',value:'2x wet',cls:'slow'}];
+    return item;
+  },
+
+  deluge:()=>{
+    const item=makeItem('deluge','Deluge','🌊','Weapon',120,5000,
+      'Deals damage equal to 5× total Wet applications this battle to one target.',
+      (s,a,self)=>{
+        const procs=battleState.slowProcsThisBattle||0;
+        const dmg=Math.max(self.effectAmt||5,procs*(self.effectAmt||5));
+        const t=randomEnemyItem(opp(s));
+        if(t){
+          applyDmgTo(t,dmg,'Deluge',opp(s));
+          log('d','🌊 Deluge — '+procs+'×'+(self.effectAmt||5)+' = '+dmg+' dmg');
+        }
+      },8,null,5,'weapon','advanced');
+    item.flavorText='Everything that built up, released.';
+    item.stats=[{icon:'⚔️',value:(i)=>(i.effectAmt||5)+'×procs',cls:'dmg'}];
+    return item;
+  },
+
+  flood:()=>{
+    const item=makeItem('flood','Flood','🌧️','Relic',0,0,
+      'After 10 Wet applications this battle, all Wet effects last twice as long.',
+      null,8,null,10,'relic','advanced');
+    item.flavorText='The point of no return.';
+    item.isTargetable=false;
+    item.stats=[{icon:'💧',value:'2x@10',cls:'slow'}];
+    return item;
+  },
+
+  hot_springs:()=>{
+    const item=makeItem('hot_springs','Hot Springs','♨️','Provision',0,7000,
+      'Heal lowest HP ally for 80. Starts with 1 use. Gains +1 use each time you apply Wet.',
+      (s,a,self)=>{
+        if((self.uses||0)<=0)return;
+        healItem(s,self.effectAmt||80,'Hot Springs');
+      },4,1,80,'provision','intermediate');
+    item.flavorText='Stay a while.';
+    item.stats=[{icon:'✚',value:(i)=>i.effectAmt||80,cls:'heal'},{icon:'💧',value:'+uses',cls:'slow'}];
+    return item;
+  },
+
+};
+
+function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||HEADBUTT_ITEMS[key]||BURN_ITEMS[key]||WATER_ITEMS[key]||MOM_ITEMS[key]||MOM_CONSOLATION_ITEMS[key]||null;}
 const ITEM_META={};
 (function buildMeta(){
-  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS};
   Object.keys(all).forEach(key=>{
     const t=all[key]();
     ITEM_META[key]={itemRarity:t.itemRarity,itemType:t.itemType};
@@ -1083,7 +1172,7 @@ function rollRarity(day){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 function getItemsOfRarity(rarity,typeFilter){
-  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS};
   const filtered=Object.keys(all).filter(key=>{
     const t=all[key]();
     if(t.itemRarity!==rarity)return false;
@@ -1218,9 +1307,11 @@ function dealDmgRandom(side,base,src){
   if(!pool.length)return;const t=pool[Math.floor(Math.random()*pool.length)];applyDmgTo(t,dmg,src,side);
 }
 function healItem(side,amount,src){
-  const alive=aliveItems(side).filter(i=>i.maxHp>0);if(!alive.length)return;
+  const alive=aliveItems(side).filter(i=>i&&i.maxHp>0&&i.hp<i.maxHp);
+  if(!alive.length)return;
   const t=alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
   const actual=Math.min(t.maxHp-t.hp,Math.round(amount*(side==='player'?potMult():1)));
+  if(actual<=0)return;
   t.hp+=actual;log('h',src+' heals '+t.name+' +'+actual);flashCard(t.id,side,'h');
   fireEvent({type:'ITEM_HEALED',item:t,side:side,value:actual,source:null});
 }
@@ -1290,9 +1381,20 @@ function applyHaste(item,durationMs,src){
 }
 function applySlow(item,durationMs,src){
   if(!item||item.broken)return;
-  item.slowMs=Math.max(item.slowMs,durationMs);
-  log('s','💧 '+src+' SLOW '+item.name+' '+(durationMs/1000).toFixed(1)+'s');
-  fireEvent({type:'SLOW_APPLIED',item:item,side:item._side||null,value:durationMs,source:null});
+  const actual=Math.round(durationMs*(battleState&&battleState.wetDurationMult||1));
+  item.slowMs=(item.slowMs||0)+actual;
+  log('s','💧 '+src+' SLOW '+item.name+' '+(actual/1000).toFixed(1)+'s');
+  fireEvent({type:'SLOW_APPLIED',item:item,side:item._side||null,value:actual,source:null});
+  if(battleState){
+    battleState.slowProcsThisBattle=(battleState.slowProcsThisBattle||0)+1;
+    checkFlood();
+    [...board.front,...board.back].forEach(i=>{
+      if(i&&!i.broken&&(i.itemKey==='hot_springs'||i.id==='hot_springs')&&i.uses!==null){
+        i.uses++;
+        log('h','💧 Hot Springs gains a use ('+i.uses+' remaining)');
+      }
+    });
+  }
 }
 function applyBurn(item,stacks,src){
   if(!item||item.broken)return;
@@ -1302,6 +1404,22 @@ function applyBurn(item,stacks,src){
   if(item._side==='enemy'&&battleState){
     battleState.burnApplicationsToEnemy=(battleState.burnApplicationsToEnemy||0)+stacks;
     checkFireworks();
+  }
+}
+function checkFlood(){
+  const flood=[...board.front,...board.back].find(i=>i&&!i.broken&&(i.itemKey==='flood'||i.id==='flood'));
+  if(!flood||battleState.floodTriggered)return;
+  const threshold=flood.effectAmt||10;
+  if(battleState.slowProcsThisBattle>=threshold){
+    battleState.floodTriggered=true;
+    battleState.wetDurationMult=2.0;
+    log('s','🌊 Flood — Wet duration doubled for the rest of this battle!');
+    const enc=document.querySelector('.encounter');
+    if(enc){
+      enc.style.transition='background .1s';
+      enc.style.background='rgba(40,120,255,.15)';
+      setTimeout(()=>{enc.style.background='';},300);
+    }
   }
 }
 function checkFireworks(){

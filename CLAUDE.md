@@ -220,3 +220,57 @@ Contains: headbutt, ricochet, arsonist, spite.
 `G.steadfastActive`: checked in `startFatigue`. If true, player fatigue damage is halved via `actualPlayerDmg`.
 
 `G.secondWindBuff`: stores the chosen buff object for the run. Used by `renderSecondWindNode` and persists until `resetRun`.
+
+---
+
+## BURN_ITEMS pool
+
+Contains: stoke, blaze, cinder_block, cauterize, fireworks.
+
+**battleState.burnApplicationsToEnemy:** Incremented in `applyBurn` by `stacks` when target is enemy. Reset in `initBattleState`.
+
+**battleState.fireworksThreshold:** Default 6. Checked in `checkFireworks()`.
+
+**`checkFireworks()`:** Called from `applyBurn`. Triggers fireworks item burst once threshold reached, resets counter. Repeats.
+
+**`flashFireworks()`:** Orange screen overlay animation.
+
+**Stoke:** Relic, 75hp, 6s timer. Applies effectAmt burn to random enemy.
+
+**Blaze:** Weapon, 110hp, 4s timer. Deals effectAmt dmg + `_blazeCounter` burn stacks, counter increments each activation. Resets in `resetItemBattleState`.
+
+**Cinder Block:** Armor, 200hp, no timer. handleEvent on BURN_APPLIED to enemy — gains +effectAmt shield on self.
+
+**Cauterize:** Relic, 0hp, no timer, untargetable. handleEvent on ITEM_BROKEN (player side) — heals all surviving allies via `healAll`.
+
+**Fireworks:** Relic, 0hp, no timer, untargetable. Pure passive — `checkFireworks()` fires when counter reaches threshold. Deals effectAmt to all enemies. Repeats.
+
+---
+
+## WATER_ITEMS pool
+
+Contains: glacier, hydro_cannon, whirlpool, deluge, flood, hot_springs.
+
+**Status effect keywords:** Slow is called **Wet** in all item descriptions. Haste is called **Jolt** in all item descriptions. Underlying CSS classes and mechanic names (`slowMs`, `hasteMs`, `applySlow`, `applyHaste`) are unchanged — keyword rename is display only.
+
+**battleState.slowProcsThisBattle:** Incremented by 1 in `applySlow` after each application. Reset in `initBattleState`.
+
+**battleState.floodTriggered:** Boolean, set true when Flood threshold reached. Reset in `initBattleState`.
+
+**battleState.wetDurationMult:** Default 1. Set to 2.0 when Flood triggers. Applied in `applySlow` to multiply each duration applied. `applySlow` now uses additive `+` rather than `Math.max`.
+
+**Glacier:** Beginner anchor. Applies 2s Wet on 4s timer. effectAmt is the raw durationMs (2000).
+
+**Hydro Cannon:** Weapon. 15 dmg base, 30 if target has `slowMs > 0`. Double is always 2× effectAmt.
+
+**Whirlpool:** Armor. 20 plating base, 40 if any enemy has `slowMs > 0`. Checks enemyBoard.
+
+**Deluge:** Weapon. Damage = slowProcsThisBattle × effectAmt, minimum effectAmt. Single target.
+
+**Flood:** Relic, 0hp, untargetable, no timer. `checkFlood()` called from `applySlow`. Triggers once per battle at threshold (effectAmt=10). Sets `wetDurationMult=2.0`.
+
+**Hot Springs:** Provision, 0hp, 7s timer, 1 use. Heals lowest HP ally via `healItem`. `applySlow` grants +1 use to all non-broken hot_springs on player board after each slow application.
+
+## Heal targeting
+
+`healItem` targets lowest HP percentage ally (`hp/maxHp` ratio), filtered to items with `hp < maxHp`. Returns early if no healing needed (`actual <= 0`). `healAll` heals every alive item. ITEM_HEALED event is still fired.
