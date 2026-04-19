@@ -1010,11 +1010,6 @@ function getItemsOfRarity(rarity,typeFilter){
     const t=all[key]();
     if(t.itemRarity!==rarity)return false;
     if(typeFilter&&typeFilter.length>0&&!typeFilter.includes(t.itemType))return false;
-    if(TYPED_ITEMS[key]){
-      if(!G.type)return false;
-      const playerPool=TYPED_ITEM_POOLS[G.type]||[];
-      if(!playerPool.includes(key))return false;
-    }
     return true;
   });
   if(filtered.length===0){
@@ -1985,11 +1980,11 @@ const TYPE_COLORS={
   toxic:'background:rgba(60,200,60,.12);border-color:#40c040;color:#50e050;',
 };
 const TYPES=[
-  {id:'electric',name:'ELECTRIC',icon:'⚡',desc:'Haste makes your items activate twice as fast. Electric items unlock.'},
-  {id:'fire',name:'FIRE',icon:'🔥',desc:'Burn deals damage that plating only partially blocks. Fire items unlock.'},
-  {id:'water',name:'WATER',icon:'💧',desc:'Slow cuts enemy activation speed in half. Water items unlock.'},
-  {id:'steel',name:'STEEL',icon:'🛡️',desc:'Massive plating and bulk. Steel items unlock.'},
-  {id:'toxic',name:'TOXIC',icon:'☠️',desc:'Poison bypasses all plating and stacks high. Toxic items unlock.'},
+  {id:'electric',name:'ELECTRIC',icon:'⚡',desc:'Lightning reflexes. Electric skills make your items activate faster and chain hits.'},
+  {id:'fire',name:'FIRE',icon:'🔥',desc:'Burn everything. Fire skills amplify burn damage and spread.'},
+  {id:'water',name:'WATER',icon:'💧',desc:'Control the pace. Water skills slow enemies and give you time.'},
+  {id:'steel',name:'STEEL',icon:'🛡️',desc:'Outlast everything. Steel skills build massive plating and bulk.'},
+  {id:'toxic',name:'TOXIC',icon:'☠️',desc:'Patient poison. Toxic skills stack poison and amplify its damage.'},
 ];
 const SECOND_WIND_BUFFS=[
   {id:'clarity',name:'CLARITY',icon:'✦',desc:'Unlock a bond node. Pick a skill.',requiresItemSelect:false},

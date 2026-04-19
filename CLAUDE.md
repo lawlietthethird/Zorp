@@ -128,6 +128,8 @@ Five types (no typeless entry in the array — typeless is handled separately in
 
 Ice does not exist. If you see `id: 'ice'` anywhere, that is a regression — replace with water.
 
+**Typed items are in the general pool.** All items in `TYPED_ITEMS` appear in shops for all players regardless of `G.type`. The `TYPED_ITEM_POOLS` constant and any filtering by `G.type` in `getItemsOfRarity` have been removed. Type selection only affects which typed skills are offered at bond tree node picks — not which items appear in shops.
+
 ---
 
 ## What NOT to Change Without Discussion
