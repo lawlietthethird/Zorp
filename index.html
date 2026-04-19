@@ -439,6 +439,8 @@ function initBattleState(){
     resilienceUsed:false,
     unbreakableUsed:{},
     fatigueDamageMultiplier:1,
+    burnApplicationsToEnemy:0,
+    fireworksThreshold:6,
   };
 }
 
@@ -977,10 +979,86 @@ const HEADBUTT_ITEMS={
 
 };
 
-function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||HEADBUTT_ITEMS[key]||MOM_ITEMS[key]||MOM_CONSOLATION_ITEMS[key]||null;}
+const BURN_ITEMS={
+
+  stoke:()=>{
+    const item=makeItem('stoke','Stoke','🪵','Relic',75,6000,
+      '6s → Apply 4 burn to a random enemy item.',
+      (s,a)=>{
+        const t=randomEnemyItem(opp(s));
+        if(t)applyBurn(t,a,'Stoke');
+      },3,null,4,'relic','beginner');
+    item.flavorText='It keeps the fire fed.';
+    item.stats=[{icon:'🔥',value:(i)=>i.effectAmt||4,cls:'burn'}];
+    return item;
+  },
+
+  blaze:()=>{
+    const item=makeItem('blaze','Blaze','🔥','Weapon',110,4000,
+      '4s → 8 dmg + increasing burn. Burn grows with each activation.',
+      (s,a,self)=>{
+        dealDmgRandom(opp(s),a,'Blaze');
+        const t=randomEnemyItem(opp(s));
+        if(t)applyBurn(t,self._blazeCounter||1,'Blaze');
+        self._blazeCounter=(self._blazeCounter||1)+1;
+      },5,null,8,'weapon','intermediate');
+    item.flavorText='It only gets hotter.';
+    item._blazeCounter=1;
+    item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||8,cls:'dmg'},{icon:'🔥',value:'1+',cls:'burn'}];
+    return item;
+  },
+
+  cinder_block:()=>{
+    const item=makeItem('cinder_block','Cinder Block','🧱','Armor',200,0,
+      'Passive: Gain +12 shield each time you apply burn to an enemy.',
+      null,4,null,12,'armor','intermediate');
+    item.flavorText='It soaks up the heat.';
+    item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||12,cls:'shield'}];
+    item.handleEvent=(event)=>{
+      if(event.type!=='BURN_APPLIED')return;
+      if(event.item._side!=='enemy')return;
+      if(item.broken)return;
+      const gain=item.effectAmt||12;
+      item.shield=(item.shield||0)+gain;
+      item.maxShield=Math.max(item.maxShield||0,item.shield);
+      log('s','🧱 Cinder Block +'+gain+' shield');
+      fireEvent({type:'ITEM_SHIELDED',item:item,side:item._side||'player',value:gain,source:null});
+    };
+    return item;
+  },
+
+  cauterize:()=>{
+    const item=makeItem('cauterize','Cauterize','🩹','Relic',0,0,
+      'Passive: When an ally breaks, heal all remaining allies for 30 HP.',
+      null,4,null,30,'relic','intermediate');
+    item.flavorText='It seals the wound.';
+    item.isTargetable=false;
+    item.stats=[{icon:'✚',value:(i)=>i.effectAmt||30,cls:'heal'}];
+    item.handleEvent=(event)=>{
+      if(event.type!=='ITEM_BROKEN')return;
+      if(event.side!=='player')return;
+      if(event.item===item)return;
+      healAll('player',item.effectAmt||30,'Cauterize');
+    };
+    return item;
+  },
+
+  fireworks:()=>{
+    const item=makeItem('fireworks','Fireworks','🎆','Relic',0,0,
+      'Passive: After applying 6 burn to enemies, deal 30 damage to all enemies. Repeats.',
+      null,6,null,30,'relic','advanced');
+    item.flavorText='It was always going to end this way.';
+    item.isTargetable=false;
+    item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||30,cls:'dmg'}];
+    return item;
+  },
+
+};
+
+function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||HEADBUTT_ITEMS[key]||BURN_ITEMS[key]||MOM_ITEMS[key]||MOM_CONSOLATION_ITEMS[key]||null;}
 const ITEM_META={};
 (function buildMeta(){
-  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS};
   Object.keys(all).forEach(key=>{
     const t=all[key]();
     ITEM_META[key]={itemRarity:t.itemRarity,itemType:t.itemType};
@@ -1005,7 +1083,7 @@ function rollRarity(day){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 function getItemsOfRarity(rarity,typeFilter){
-  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS};
   const filtered=Object.keys(all).filter(key=>{
     const t=all[key]();
     if(t.itemRarity!==rarity)return false;
@@ -1221,6 +1299,28 @@ function applyBurn(item,stacks,src){
   item.burnStack=(item.burnStack||0)+stacks;
   log('d','🔥 '+src+' BURN '+item.name+' +'+stacks);
   fireEvent({type:'BURN_APPLIED',item:item,side:item._side||null,value:stacks,source:null});
+  if(item._side==='enemy'&&battleState){
+    battleState.burnApplicationsToEnemy=(battleState.burnApplicationsToEnemy||0)+stacks;
+    checkFireworks();
+  }
+}
+function checkFireworks(){
+  if(!battleState)return;
+  if((battleState.burnApplicationsToEnemy||0)<(battleState.fireworksThreshold||6))return;
+  const fw=[...board.front,...board.back].find(i=>i&&!i.broken&&(i.itemKey==='fireworks'||i.id==='fireworks'));
+  if(!fw)return;
+  battleState.burnApplicationsToEnemy=0;
+  const dmg=fw.effectAmt||30;
+  const enemies=[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&!i.broken&&i.maxHp>0);
+  enemies.forEach(e=>applyDmgTo(e,dmg,'Fireworks','enemy'));
+  log('d','🎆 FIREWORKS — '+dmg+' to all enemies!');
+  flashFireworks();
+}
+function flashFireworks(){
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;inset:0;background:rgba(255,140,0,.3);pointer-events:none;z-index:9999;opacity:1;transition:opacity .6s;';
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>{setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),600);},60);});
 }
 function applyPoison(item,stacks,src){
   if(!item||item.broken)return;
@@ -1782,6 +1882,7 @@ function resetItemBattleState(b){
     }
     if(item._firstActivation!==undefined)item._firstActivation=true;
     if(item._spiteCounter!==undefined)item._spiteCounter=1;
+    if(item._blazeCounter!==undefined)item._blazeCounter=1;
   });
   firingEvent=false;
   if(isPlayer)initBattleState();
