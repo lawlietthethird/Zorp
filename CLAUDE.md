@@ -271,6 +271,30 @@ Contains: glacier, hydro_cannon, whirlpool, deluge, flood, hot_springs.
 
 **Hot Springs:** Provision, 0hp, 7s timer, 1 use. Heals lowest HP ally via `healItem`. `applySlow` grants +1 use to all non-broken hot_springs on player board after each slow application.
 
+## ELECTRIC_ITEMS pool
+
+Contains: live_wire, dual_shock, charging_station, feedback, thunder.
+
+**volt_band removed** — deleted from TYPED_ITEMS entirely.
+
+**Live Wire:** Beginner weapon, 80hp, 3s. Checks `self.hasteMs>0` at activation. If Jolted, applies 2 burn to target in addition to effectAmt damage.
+
+**Dual Shock:** Beginner weapon, 80hp, 3s. Hits rightmost enemy normally. If `self.hasteMs>0` at activation also hits leftmost enemy for same effectAmt.
+
+**Charging Station:** Intermediate armor, 150hp, 4s. Uses `getNeighbors(self)` to find left and right neighbors. Calls `applyHaste` on each non-broken neighbor for 2000ms.
+
+**Feedback:** Intermediate relic, 0hp, untargetable, no timer. `handleEvent` on `HASTE_APPLIED` where `event.side==='player'`. Picks random alive player item and calls `applyHaste` for `effectAmt` ms (1000ms base). Re-broadcast of Feedback's triggered haste is silently dropped by re-entrant guard — no infinite loop.
+
+**Thunder:** Advanced weapon, 150hp, no activation timer. `checkThunder()` called from `tickSide` when joltedCount>0. Fires once per battle (`thunderFired` flag). Sorts enemy items by hp ascending, fires ITEM_BROKEN then sets broken on lowest two. ITEM_BROKEN fires before broken is set per convention.
+
+**battleState.joltCumulativeMs:** Incremented each tick by `tickMs × number of currently Jolted player items`. Reset in `initBattleState`.
+
+**battleState.thunderFired:** Boolean, reset in `initBattleState`. Prevents Thunder firing more than once.
+
+**HASTE_APPLIED event:** Already fired in `applyHaste` — confirmed present before Feedback was added.
+
+---
+
 ## Heal targeting
 
 `healItem` targets lowest HP percentage ally (`hp/maxHp` ratio), filtered to items with `hp < maxHp`. Returns early if no healing needed (`actual <= 0`). `healAll` heals every alive item. ITEM_HEALED event is still fired.

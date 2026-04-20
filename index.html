@@ -444,6 +444,8 @@ function initBattleState(){
     slowProcsThisBattle:0,
     floodTriggered:false,
     wetDurationMult:1,
+    joltCumulativeMs:0,
+    thunderFired:false,
   };
 }
 
@@ -594,7 +596,6 @@ const TYPED_ITEMS={
   lightning_claw:()=>{const item=makeItem('lightning_claw','Lightning Claw','⚡','Weapon',90,2500,'2.5s → 10 dmg · random + self Jolt 1.5s',(s,a,self)=>{dealDmgRandom(opp(s),a,'Lightning Claw');applyHaste(self,1500,'Lightning Claw');},8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'⚡',value:'1.5s',cls:'haste'}];return item;},
   arc_bolt:()=>{const item=makeItem('arc_bolt','Arc Bolt','🌩️','Weapon',110,5000,'5s → 10 dmg · hits 2 random targets',(s,a)=>dealDmgTwoRandom(s,a,'Arc Bolt'),8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'}];return item;},
   charge_pack:()=>{const item=makeItem('charge_pack','Charge Pack','🔋','Untargetable',0,9000,'9s → Heal 60 + Jolt 2s to slowest ally · 2 uses',(s,a)=>{healItem(s,a,'Charge Pack');const alive=aliveItems(s).filter(i=>i.maxHp>0);if(alive.length){const t=alive.reduce((a,b)=>a.actPct<b.actPct?a:b);applyHaste(t,2000,'Charge Pack');}},4,2,60,'provision','intermediate');item.stats=[{icon:'✚',value:60,cls:'heal'},{icon:'⚡',value:'2s',cls:'haste'}];return item;},
-  volt_band:()=>{const item=makeItem('volt_band','Volt Band','🫧','Weapon',75,2500,'2.5s → 11 dmg · random (fast striker)',(s,a)=>dealDmgRandom(opp(s),a,'Volt Band'),2,null,11,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||11,cls:'dmg'}];return item;},
   // FIRE 🔥
   ember_fang:()=>{const item=makeItem('ember_fang','Ember Fang','🔥','Weapon',110,4000,'4s → 10 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,10,'Ember Fang','burn',a),4,null,3,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
   scorched_shell:()=>{const item=makeItem('scorched_shell','Scorched Shell','🐚','Armor',140,6000,'6s → Plate random ally +45 + 2 Burn to enemy',(s,a)=>{applyShield(s,45,'Scorched Shell');const t=randomEnemyItem(opp(s));if(t)applyBurn(t,a,'Scorched Shell');},4,null,2,'armor','intermediate');item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||45,cls:'shield'},{icon:'🔥',value:3,cls:'burn'}];return item;},
@@ -617,7 +618,7 @@ const TYPED_ITEMS={
   corrode:()=>{const item=makeItem('corrode','Corrode','🧪','Weapon',115,5000,'5s → 14 dmg + 4 Poison',(s,a)=>dealDmgWithStatus(s,14,'Corrode','poison',a),8,null,4,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||14,cls:'dmg'},{icon:'☠️',value:(i)=>i.effectAmt||4,cls:'poison'}];return item;},
 };
 const TYPED_ITEM_POOLS={
-  electric:['lightning_claw','arc_bolt','charge_pack','volt_band'],
+  electric:['lightning_claw','arc_bolt','charge_pack'],
   fire:    ['ember_fang','scorched_shell','cinder_claw','flame_wick'],
   water:   ['tide_fang','tidal_shell','riptide','current_band'],
   steel:   ['iron_carapace','bulwark_stance','forge_core','alloy_fang'],
@@ -1144,10 +1145,105 @@ const WATER_ITEMS={
 
 };
 
-function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||HEADBUTT_ITEMS[key]||BURN_ITEMS[key]||WATER_ITEMS[key]||MOM_ITEMS[key]||MOM_CONSOLATION_ITEMS[key]||null;}
+const ELECTRIC_ITEMS={
+
+  live_wire:()=>{
+    const item=makeItem('live_wire','Live Wire','⚡','Weapon',80,3000,
+      '12 dmg to random enemy. When Jolted: also applies 2 burn.',
+      (s,a,self)=>{
+        const t=randomEnemyItem(opp(s));
+        if(!t)return;
+        const isJolted=(self.hasteMs||0)>0;
+        applyDmgTo(t,self.effectAmt||12,'Live Wire',opp(s));
+        if(isJolted){
+          applyBurn(t,2,'Live Wire');
+          log('d','⚡ Live Wire — Jolted! Burn applied.');
+        }
+      },2,null,12,'weapon','beginner');
+    item.flavorText='Touch it and find out.';
+    item.stats=[
+      {icon:'⚔️',value:(i)=>i.effectAmt||12,cls:'dmg'},
+      {icon:'🔥',value:'2 (jolted)',cls:'burn'}
+    ];
+    return item;
+  },
+
+  dual_shock:()=>{
+    const item=makeItem('dual_shock','Dual Shock','🌩️','Weapon',80,3000,
+      '10 dmg to rightmost enemy. When Jolted: also hits leftmost enemy.',
+      (s,a,self)=>{
+        const isJolted=(self.hasteMs||0)>0;
+        const b=enemyBoard;
+        const fh=b.front.some(targetable);
+        const pool=fh?b.front:b.back;
+        let right=null;
+        for(let i=pool.length-1;i>=0;i--){if(targetable(pool[i])){right=pool[i];break;}}
+        if(right)applyDmgTo(right,self.effectAmt||10,'Dual Shock','enemy');
+        if(isJolted){
+          let left=null;
+          for(let i=0;i<pool.length;i++){if(targetable(pool[i])){left=pool[i];break;}}
+          if(left&&left!==right)applyDmgTo(left,self.effectAmt||10,'Dual Shock','enemy');
+          log('d','⚡ Dual Shock — Jolted! Hits both ends.');
+        }
+      },2,null,10,'weapon','beginner');
+    item.flavorText='Both directions at once.';
+    item.stats=[
+      {icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},
+      {icon:'⚔️⚔️',value:'both (jolted)',cls:'dmg'}
+    ];
+    return item;
+  },
+
+  charging_station:()=>{
+    const item=makeItem('charging_station','Charging Station','🔋','Armor',150,4000,
+      'Every 4s: applies 2s Jolt to left and right neighbors.',
+      (s,a,self)=>{
+        const neighbors=getNeighbors(self);
+        if(neighbors.left&&!neighbors.left.broken){
+          applyHaste(neighbors.left,2000,'Charging Station');
+        }
+        if(neighbors.right&&!neighbors.right.broken){
+          applyHaste(neighbors.right,2000,'Charging Station');
+        }
+      },4,null,2000,'armor','intermediate');
+    item.flavorText='Keep everything running.';
+    item.stats=[{icon:'⚡',value:'2s neighbors',cls:'haste'}];
+    return item;
+  },
+
+  feedback:()=>{
+    const item=makeItem('feedback','Feedback','📡','Relic',0,0,
+      'When any ally is Jolted, randomly Jolt one ally for 1s.',
+      null,4,null,1000,'relic','intermediate');
+    item.flavorText='It echoes.';
+    item.isTargetable=false;
+    item.handleEvent=(event)=>{
+      if(event.type!=='HASTE_APPLIED')return;
+      if(event.side!=='player')return;
+      const alive=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      if(!alive.length)return;
+      const t=alive[Math.floor(Math.random()*alive.length)];
+      applyHaste(t,item.effectAmt||1000,'Feedback');
+    };
+    item.stats=[{icon:'⚡',value:'1s random',cls:'haste'}];
+    return item;
+  },
+
+  thunder:()=>{
+    const item=makeItem('thunder','Thunder','🌩️','Weapon',150,0,
+      'After 20 cumulative Jolt seconds, instantly destroy the 2 lowest HP enemy items. Fires once.',
+      null,8,null,20000,'weapon','advanced');
+    item.flavorText='It was always coming.';
+    item.stats=[{icon:'⚡',value:'20s→×2',cls:'dmg'}];
+    return item;
+  },
+
+};
+
+function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||HEADBUTT_ITEMS[key]||BURN_ITEMS[key]||WATER_ITEMS[key]||ELECTRIC_ITEMS[key]||MOM_ITEMS[key]||MOM_CONSOLATION_ITEMS[key]||null;}
 const ITEM_META={};
 (function buildMeta(){
-  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS,...ELECTRIC_ITEMS};
   Object.keys(all).forEach(key=>{
     const t=all[key]();
     ITEM_META[key]={itemRarity:t.itemRarity,itemType:t.itemType};
@@ -1172,7 +1268,7 @@ function rollRarity(day){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 function getItemsOfRarity(rarity,typeFilter){
-  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS,...ELECTRIC_ITEMS};
   const filtered=Object.keys(all).filter(key=>{
     const t=all[key]();
     if(t.itemRarity!==rarity)return false;
@@ -1404,6 +1500,35 @@ function applyBurn(item,stacks,src){
   if(item._side==='enemy'&&battleState){
     battleState.burnApplicationsToEnemy=(battleState.burnApplicationsToEnemy||0)+stacks;
     checkFireworks();
+  }
+}
+function checkThunder(){
+  if(!battleState||battleState.thunderFired)return;
+  const thunder=[...board.front,...board.back]
+    .find(i=>i&&!i.broken&&(i.itemKey==='thunder'||i.id==='thunder'));
+  if(!thunder)return;
+  const threshold=20000;
+  if(battleState.joltCumulativeMs>=threshold){
+    battleState.thunderFired=true;
+    log('b','⚡ THUNDER — 20 Jolt seconds reached!');
+    const targets=[...enemyBoard.front,...enemyBoard.back]
+      .filter(i=>i&&!i.broken&&i.maxHp>0)
+      .sort((a,b)=>a.hp-b.hp)
+      .slice(0,2);
+    targets.forEach(t=>{
+      t.hp=0;
+      fireEvent({type:'ITEM_BROKEN',item:t,side:'enemy',value:0,source:thunder});
+      t.broken=true;
+      log('b','⚡ Thunder destroys '+t.name+'!');
+    });
+    const enc=document.querySelector('.encounter');
+    if(enc){
+      enc.style.transition='background .1s';
+      enc.style.background='rgba(240,200,40,.2)';
+      setTimeout(()=>{enc.style.background='';},400);
+    }
+    updateEnemyBars();
+    renderEnemyBoard();
   }
 }
 function checkFlood(){
@@ -2081,6 +2206,14 @@ function tickSide(b,side,tickMs){
       }
     }
   });
+  if(side==='player'){
+    const joltedCount=[...board.front,...board.back]
+      .filter(i=>i&&!i.broken&&(i.hasteMs||0)>0).length;
+    if(joltedCount>0){
+      battleState.joltCumulativeMs+=(tickMs*joltedCount);
+      checkThunder();
+    }
+  }
 }
 function startFatigue(){
   fireEvent({type:'FATIGUE_START',item:null,side:null,value:null,source:null});
