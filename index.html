@@ -2074,28 +2074,71 @@ function startWild(idx){
   showEncounterBattle('wild',m);
 }
 
+const TRAINER_DATA=[
+  null, // index 0 unused
+  {
+    name:'THE RIVAL',
+    icon:'😤',
+    tag:'Your old neighbour',
+    dialogueBefore:'You don\'t even have a type yet. A monster without identity is nothing. Let me show you.',
+    dialogueAfterWin:'...Huh.\n\nKip looks up at you. No words needed. Something was proven just now — not to him. To each other.',
+    dialogueAfterLoss:'Knew it. Run on home. Your mother\'s waiting and you\'re not ready for the tall grass.',
+    buildTeam:()=>{
+      const mi=key=>{
+        const t=ITEMS[key]();
+        return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+          broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
+          burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
+      };
+      if(G.day<=1){
+        enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];
+        enemyBoard.back=[null,null,null];
+      }else{
+        enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];
+        enemyBoard.back=[mi('basic_berry'),null,null];
+      }
+    }
+  },
+  {
+    name:'THE INVESTOR',
+    icon:'💰',
+    tag:'Knows the value of things',
+    dialogueBefore:'I invested in the right things.',
+    dialogueAfterWin:'There\'s more than one way to make a profit. May your interest compound.',
+    dialogueAfterLoss:'Items that don\'t do anything? That\'s debt.',
+    buildTeam:()=>{
+      const mi=(key,upgradeLevel=0)=>{
+        const f=getItemFactory(key);
+        if(!f)return null;
+        const t=f();
+        t.upgradeLevel=0;t.baseMaxHp=t.maxHp;t.baseActMs=t.actMs;
+        for(let i=0;i<upgradeLevel;i++)upgradeItem(t);
+        return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+          broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
+          burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
+      };
+      enemyBoard.front=[mi('hard_shell',1),mi('iron_paw',1),null];
+      enemyBoard.back=[mi('basic_berry'),null,null];
+    }
+  },
+];
+
 function showEncounterBattle(type,wildMonster=null){
   // Reset player board items so they show fresh before battle starts
   resetItemBattleState(board);
   renderBoard();
   const isWild=type==='wild';
+  let trainer=null;
   if(!isWild){
-    const mi=key=>{
-      const t=ITEMS[key]();
-      return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,
-        hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
-    };
-    if(G.day<=1){
-      enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];
-      enemyBoard.back=[null,null,null];
-    }else{
-      enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];
-      enemyBoard.back=[mi('basic_berry'),null,null];
-    }
+    const trainerIdx=G.wins+1;
+    trainer=TRAINER_DATA[trainerIdx]||TRAINER_DATA[1];
+    trainer.buildTeam();
   }
-  const enemy=isWild?wildMonster:{name:'THE RIVAL',icon:'😤',tag:'Your old neighbour'};
-  const dlg=isWild?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>':'<div class="dialogue"><div class="dlg-name">RIVAL</div>"You don\'t even have a type yet. A monster without identity is nothing. Let me show you."</div>';
-  setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — THE RIVAL');
+  const enemy=isWild?wildMonster:trainer;
+  const dlg=isWild
+    ?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
+    :'<div class="dialogue"><div class="dlg-name">'+trainer.name+'</div>'+(trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'</div>';
+  setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — '+trainer.name);
   setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info"><div class="enemy-icon">'+enemy.icon+'</div><div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row" style="margin-top:4px"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
   renderEnemyBoard();
 }
@@ -2381,7 +2424,10 @@ function endBattle(result){
         else{sub='Six wins. The run is complete.';}
         btnText='PLAY AGAIN';btnOnclick='resetRun()';
         logEvent({event:'run_complete',wins:G.wins,honor:G.honor,perfect:isPerfect,board:boardSnapshot(),skills:activeSkills.map(s=>s.id)});
-      }else{sub='Win '+G.wins+' of 6.';}
+      }else{
+        const trainerWinner=TRAINER_DATA[G.wins]||TRAINER_DATA[1];
+        sub=(trainerWinner.dialogueAfterWin||'').replace(/\n/g,'<br>')+'<br><br>Win '+G.wins+' of 6.';
+      }
       logEvent({event:'trainer_battle',result:'win',win_number:G.wins,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
     }
   }else{
@@ -2396,7 +2442,8 @@ function endBattle(result){
       }
     }else{
       const hl=G.day;G.honor=Math.max(0,G.honor-hl);title='DEFEATED';
-      sub='Lost '+hl+' honor. '+G.honor+' remaining.'+(G.honor<=0?' SECOND WIND!':'');
+      const trainerLoser=TRAINER_DATA[G.wins+1]||TRAINER_DATA[1];
+      sub=(trainerLoser.dialogueAfterLoss||'').replace(/\n/g,'<br>')+'<br><br>Lost '+hl+' honor. '+G.honor+' remaining.'+(G.honor<=0?' SECOND WIND!':'');
       btnText=G.honor<=0?'SECOND WIND...':'TRY AGAIN →';
       logEvent({event:'trainer_battle',result:'lose',win_number:G.wins,honor_lost:hl,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
     }
@@ -2615,7 +2662,7 @@ function showTypeSelect(){
   lastOfferedTypes=pool.map(t=>t.id);
   const typeCards=pool.map(t=>`<div class="to" onclick="pickType('${t.id}')" style="${TYPE_COLORS[t.id]||''}"><div class="ti">${t.icon}</div><div class="tn">${t.name}</div><div class="td">${t.desc}</div><div style="margin-top:5px;font-size:6.5px;font-family:'Cinzel',serif;letter-spacing:.04em"><span style="color:#e84060">✗ Lose Potential (+25%)</span><br><span style="color:#50e080">✓ Unlock typed items &amp; skills</span></div></div>`).join('<div style="display:flex;align-items:center;padding:0 6px;font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--dim)">OR</div>');
   const typelessCard=`<div class="to" onclick="pickType('typeless')" style="border-color:var(--potential);margin-top:8px;max-width:280px"><div style="display:flex;align-items:center;gap:8px;justify-content:center"><div style="font-size:18px">✦</div><div><div class="tn" style="text-align:left">STAY TYPELESS</div><div class="td" style="text-align:left;margin-top:2px"><span style="color:#50e080">✓ Keep Potential (+25% to all effects)</span><br><span style="color:#50e080">✓ Unlock the next bond node</span><br><span style="color:var(--dim)">One offered type may be banned.</span></div></div></div></div>`;
-  setEncBody(`<div class="dialogue"><div class="dlg-name">ZORP</div>"(Zorp looks at you with calm, certain eyes.)"</div><div style="display:flex;justify-content:center;align-items:stretch">${typeCards}</div><div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:0"><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div><span style="font-family:Cinzel,serif;font-size:8px;color:var(--dim);letter-spacing:.1em">OR</span><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div></div><div style="display:flex;justify-content:center">${typelessCard}</div>`);
+  setEncBody(`<div class="dialogue"><div class="dlg-name">KIP</div>Kip stands a little different now. Something settled. You feel it too — a pull toward something. Not a name. Not a label. A direction.</div><div style="display:flex;justify-content:center;align-items:stretch">${typeCards}</div><div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:0"><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div><span style="font-family:Cinzel,serif;font-size:8px;color:var(--dim);letter-spacing:.1em">OR</span><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div></div><div style="display:flex;justify-content:center">${typelessCard}</div>`);
 }
 function pickType(id){
   if(id==='typeless'){
