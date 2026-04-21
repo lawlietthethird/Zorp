@@ -295,6 +295,30 @@ Contains: live_wire, dual_shock, charging_station, feedback, thunder.
 
 ---
 
+## STEEL_ITEMS pool
+
+Contains: ironclad, aegis, temper, wrecking_ball, thornback_armor.
+
+**battleState.totalSidePlating:** Incremented in `applyShield` whenever plating is applied to player side. Reset in `initBattleState`. Used by Wrecking Ball death trigger.
+
+**Ironclad:** Beginner armor, 200hp, 5s. Uses `getNeighbors(self)` to find left and right. Calls `applyShield` with specific `targetItem` for each neighbor.
+
+**Aegis:** Intermediate armor, 220hp, 4s. Calls `applyShield` targeting self first, then reads `self.shield` for damage value. Hits random enemy for current shield total.
+
+**Temper:** Intermediate untargetable relic, no HP. `handleEvent` on `ITEM_ACTIVATED` where `event.side==='player'` and `event.item!==self`. Plates all alive player items with `maxHp>0` for effectAmt each.
+
+**Wrecking Ball:** Advanced armor, 80hp, 6s. Plates self via effectFn. `onBreak` callback fires after `item.broken=true` in all break paths. Deals `Math.round(totalSidePlating/2)` to frontmost enemy and item at same index in back row.
+
+**Thornback Armor:** Intermediate armor, 240hp, no activation timer. `handleEvent` on `DAMAGE_RECEIVED` where `event.item===self`. Calculates `absorbed=(event.rawValue||0)-(event.value||0)`. Deals absorbed back to `event.source`.
+
+**applyShield updated:** Now accepts optional 4th parameter `targetItem`. If provided and not broken, plates that specific item. Default (no targetItem) falls back to lowest HP% ally. All existing calls without targetItem continue unchanged. `ITEM_SHIELDED` event removed from applyShield (cinder_block still fires its own). `totalSidePlating` incremented for player side.
+
+**`applyShield` targeting note:** Default target is now lowest HP% ally (not random). The "What NOT to Change Without Discussion" note in earlier CLAUDE.md referred to accidental changes — this is an intentional update.
+
+**onBreak pattern:** `item.onBreak(item)` called after `item.broken=true` in all break paths: `checkAndBreak`, `applyDmgTo` hitCount path, tickSide uses-depletion, tickSide burn hitCount, tickSide poison hitCount. Burn/poison HP paths go through `checkAndBreak` so are covered. Currently used by Wrecking Ball.
+
+---
+
 ## Heal targeting
 
 `healItem` targets lowest HP percentage ally (`hp/maxHp` ratio), filtered to items with `hp < maxHp`. Returns early if no healing needed (`actual <= 0`). `healAll` heals every alive item. ITEM_HEALED event is still fired.

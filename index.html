@@ -446,6 +446,7 @@ function initBattleState(){
     wetDurationMult:1,
     joltCumulativeMs:0,
     thunderFired:false,
+    totalSidePlating:0,
   };
 }
 
@@ -1240,10 +1241,124 @@ const ELECTRIC_ITEMS={
 
 };
 
-function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||HEADBUTT_ITEMS[key]||BURN_ITEMS[key]||WATER_ITEMS[key]||ELECTRIC_ITEMS[key]||MOM_ITEMS[key]||MOM_CONSOLATION_ITEMS[key]||null;}
+const STEEL_ITEMS={
+
+  ironclad:()=>{
+    const item=makeItem('ironclad','Ironclad','🛡','Armor',200,5000,
+      'Plates left and right neighbors +20 each on activation.',
+      (s,a,self)=>{
+        const neighbors=getNeighbors(self);
+        if(neighbors.left&&!neighbors.left.broken){
+          applyShield(s,self.effectAmt||20,'Ironclad',neighbors.left);
+        }
+        if(neighbors.right&&!neighbors.right.broken){
+          applyShield(s,self.effectAmt||20,'Ironclad',neighbors.right);
+        }
+      },2,null,20,'armor','beginner');
+    item.flavorText='The line holds.';
+    item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];
+    return item;
+  },
+
+  aegis:()=>{
+    const item=makeItem('aegis','Aegis','🔰','Armor',220,4000,
+      'Plates self +20, then deals damage equal to current shield to random enemy.',
+      (s,a,self)=>{
+        applyShield(s,self.effectAmt||20,'Aegis',self);
+        const dmg=self.shield||0;
+        if(dmg>0){
+          const t=randomEnemyItem(opp(s));
+          if(t){
+            applyDmgTo(t,dmg,'Aegis',opp(s));
+            log('d','🔰 Aegis — '+dmg+' dmg (from shield)');
+          }
+        }
+      },4,null,20,'armor','intermediate');
+    item.flavorText='The shield strikes back.';
+    item.stats=[
+      {icon:'🛡',value:(i)=>i.effectAmt||20,cls:'shield'},
+      {icon:'⚔️',value:'=shield',cls:'dmg'}
+    ];
+    return item;
+  },
+
+  temper:()=>{
+    const item=makeItem('temper','Temper','⚒️','Relic',0,0,
+      'When any ally item activates, plate all allies +5.',
+      null,4,null,5,'relic','intermediate');
+    item.flavorText='Every strike makes it harder.';
+    item.isTargetable=false;
+    item.handleEvent=(event)=>{
+      if(event.type!=='ITEM_ACTIVATED')return;
+      if(event.side!=='player')return;
+      if(event.item===item)return;
+      const alive=[...board.front,...board.back].filter(i=>i&&!i.broken&&i.maxHp>0);
+      alive.forEach(i=>{
+        applyShield('player',item.effectAmt||5,'Temper',i);
+      });
+    };
+    item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||5,cls:'shield'}];
+    return item;
+  },
+
+  wrecking_ball:()=>{
+    const item=makeItem('wrecking_ball','Wrecking Ball','🪨','Armor',80,6000,
+      'Plates self +10 per activation. On death: deals half total side plating to frontmost enemy and item behind it.',
+      (s,a,self)=>{
+        applyShield(s,self.effectAmt||10,'Wrecking Ball',self);
+      },8,null,10,'armor','advanced');
+    item.flavorText='When it goes, everything goes.';
+    item.onBreak=(self)=>{
+      const total=battleState.totalSidePlating||0;
+      const dmg=Math.round(total/2);
+      if(dmg<=0)return;
+      log('b','💥 Wrecking Ball — '+dmg+' dmg (half of '+total+' total plating)!');
+      const b=enemyBoard;
+      let front=null;
+      for(let i=0;i<b.front.length;i++){if(targetable(b.front[i])){front=b.front[i];break;}}
+      if(!front){
+        for(let i=0;i<b.back.length;i++){if(targetable(b.back[i])){front=b.back[i];break;}}
+      }
+      if(front){
+        applyDmgTo(front,dmg,'Wrecking Ball','enemy');
+        const frontIdx=b.front.indexOf(front);
+        if(frontIdx>=0&&targetable(b.back[frontIdx])){
+          applyDmgTo(b.back[frontIdx],dmg,'Wrecking Ball','enemy');
+        }
+      }
+    };
+    item.stats=[
+      {icon:'🛡',value:(i)=>i.effectAmt||10,cls:'shield'},
+      {icon:'💥',value:'½plating on death',cls:'dmg'}
+    ];
+    return item;
+  },
+
+  thornback_armor:()=>{
+    const item=makeItem('thornback_armor','Thornback Armor','🦔','Armor',240,0,
+      'When hit, deals plating absorbed back to the attacker.',
+      null,4,null,0,'armor','intermediate');
+    item.flavorText='Hit it and find out.';
+    item.handleEvent=(event)=>{
+      if(event.type!=='DAMAGE_RECEIVED')return;
+      if(event.item!==item)return;
+      if(!event.source)return;
+      const absorbed=(event.rawValue||0)-(event.value||0);
+      if(absorbed>0){
+        applyDmgTo(event.source,absorbed,'Thornback Armor',opp(item._side));
+        log('d','🦔 Thornback Armor reflects '+absorbed+' (plating absorbed)');
+      }
+    };
+    item.stats=[{icon:'↩️',value:'=absorbed',cls:'reflect'}];
+    return item;
+  },
+
+};
+
+function getItemFactory(key){return ITEMS[key]||TYPED_ITEMS[key]||PACIFIST_ITEMS[key]||HEADBUTT_ITEMS[key]||BURN_ITEMS[key]||WATER_ITEMS[key]||ELECTRIC_ITEMS[key]||STEEL_ITEMS[key]||MOM_ITEMS[key]||MOM_CONSOLATION_ITEMS[key]||null;}
 const ITEM_META={};
 (function buildMeta(){
-  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS,...ELECTRIC_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...MOM_ITEMS,...MOM_CONSOLATION_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS,...ELECTRIC_ITEMS,...STEEL_ITEMS};
   Object.keys(all).forEach(key=>{
     const t=all[key]();
     ITEM_META[key]={itemRarity:t.itemRarity,itemType:t.itemType};
@@ -1268,7 +1383,7 @@ function rollRarity(day){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 function getItemsOfRarity(rarity,typeFilter){
-  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS,...ELECTRIC_ITEMS};
+  const all={...ITEMS,...TYPED_ITEMS,...PACIFIST_ITEMS,...HEADBUTT_ITEMS,...BURN_ITEMS,...WATER_ITEMS,...ELECTRIC_ITEMS,...STEEL_ITEMS};
   const filtered=Object.keys(all).filter(key=>{
     const t=all[key]();
     if(t.itemRarity!==rarity)return false;
@@ -1352,6 +1467,7 @@ function checkAndBreak(item,side){
     // Fire ITEM_BROKEN before marking broken — handlers fire while item still exists
     fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
     item.broken=true;
+    if(item.onBreak)item.onBreak(item);
     log('b',item.name+' BROKEN!');
   }
 }
@@ -1363,6 +1479,7 @@ function applyDmgTo(target,dmg,src,side){
     if(target.hitCount<=0){
       fireEvent({type:'ITEM_BROKEN',item:target,side:side,value:0,source:null});
       target.broken=true;
+      if(target.onBreak)target.onBreak(target);
       log('b',target.name+' BROKEN!');
     }
     return; // damage absorbed, nothing passes through
@@ -1417,14 +1534,14 @@ function healAll(side,amount,src){
   log('h',src+' heals all +'+amount);
   fireEvent({type:'ITEM_HEALED',item:null,side:side,value:amount,source:null});
 }
-function applyShield(side,amount,src){
-  const alive=aliveItems(side).filter(i=>i.maxHp>0);if(!alive.length)return;
-  const t=alive[Math.floor(Math.random()*alive.length)];
+function applyShield(side,amount,src,targetItem){
+  const alive=aliveItems(side).filter(i=>i&&i.maxHp>0);if(!alive.length)return;
   const mods=side==='player'?getSkillMods():{globalMult:1,platingMult:1};
   const actual=Math.round(amount*mods.globalMult*mods.platingMult);
+  const t=targetItem&&!targetItem.broken?targetItem:alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
   t.shield=(t.shield||0)+actual;t.maxShield=Math.max(t.maxShield||0,t.shield);
+  if(side==='player')battleState.totalSidePlating+=actual;
   log('s',src+' plates '+t.name+' +'+actual);
-  fireEvent({type:'ITEM_SHIELDED',item:t,side:side,value:actual,source:null});
 }
 function dealDmgTwoRandom(side,base,src){
   const attackerMods=side==='player'?null:getSkillMods();
@@ -2156,7 +2273,7 @@ function tickSide(b,side,tickMs){
       log('a',item.icon+' '+item.name+' activates!');
       item.effectFn(side,item.effectAmt||item.baseEffect||0,item);
       fireEvent({type:'ITEM_ACTIVATED',item:item,side:side,value:item.effectAmt||item.baseEffect||0,source:null});
-      if(item.uses!==null){item.uses--;if(item.uses<=0){item.broken=true;log('b',item.name+' consumed!');}}
+      if(item.uses!==null){item.uses--;if(item.uses<=0){item.broken=true;if(item.onBreak)item.onBreak(item);log('b',item.name+' consumed!');}}
     }
     // Burn tick — every 500ms. shield*2 reduces damage first, remainder to HP
     if(item.burnStack>0){
@@ -2169,6 +2286,7 @@ function tickSide(b,side,tickMs){
           if(item.hitCount<=0){
             fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
             item.broken=true;
+            if(item.onBreak)item.onBreak(item);
             log('b',item.name+' BROKEN by burn!');
           }
           item.burnStack--;
@@ -2193,6 +2311,7 @@ function tickSide(b,side,tickMs){
           if(item.hitCount<=0){
             fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
             item.broken=true;
+            if(item.onBreak)item.onBreak(item);
             log('b',item.name+' BROKEN by poison!');
           }
           item.poisonStack--;
