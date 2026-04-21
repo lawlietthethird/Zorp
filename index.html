@@ -1380,7 +1380,7 @@ function applyDmgTo(target,dmg,src,side){
     log('d',src+'→'+target.name+' -'+r+' ('+target.hp+'/'+target.maxHp+')');
     flashCard(target.id,side,'d');
     fireEvent({type:'DAMAGE_DEALT',item:target,side:side,value:r,source:null});
-    fireEvent({type:'DAMAGE_RECEIVED',item:target,side:side,value:r,source:null});
+    fireEvent({type:'DAMAGE_RECEIVED',item:target,side:side,value:r,rawValue:dmg,source:null});
     if(target.hp<=0){
       checkAndBreak(target,side);
     }
