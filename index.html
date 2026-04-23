@@ -2133,14 +2133,18 @@ const TRAINER_DATA=[
       const mi=(key,upgradeLevel=0)=>{
         const f=getItemFactory(key);if(!f)return null;
         const t=f();
-        t.upgradeLevel=0;t.baseMaxHp=t.maxHp;t.baseActMs=t.actMs;
         for(let i=0;i<upgradeLevel;i++)upgradeItem(t);
         return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
           broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
           burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
       };
-      enemyBoard.front=[mi('stoke'),mi('blaze'),mi('hard_shell')];
-      enemyBoard.back=[mi('cinder_block'),mi('basic_berry'),null];
+      enemyBoard.front[0]=mi('cinder_claw');
+      enemyBoard.front[1]=mi('ember_fang');
+      enemyBoard.front[2]=null;
+      enemyBoard.back[0]=mi('stoke');
+      enemyBoard.back[1]=mi('cauterize');
+      enemyBoard.back[2]=null;
+      // SKILL NOTE: Would have Ember Coat typed skill if trainer skills implemented
     }
   },
   {
@@ -2154,14 +2158,18 @@ const TRAINER_DATA=[
       const mi=(key,upgradeLevel=0)=>{
         const f=getItemFactory(key);if(!f)return null;
         const t=f();
-        t.upgradeLevel=0;t.baseMaxHp=t.maxHp;t.baseActMs=t.actMs;
         for(let i=0;i<upgradeLevel;i++)upgradeItem(t);
         return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
           broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
           burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
       };
-      enemyBoard.front=[mi('ironclad'),mi('aegis'),mi('thorn_mantle')];
-      enemyBoard.back=[mi('patience'),mi('basic_berry'),null];
+      enemyBoard.front[0]=mi('thorn_mantle');
+      enemyBoard.front[1]=mi('training_dummy');
+      enemyBoard.front[2]=mi('ironclad');
+      enemyBoard.back[0]=mi('temper');
+      enemyBoard.back[1]=mi('patience');
+      enemyBoard.back[2]=null;
+      // SKILL NOTE: Would have Dense Coat if trainer skills implemented
     }
   },
   {
@@ -2172,22 +2180,66 @@ const TRAINER_DATA=[
     dialogueAfterWin:'A reflection can\'t surpass its source. That was always the flaw.',
     dialogueAfterLoss:'You are what you built.',
     buildTeam:()=>{
-      const copyItem=item=>{
+      const copyItem=(item)=>{
         if(!item)return null;
-        return{...item,hp:item.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
-          broken:false,uses:item.maxUses,hasteMs:0,slowMs:0,
-          burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
-      };
-      const miPatience=()=>{
-        const f=getItemFactory('patience');if(!f)return null;
+        const f=getItemFactory(item.itemKey||item.id);
+        if(!f)return null;
         const t=f();
-        t.upgradeLevel=0;t.baseMaxHp=t.maxHp;t.baseActMs=t.actMs;
+        for(let i=0;i<(item.upgradeLevel||0);i++)upgradeItem(t);
         return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
           broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
           burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
       };
-      enemyBoard.front=board.front.map(copyItem);
-      enemyBoard.back=board.back.map((item,i)=>i===1?miPatience():copyItem(item));
+      // Copy player board exactly
+      enemyBoard.front[0]=copyItem(board.front[0]);
+      enemyBoard.front[1]=copyItem(board.front[1]);
+      enemyBoard.front[2]=copyItem(board.front[2]);
+      enemyBoard.back[0]=null; // slot 4 reserved for Shame
+      enemyBoard.back[1]=copyItem(board.back[1]);
+      enemyBoard.back[2]=copyItem(board.back[2]);
+      // Place Shame in back[0] slot 4
+      const shame={
+        id:'shame',
+        itemKey:'shame',
+        name:'Shame',
+        icon:'🪞',
+        tag:'Reflection',
+        itemType:'relic',
+        itemRarity:'mastered',
+        maxHp:0,
+        baseMaxHp:0,
+        hp:0,
+        shield:0,
+        maxShield:0,
+        actMs:0,
+        baseActMs:0,
+        actElapsed:0,
+        actPct:0,
+        broken:false,
+        uses:null,
+        maxUses:null,
+        upgradeLevel:0,
+        isTargetable:false,
+        effectAmt:50,
+        baseEffect:50,
+        _shameDmgTracked:0,
+        _shameReturnDmg:12,
+        flavorText:'It remembers everything you did.',
+        stats:[{icon:'↩️',value:'12/50dmg',cls:'reflect'}],
+        _side:'enemy',
+        handleEvent:(event)=>{
+          if(event.type!=='DAMAGE_DEALT')return;
+          if(event.side!=='enemy')return; // player dealt damage to enemy
+          shame._shameDmgTracked=(shame._shameDmgTracked||0)+event.value;
+          while(shame._shameDmgTracked>=50){
+            shame._shameDmgTracked-=50;
+            dealDmgRandom('player',shame._shameReturnDmg,'Shame');
+            log('d','🪞 Shame — '+shame._shameReturnDmg+' reflected');
+          }
+        },
+      };
+      enemyBoard.back[0]=shame;
+      // SKILL NOTE: Mirror copies player skills if trainer skills implemented
     }
   },
   {
