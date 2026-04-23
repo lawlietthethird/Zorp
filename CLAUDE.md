@@ -340,3 +340,31 @@ Upgrade levels: front row items Advanced (upgradeLevel 2), back row items Interm
 Type-specific tags show in enemy info panel hinting at what the rival prepared.
 
 rivalRecord tracked in localStorage. getDialogueBefore and getDialogueAfterLoss are functions not strings on TRAINER_DATA[6] — showEncounterBattle and endBattle must call them as functions.
+
+---
+
+## Poison mechanic update
+
+Poison stacks are now permanent — they never decrement through ticking. `poisonStack` only resets in `resetItemBattleState` at battle start. Poison still stops ticking when stack reaches 0 naturally but normal gameplay never reduces stacks. This is a global change affecting all poison items.
+
+## Removed items
+
+`toxic_cloud`, `rot_berry`, `corrode` removed from TYPED_ITEMS entirely.
+
+## POISON_ITEMS pool
+
+Contains: caustic_mantle, mithridate, miasma, outbreak.
+`venom_fang` reworked and remains in TYPED_ITEMS as the Beginner anchor.
+
+**Venom Fang:** Checks board position each activation. If `self===board.front[0]` or `enemyBoard.front[0]`, uses 3s timer. Otherwise 4s. Applies 1 poison to random front enemy.
+
+**Caustic Mantle:** 300hp, no shield. `handleEvent` DAMAGE_RECEIVED where `event.item===self`. Applies 1 poison to `event.source`. Requires source to be wired in applyDmgTo to activate.
+
+**Mithridate:** 150hp, 5s timer. Tracks `_mithridateCount`. Odd: heals front[0], front[2], back[1] for effectAmt. Even: poisons 2 random enemy back items for 1.
+
+**Miasma:** 100hp, no timer. `handleEvent` ITEM_ACTIVATED where `event.item===neighbors.inFront`. Tracks `_miasmaTriggerCount`. Odd triggers: poison enemy front[0], front[2], back[1]. Even triggers: poison enemy front[1], back[0], back[2].
+
+**Outbreak:** Untargetable, no HP. Uses `battleState.poisonApplicationsToEnemy` counter and `outbreakTriggered` flag. After 10 applications, extra +1 poison applied in `applyPoison` automatically.
+
+**battleState.poisonApplicationsToEnemy:** Incremented by 1 in `applyPoison` when `item._side==='enemy'`.
+**battleState.outbreakTriggered:** Set true when `poisonApplicationsToEnemy>=10` in `checkOutbreak`.
