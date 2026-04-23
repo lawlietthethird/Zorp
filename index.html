@@ -540,6 +540,7 @@ function renderSkillTree(){
 // ============================================================
 const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false};
 let bannedTypes=[];
+let rivalRecord={wins:parseInt(localStorage.getItem('rivalWins')||'0'),losses:parseInt(localStorage.getItem('rivalLosses')||'0')};
 let lastOfferedTypes=[];
 let board={front:[null,null,null],back:[null,null,null]};
 let enemyBoard={front:[null,null,null],back:[null,null,null]};
@@ -2121,6 +2122,103 @@ const TRAINER_DATA=[
       enemyBoard.back=[mi('basic_berry'),null,null];
     }
   },
+  {
+    name:'THE ARCHITECT',
+    icon:'🏗️',
+    tag:'Builds to last',
+    dialogueBefore:'I design systems. You improvise. Let\'s see which one burns longer.',
+    dialogueAfterWin:'The blueprint was flawed. I\'ll rebuild.',
+    dialogueAfterLoss:'Look at the structure you\'ve built. Better than you know.',
+    buildTeam:()=>{
+      const mi=(key,upgradeLevel=0)=>{
+        const f=getItemFactory(key);if(!f)return null;
+        const t=f();
+        t.upgradeLevel=0;t.baseMaxHp=t.maxHp;t.baseActMs=t.actMs;
+        for(let i=0;i<upgradeLevel;i++)upgradeItem(t);
+        return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+          broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
+          burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
+      };
+      enemyBoard.front=[mi('stoke'),mi('blaze'),mi('hard_shell')];
+      enemyBoard.back=[mi('cinder_block'),mi('basic_berry'),null];
+    }
+  },
+  {
+    name:'THE MONK',
+    icon:'🧘',
+    tag:'Still as stone',
+    dialogueBefore:'I don\'t need to attack. I just need to outlast you.',
+    dialogueAfterWin:'Patience has its limits. You found mine.',
+    dialogueAfterLoss:'Stone wears down the river, given enough time.',
+    buildTeam:()=>{
+      const mi=(key,upgradeLevel=0)=>{
+        const f=getItemFactory(key);if(!f)return null;
+        const t=f();
+        t.upgradeLevel=0;t.baseMaxHp=t.maxHp;t.baseActMs=t.actMs;
+        for(let i=0;i<upgradeLevel;i++)upgradeItem(t);
+        return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+          broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
+          burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
+      };
+      enemyBoard.front=[mi('ironclad'),mi('aegis'),mi('thorn_mantle')];
+      enemyBoard.back=[mi('patience'),mi('basic_berry'),null];
+    }
+  },
+  {
+    name:'THE MIRROR',
+    icon:'🪞',
+    tag:'Knows your every move',
+    dialogueBefore:'I\'ve been watching. Everything you built — I can build it too.',
+    dialogueAfterWin:'A reflection can\'t surpass its source. That was always the flaw.',
+    dialogueAfterLoss:'You are what you built.',
+    buildTeam:()=>{
+      const copyItem=item=>{
+        if(!item)return null;
+        return{...item,hp:item.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+          broken:false,uses:item.maxUses,hasteMs:0,slowMs:0,
+          burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
+      };
+      const miPatience=()=>{
+        const f=getItemFactory('patience');if(!f)return null;
+        const t=f();
+        t.upgradeLevel=0;t.baseMaxHp=t.maxHp;t.baseActMs=t.actMs;
+        return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+          broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
+          burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
+      };
+      enemyBoard.front=board.front.map(copyItem);
+      enemyBoard.back=board.back.map((item,i)=>i===1?miPatience():copyItem(item));
+    }
+  },
+  {
+    name:'THE RIVAL',
+    icon:'😤',
+    tag:'Back again — and angry',
+    getDialogueBefore:()=>{
+      const w=rivalRecord.wins,l=rivalRecord.losses;
+      if(w===0&&l===0)return 'First time facing me for real. Let\'s make it count.';
+      if(l>w)return 'I\'ve lost to you '+(l>1?l+' times':'once')+'. Not today.';
+      if(w>l)return 'Record: '+w+'-'+l+'. Don\'t think that means anything.';
+      return 'We\'re even. Not for long.';
+    },
+    dialogueAfterWin:'...Six wins. That\'s the run.\n\nKip looks up at the sky. The rival is already gone.',
+    getDialogueAfterLoss:()=>{
+      return rivalRecord.wins>1?'You always do this. Every single time.':'...I knew you could. Don\'t let it get to your head.';
+    },
+    buildTeam:()=>{
+      const mi=(key,upgradeLevel=0)=>{
+        const f=getItemFactory(key);if(!f)return null;
+        const t=f();
+        t.upgradeLevel=0;t.baseMaxHp=t.maxHp;t.baseActMs=t.actMs;
+        for(let i=0;i<upgradeLevel;i++)upgradeItem(t);
+        return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+          broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
+          burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
+      };
+      enemyBoard.front=[mi('iron_paw',2),mi('blaze',1),mi('hard_shell',1)];
+      enemyBoard.back=[mi('stoke',1),mi('basic_berry'),mi('cinder_block')];
+    }
+  },
 ];
 
 function showEncounterBattle(type,wildMonster=null){
@@ -2137,7 +2235,7 @@ function showEncounterBattle(type,wildMonster=null){
   const enemy=isWild?wildMonster:trainer;
   const dlg=isWild
     ?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
-    :'<div class="dialogue"><div class="dlg-name">'+trainer.name+'</div>'+(trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'</div>';
+    :'<div class="dialogue"><div class="dlg-name">'+trainer.name+'</div>'+(trainer.getDialogueBefore?trainer.getDialogueBefore():trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'</div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — '+trainer.name);
   setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info"><div class="enemy-icon">'+enemy.icon+'</div><div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row" style="margin-top:4px"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
   renderEnemyBoard();
@@ -2419,6 +2517,7 @@ function endBattle(result){
     }else{
       G.wins++;G.rivalDefeated=true;title='VICTORY';
       if(G.wins>=6){
+        rivalRecord.wins++;localStorage.setItem('rivalWins',rivalRecord.wins);
         const isPerfect=G.honor===13;
         if(isPerfect){title='FLAWLESS';sub='Six wins. Zero losses. Kip knew all along.';}
         else{sub='Six wins. The run is complete.';}
@@ -2443,7 +2542,9 @@ function endBattle(result){
     }else{
       const hl=G.day;G.honor=Math.max(0,G.honor-hl);title='DEFEATED';
       const trainerLoser=TRAINER_DATA[G.wins+1]||TRAINER_DATA[1];
-      sub=(trainerLoser.dialogueAfterLoss||'').replace(/\n/g,'<br>')+'<br><br>Lost '+hl+' honor. '+G.honor+' remaining.'+(G.honor<=0?' SECOND WIND!':'');
+      const loserDlg=trainerLoser.getDialogueAfterLoss?trainerLoser.getDialogueAfterLoss():trainerLoser.dialogueAfterLoss||'';
+      if(G.wins===5){rivalRecord.losses++;localStorage.setItem('rivalLosses',rivalRecord.losses);}
+      sub=loserDlg.replace(/\n/g,'<br>')+'<br><br>Lost '+hl+' honor. '+G.honor+' remaining.'+(G.honor<=0?' SECOND WIND!':'');
       btnText=G.honor<=0?'SECOND WIND...':'TRY AGAIN →';
       logEvent({event:'trainer_battle',result:'lose',win_number:G.wins,honor_lost:hl,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
     }
