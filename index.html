@@ -2247,29 +2247,96 @@ const TRAINER_DATA=[
     icon:'😤',
     tag:'Back again — and angry',
     getDialogueBefore:()=>{
-      const w=rivalRecord.wins,l=rivalRecord.losses;
-      if(w===0&&l===0)return 'First time facing me for real. Let\'s make it count.';
-      if(l>w)return 'I\'ve lost to you '+(l>1?l+' times':'once')+'. Not today.';
-      if(w>l)return 'Record: '+w+'-'+l+'. Don\'t think that means anything.';
-      return 'We\'re even. Not for long.';
+      const total=rivalRecord.wins+rivalRecord.losses;
+      if(total===0)return'Some call it destiny. I call it inevitable.';
+      if(rivalRecord.wins>rivalRecord.losses)
+        return rivalRecord.wins+'-'+rivalRecord.losses+'. Some would stop showing up.';
+      if(rivalRecord.losses>rivalRecord.wins)
+        return'Some call it destiny. I call it inevitable.';
+      return rivalRecord.wins+'-'+rivalRecord.losses+'. Some call it destiny.';
     },
     dialogueAfterWin:'...Six wins. That\'s the run.\n\nKip looks up at the sky. The rival is already gone.',
     getDialogueAfterLoss:()=>{
-      return rivalRecord.wins>1?'You always do this. Every single time.':'...I knew you could. Don\'t let it get to your head.';
+      const total=rivalRecord.wins+rivalRecord.losses;
+      if(total===0)return'0-1. I\'ll be here.';
+      return rivalRecord.wins+'-'+(rivalRecord.losses)+'. I\'ll be here.';
     },
     buildTeam:()=>{
       const mi=(key,upgradeLevel=0)=>{
         const f=getItemFactory(key);if(!f)return null;
         const t=f();
-        t.upgradeLevel=0;t.baseMaxHp=t.maxHp;t.baseActMs=t.actMs;
         for(let i=0;i<upgradeLevel;i++)upgradeItem(t);
         return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
           broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
           burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
       };
-      enemyBoard.front=[mi('iron_paw',2),mi('blaze',1),mi('hard_shell',1)];
-      enemyBoard.back=[mi('stoke',1),mi('basic_berry'),mi('cinder_block')];
-    }
+
+      // Clear board first
+      enemyBoard.front=[null,null,null];
+      enemyBoard.back=[null,null,null];
+
+      if(G.type==='electric'){
+        // Steel counter — absorbs Jolt uptime, reflects hits
+        enemyBoard.front[0]=mi('thornback_armor',2);
+        enemyBoard.front[1]=mi('aegis',2);
+        enemyBoard.front[2]=mi('ironclad',1);
+        enemyBoard.back[0]=mi('temper',1);
+        enemyBoard.back[1]=mi('wrecking_ball',2);
+        enemyBoard.back[2]=mi('hard_shell',2);
+        // SKILL NOTE: Would have Plating Mastery typed skill if trainer skills implemented
+
+      }else if(G.type==='fire'){
+        // Water counter — Wet slows burn items, Hydro Cannon hits hard
+        enemyBoard.front[0]=mi('glacier',1);
+        enemyBoard.front[1]=mi('hydro_cannon',2);
+        enemyBoard.front[2]=mi('whirlpool',1);
+        enemyBoard.back[0]=mi('deluge',2);
+        enemyBoard.back[1]=mi('hot_springs',1);
+        enemyBoard.back[2]=mi('tidal_shell',1);
+        // SKILL NOTE: Would have Frost Aura typed skill if trainer skills implemented
+
+      }else if(G.type==='water'){
+        // Electric counter — Jolt outpaces slow buildup, Thunder fires fast
+        enemyBoard.front[0]=mi('live_wire',2);
+        enemyBoard.front[1]=mi('dual_shock',2);
+        enemyBoard.front[2]=mi('charging_station',2);
+        enemyBoard.back[0]=mi('feedback',1);
+        enemyBoard.back[1]=mi('thunder',2);
+        enemyBoard.back[2]=mi('arc_bolt',1);
+        // SKILL NOTE: Would have Static Field typed skill if trainer skills implemented
+
+      }else if(G.type==='toxic'){
+        // Fire counter — burn eats fragile toxic items, Arsonist opens strong
+        enemyBoard.front[0]=mi('cinder_claw',2);
+        enemyBoard.front[1]=mi('ember_fang',2);
+        enemyBoard.front[2]=mi('arsonist',2);
+        enemyBoard.back[0]=mi('stoke',2);
+        enemyBoard.back[1]=mi('fireworks',2);
+        enemyBoard.back[2]=mi('blaze',2);
+        // SKILL NOTE: Would have Wildfire typed skill if trainer skills implemented
+
+      }else if(G.type==='steel'){
+        // PLACEHOLDER — Toxic counter when Toxic items implemented
+        enemyBoard.front[0]=mi('hard_shell',2);
+        enemyBoard.front[1]=mi('iron_paw',2);
+        enemyBoard.front[2]=mi('thorn_mantle',1);
+        enemyBoard.back[0]=mi('berry_pouch',2);
+        enemyBoard.back[1]=mi('bubble_shield',2);
+        enemyBoard.back[2]=mi('spark_charm',2);
+        // PLACEHOLDER: Replace with Toxic counter build when Toxic items implemented
+        // SKILL NOTE: Would have Poison typed skills if trainer skills implemented
+
+      }else{
+        // Typeless — strong generic board, no clear archetype
+        enemyBoard.front[0]=mi('hard_shell',2);
+        enemyBoard.front[1]=mi('iron_paw',2);
+        enemyBoard.front[2]=mi('thorn_mantle',1);
+        enemyBoard.back[0]=mi('berry_pouch',2);
+        enemyBoard.back[1]=mi('bubble_shield',2);
+        enemyBoard.back[2]=mi('spark_charm',2);
+        // SKILL NOTE: Typeless rival runs best generic board
+      }
+    },
   },
 ];
 
@@ -2283,6 +2350,18 @@ function showEncounterBattle(type,wildMonster=null){
     const trainerIdx=G.wins+1;
     trainer=TRAINER_DATA[trainerIdx]||TRAINER_DATA[1];
     trainer.buildTeam();
+    // For trainer index 6, override tag based on player type
+    if(trainerIdx===6){
+      const typeTags={
+        electric:'Studied your speed',
+        fire:'Brought the rain',
+        water:'Faster than your tide',
+        toxic:'Burns clean',
+        steel:'Found the gap',
+        null:'Came prepared',
+      };
+      trainer.tag=typeTags[G.type]||typeTags[null];
+    }
   }
   const enemy=isWild?wildMonster:trainer;
   const dlg=isWild

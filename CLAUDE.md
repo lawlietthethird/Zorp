@@ -322,3 +322,21 @@ Contains: ironclad, aegis, temper, wrecking_ball, thornback_armor.
 ## Heal targeting
 
 `healItem` targets lowest HP percentage ally (`hp/maxHp` ratio), filtered to items with `hp < maxHp`. Returns early if no healing needed (`actual <= 0`). `healAll` heals every alive item. ITEM_HEALED event is still fired.
+
+---
+
+## Win 6 — The Rival Returns
+
+TRAINER_DATA[6].buildTeam reads G.type and builds counter board:
+- electric → Steel counter (Thornback Armor, Aegis, Ironclad, Temper, Wrecking Ball, Hard Shell)
+- fire → Water counter (Glacier, Hydro Cannon, Whirlpool, Deluge, Hot Springs, Tidal Shell)
+- water → Electric counter (Live Wire, Dual Shock, Charging Station, Feedback, Thunder, Arc Bolt)
+- toxic → Fire counter (Cinder Claw, Ember Fang, Arsonist, Stoke, Fireworks, Blaze)
+- steel → Placeholder generic (replace when Toxic items implemented)
+- null/typeless → Strong generic board
+
+Upgrade levels: front row items Advanced (upgradeLevel 2), back row items Intermediate-Advanced (upgradeLevel 1-2).
+
+Type-specific tags show in enemy info panel hinting at what the rival prepared.
+
+rivalRecord tracked in localStorage. getDialogueBefore and getDialogueAfterLoss are functions not strings on TRAINER_DATA[6] — showEncounterBattle and endBattle must call them as functions.
