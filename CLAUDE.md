@@ -84,14 +84,23 @@ Perfect run (6-0, G.honor===13 at completion) → FLAWLESS screen with gold glow
 
 ---
 
-## Node Tree — 6 nodes
+## Node Tree — 6 nodes (Fox)
 
-HEAD (prestige, pre-filled), NECK (beginner), SPINE1 (intermediate), SPINE2 (intermediate), FRONT_UPPER (advanced, branches from SPINE1), SPINE3 (advanced, end of spine).
+HEAD (prestige, pre-filled), FRONT_SHOULDER (beginner), BACK_SHOULDER (intermediate), FRONT_FOOT (intermediate, branches from FRONT_SHOULDER), BACK_FOOT (advanced, branches from BACK_SHOULDER), TAIL_TIP (mastered, branches from BACK_SHOULDER).
 
-Typed players fill 5 nodes — win spent on type pick gives no node.
-Typeless players fill all 5 remaining nodes across 5 wins.
+Parent relationships:
+- head → front_shoulder
+- front_shoulder → back_shoulder
+- front_shoulder → front_foot
+- back_shoulder → back_foot
+- back_shoulder → tail_tip
 
-Deleted nodes — do not reference: `tail`, `back_upper`, `front_foot`, `back_foot`.
+Typed players skip FRONT_SHOULDER — fill 4 nodes max.
+Typeless fill all 5 remaining nodes.
+
+Deleted nodes — do not reference: `neck`, `spine1`, `spine2`, `spine3`, `front_upper`, `tail` (old).
+
+Rarity by node: prestige (head), beginner (front_shoulder), intermediate (back_shoulder, front_foot), advanced (back_foot), mastered (tail_tip).
 
 - HEAD node is pre-filled with Potential at init and on every reset. Never leave HEAD empty.
 - `getAvailableNodes()` returns all nodes where parent is filled and self is empty (excluding HEAD).
