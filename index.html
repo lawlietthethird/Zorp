@@ -571,8 +571,12 @@ function makeItem(key,name,icon,tag,maxHp,actMs,desc,effectFn,cost=0,uses=null,b
 const UPGRADE_MULTS=[1.0,1.25,1.6,2.0];
 const UPGRADE_NAMES=['','UPGRADED','ADVANCED','MASTERED'];
 
-const WORN_LOCKET_GOLD='';
-const WORN_LOCKET_SILVER='';
+const WORN_LOCKET_GOLD='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Locket-removebg-preview_dgojxs.png';
+const WORN_LOCKET_SILVER='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Locket_broken-removebg-preview_if88z5.png';
+const HEAVY_WALKING_STICK='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130716/Gemini_Generated_Image_qil4q3qil4q3qil4-removebg-preview_a2olut.png';
+const HEAVY_WALKING_STICK_BROKEN='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Gemini_Generated_Image_qil4q3qil4q3qil4__1_-removebg-preview_2_gemorj.png';
+const SHARPENING_STONE='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Gemini_Generated_Image_pow3rrpow3rrpow3-removebg-preview_xudhmn.png';
+const SHARPENING_STONE_BROKEN='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Gemini_Generated_Image_izbksizbksizbksi-removebg-preview_hgod7k.png';
 
 const ITEMS={
   left_claws:()=>{const item=makeItem('left_claws','Left Claws','🐾','Weapon',100,4000,'4s → 15 dmg · leftmost',(s,a)=>dealDmg(opp(s),a,'Left Claws'),2,null,15,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||15,cls:'dmg'}];return item;},
@@ -1903,14 +1907,19 @@ function renderStatRow(stats,item){
   }).join('')+'</div>';
 }
 function getItemIcon(item){
-  const key=item.itemKey||'';
-  if(key==='worn_locket'){
-    if(WORN_LOCKET_GOLD&&WORN_LOCKET_SILVER){
-      const src=item.broken?WORN_LOCKET_SILVER:WORN_LOCKET_GOLD;
-      return'<img src="'+src+'" style="width:34px;height:34px;object-fit:contain;display:block;margin:0 auto"/>';
-    }
+  const key=item.itemKey||item.id||'';
+  const broken=item.broken||false;
+  const img=(src)=>'<img src="'+src+'" style="width:34px;height:34px;object-fit:contain;display:block;margin:0 auto"/>';
+  if(key==='worn_locket'&&WORN_LOCKET_GOLD.startsWith('https://')){
+    return img(broken?WORN_LOCKET_SILVER:WORN_LOCKET_GOLD);
   }
-  return'<span>'+item.icon+'</span>';
+  if(key==='heavy_walking_stick'&&HEAVY_WALKING_STICK.startsWith('https://')){
+    return img(broken?HEAVY_WALKING_STICK_BROKEN:HEAVY_WALKING_STICK);
+  }
+  if(key==='sharpening_stone'&&SHARPENING_STONE.startsWith('https://')){
+    return img(broken?SHARPENING_STONE_BROKEN:SHARPENING_STONE);
+  }
+  return'<span>'+(item.icon||'?')+'</span>';
 }
 function renderBoard(){renderRow('frontSlots',board.front,'front',maxFrontSlots());renderRow('backSlots',board.back,'back',maxBackSlots());}
 function renderRow(cid,slots,rowType,maxSlots){
