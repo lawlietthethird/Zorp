@@ -1909,7 +1909,7 @@ function renderStatRow(stats,item){
 function getItemIcon(item){
   const key=item.itemKey||item.id||'';
   const broken=item.broken||false;
-  const img=(src)=>'<img src="'+src+'" style="width:34px;height:34px;object-fit:contain;display:block;margin:0 auto"/>';
+  const img=(src)=>'<img src="'+src+'" style="width:54px;height:54px;object-fit:contain;display:block;margin:0 auto"/>';
   if(key==='worn_locket'&&WORN_LOCKET_GOLD.startsWith('https://')){
     return img(broken?WORN_LOCKET_SILVER:WORN_LOCKET_GOLD);
   }
