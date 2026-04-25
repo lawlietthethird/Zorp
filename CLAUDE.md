@@ -132,7 +132,7 @@ Expansion: day 1 = 1 per row, day 2 = 2 per row, day 3+ = 3 per row.
 
 ## Skill System
 
-SKILLS: prestige (Potential), beginner (6 skills), intermediate (8 skills), advanced (empty), mastered (empty).
+SKILLS: prestige (Potential), beginner (6 skills), intermediate (8 skills), advanced (14 skills), mastered (2 skills).
 TYPED_SKILLS removed. Typed skills to be designed later.
 selectNode shows 2 skill choices (slice 0,2).
 
@@ -154,11 +154,32 @@ selectNode shows 2 skill choices (slice 0,2).
 `crescendo`: crescendoCount increments each player activation. At 5: count resets, crescendoReady=true. Next effectFn call multiplies effectAmt×2. crescendoReady cleared after use.
 `epicenter`: slot2SpeedMult*=0.75 and slot5SpeedMult*=0.75 in getSkillMods. Applied per-slot in tickSide via slotNum.
 
-## battleState additions (Prompt 2)
+## Advanced Skills (14)
+`endurance`: fatigueMult*=0.6 in getSkillMods (40% fatigue reduction).
+`last_stand`: each player item gets `_lastStandApplied=false` in resetItemBattleState. In checkAndBreak: if player, !_lastStandApplied → set hp=1, _lastStandApplied=true, return (no break).
+`iron_hide`: ironHideActive=true in initBattleState when skill active. In checkAndBreak: if ironHideActive → set hp=1, return. Expires in runBattle interval at battleMs>=10000 (sets ironHideActive=false, ironHideExpired=true).
+`phoenix_downed`: phoenixDownAvailable already in initBattleState. In checkAndBreak: if phoenixDownAvailable && skill active → set hp=maxHp*0.5, phoenixDownAvailable=false, return (no break).
+`echo`: in checkAndBreak after normal break: if side===player && n.row==='front' && n.behind exists && not broken → trigger n.behind.effectFn immediately.
+`waterproof`: early return in applySlow when item._side==='player'.
+`grounded`: early return in applyHaste when item._side==='enemy'.
+`immunity`: poisonInterval=2000ms (vs 1000ms) in tickSide poison loop when side==='player'.
+`asbestos`: after normal burnStack-- in tickSide HP path: if player → burnStack=Math.max(0,burnStack-2).
+`shatter`: in applyShield, if side==='enemy' → actual=Math.floor(actual/2).
+`war_chest`: warChestBonus=Math.floor(G.gold/2) set in initBattleState. dmgBonus+=warChestBonus in getSkillMods.
+`desperation`: in checkAndBreak after break: if player → multiply effectAmt and baseEffect ×1.5 for all non-broken player items. Stacks with each additional break.
+`predator`: predatorActive flag in initBattleState. Checked in runBattle interval: if 3+ enemy items broken → predatorActive=true. globalMult*=1.5 in getSkillMods when predatorActive.
+`flow_state`: flowStateActive flag in initBattleState. Set in runBattle interval when battleMs>=20000. globalMult*=1.15 in getSkillMods when flowStateActive.
+
+## Mastered Skills (2)
+`apotheosis`: second pass in resetItemBattleState after forEach: all player items with baseEffect get effectAmt=Math.round(baseEffect*UPGRADE_MULTS[3]).
+`fizzle`: after resetItemBattleState calls in runBattle: halve effectAmt and baseEffect of all enemy items with maxHp===0 (untargetable passives).
+
+## battleState fields (all skills combined)
 `resilienceUsed:false`, `crescendoCount:0`, `crescendoReady:false`, `benedictionMs:0`, `kickstartCount:0`, `frictionCount:0`, `assembledActive:false`, `dualityApplied:false`
+`ironHideActive:(skill active)`, `ironHideExpired:false`, `flowStateActive:false`, `predatorActive:false`, `warChestBonus:(Math.floor(G.gold/2) if active else 0)`
 
 Deleted skill IDs — do not reference:
-`quick_reflex` (now `quick_reflexes`), `battle_hardened`, `dense_coat`, `pack_rhythm`, `apex_strike`, `endurance`, `last_stand`, `iron_hide`, `alpha`, `unbreakable`, `static_field`, `chain_lightning`, `ember_coat`, `wildfire`, `frost_aura`, `deep_freeze`, `plating_mastery`, `fortress`.
+`quick_reflex` (now `quick_reflexes`), `battle_hardened`, `dense_coat`, `pack_rhythm`, `apex_strike`, `alpha`, `unbreakable`, `static_field`, `chain_lightning`, `ember_coat`, `wildfire`, `frost_aura`, `deep_freeze`, `plating_mastery`, `fortress`.
 
 ---
 

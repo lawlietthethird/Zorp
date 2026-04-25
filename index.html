@@ -287,6 +287,8 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
           <line x1="70" y1="28" x2="70" y2="58" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
           <!-- Back leg down -->
           <line x1="150" y1="28" x2="150" y2="58" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
+          <!-- Tail from back shoulder -->
+          <line x1="150" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
           <!-- Tail curve up -->
           <line x1="200" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
           <!-- Connection lines drawn by JS -->
@@ -378,8 +380,26 @@ const SKILLS={
     {id:'crescendo',name:'Crescendo',icon:'🎵',desc:'Every 5th activation this battle, that activation\'s effects are doubled.',rarity:'intermediate'},
     {id:'epicenter',name:'Epicenter',icon:'🎯',desc:'Items in slots 2 and 5 activate 25% faster.',rarity:'intermediate'},
   ],
-  advanced:[],
-  mastered:[],
+  advanced:[
+    {id:'endurance',name:'Endurance',icon:'🏃',desc:'Fatigue damage to your items is reduced by 40%.',rarity:'advanced'},
+    {id:'last_stand',name:'Last Stand',icon:'⚔️',desc:'Each item can survive breaking once per battle, staying at 1 HP instead.',rarity:'advanced'},
+    {id:'iron_hide',name:'Iron Hide',icon:'🦏',desc:'All player items are immune to breaking for the first 10 seconds of battle.',rarity:'advanced'},
+    {id:'phoenix_downed',name:'Phoenix Downed',icon:'🕊️',desc:'Once per battle, when an item would break, it is restored to 50% HP instead.',rarity:'advanced'},
+    {id:'echo',name:'Echo',icon:'🔊',desc:'When a front row player item breaks, the back row item directly behind it activates immediately.',rarity:'advanced'},
+    {id:'waterproof',name:'Waterproof',icon:'🧥',desc:'Your items cannot be Wet (Slowed).',rarity:'advanced'},
+    {id:'grounded',name:'Grounded',icon:'⛺',desc:'Enemy items cannot be Jolted (Hasted).',rarity:'advanced'},
+    {id:'immunity',name:'Immunity',icon:'💊',desc:'Poison ticks 50% slower on your items.',rarity:'advanced'},
+    {id:'asbestos',name:'Asbestos',icon:'🧱',desc:'Burn stacks on your items are reduced by 2 extra each tick.',rarity:'advanced'},
+    {id:'shatter',name:'Shatter',icon:'💥',desc:'When plating is applied to enemy items, it is halved.',rarity:'advanced'},
+    {id:'war_chest',name:'War Chest',icon:'💰',desc:'Each battle starts with bonus damage equal to half your current gold.',rarity:'advanced'},
+    {id:'desperation',name:'Desperation',icon:'😤',desc:'When a player item breaks, all remaining player items gain +50% effects for this battle.',rarity:'advanced'},
+    {id:'predator',name:'Predator',icon:'🐺',desc:'Once 3 enemy items break this battle, all your effects are ×1.5 for the rest of the battle.',rarity:'advanced'},
+    {id:'flow_state',name:'Flow State',icon:'🌀',desc:'After 20 seconds of battle have elapsed, all your effects are ×1.15 permanently.',rarity:'advanced'},
+  ],
+  mastered:[
+    {id:'apotheosis',name:'Apotheosis',icon:'✨',desc:'All your items are treated as Mastered tier — effects scale to maximum.',rarity:'mastered'},
+    {id:'fizzle',name:'Fizzle',icon:'💨',desc:'At battle start, halve the effectAmt of all untargetable enemy passive items.',rarity:'mastered'},
+  ],
 };
 
 // Active skills applied to player
@@ -407,6 +427,11 @@ function getSkillMods(){
     if(sk.id==='scrappy')        m.dmgBonus+=6;
     if(sk.id==='epicenter'){     m.slot2SpeedMult*=0.75;m.slot5SpeedMult*=0.75;}
     if(sk.id==='assembled'&&battleState.assembledActive) m.speedMult*=0.82;
+    // Advanced
+    if(sk.id==='endurance')      m.fatigueMult*=0.6;
+    if(sk.id==='flow_state'&&battleState.flowStateActive) m.globalMult*=1.15;
+    if(sk.id==='predator'&&battleState.predatorActive)    m.globalMult*=1.5;
+    if(sk.id==='war_chest')      m.dmgBonus+=(battleState.warChestBonus||0);
   });
   return m;
 }
@@ -433,6 +458,12 @@ function initBattleState(){
     frictionCount:0,
     assembledActive:false,
     dualityApplied:false,
+    // Advanced skills
+    ironHideActive:activeSkills.some(s=>s.id==='iron_hide'),
+    ironHideExpired:false,
+    flowStateActive:false,
+    predatorActive:false,
+    warChestBonus:activeSkills.some(s=>s.id==='war_chest')?Math.max(0,Math.floor((G.gold||0)/2)):0,
   };
 }
 
@@ -1536,11 +1567,50 @@ function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
 // ============================================================
 function checkAndBreak(item,side){
   if(item.hp<=0&&!item.broken){
+    // Iron Hide — player items immune to breaking during first 10 seconds
+    if(side==='player'&&battleState.ironHideActive){
+      item.hp=1;
+      log('s','🦏 Iron Hide saves '+item.name+'!');
+      return;
+    }
+    // Phoenix Downed — once per battle, restore to 50% HP instead of breaking
+    if(side==='player'&&battleState.phoenixDownAvailable&&activeSkills.some(s=>s.id==='phoenix_downed')){
+      battleState.phoenixDownAvailable=false;
+      item.hp=Math.max(1,Math.floor(item.maxHp*0.5));
+      log('h','🕊️ Phoenix Downed! '+item.name+' restored to 50% HP!');
+      return;
+    }
+    // Last Stand — each item survives breaking once per battle at 1 HP
+    if(side==='player'&&!item._lastStandApplied&&activeSkills.some(s=>s.id==='last_stand')){
+      item._lastStandApplied=true;
+      item.hp=1;
+      log('s','⚔️ Last Stand! '+item.name+' survives at 1 HP!');
+      return;
+    }
     // Fire ITEM_BROKEN before marking broken — handlers fire while item still exists
     fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
     item.broken=true;
     if(item.onBreak)item.onBreak(item);
     log('b',item.name+' BROKEN!');
+    // Desperation — when player item breaks, boost all remaining player items' effects ×1.5
+    if(side==='player'&&activeSkills.some(s=>s.id==='desperation')){
+      [...board.front,...board.back].forEach(i=>{
+        if(i&&!i.broken){
+          i.effectAmt=Math.round((i.effectAmt||0)*1.5);
+          i.baseEffect=Math.round((i.baseEffect||0)*1.5);
+        }
+      });
+      log('s','😤 Desperation! Surviving items gain +50% effects!');
+    }
+    // Echo — if front row item breaks, the back row item directly behind it activates
+    if(side==='player'&&activeSkills.some(s=>s.id==='echo')){
+      const n=getNeighbors(item);
+      if(n&&n.row==='front'&&n.behind&&!n.behind.broken&&n.behind.effectFn){
+        log('a','🔊 Echo! '+n.behind.name+' activates!');
+        n.behind.effectFn('player',n.behind.effectAmt||n.behind.baseEffect||0,n.behind);
+        fireEvent({type:'ITEM_ACTIVATED',item:n.behind,side:'player',value:n.behind.effectAmt||0,source:null});
+      }
+    }
   }
 }
 function applyDmgTo(target,dmg,src,side){
@@ -1616,6 +1686,10 @@ function applyShield(side,amount,src,targetItem){
   if(side==='player'&&activeSkills.some(s=>s.id==='fortified')){
     actual+=Math.round(7*mods.globalMult);
   }
+  // Shatter — halve plating applied to enemy items
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='shatter')){
+    actual=Math.floor(actual/2);
+  }
   const t=targetItem&&!targetItem.broken?targetItem:alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
   t.shield=(t.shield||0)+actual;t.maxShield=Math.max(t.maxShield||0,t.shield);
   if(side==='player')battleState.totalSidePlating+=actual;
@@ -1666,12 +1740,16 @@ function applyShieldAll(side,amount,src){
 // Status effect applicators
 function applyHaste(item,durationMs,src){
   if(!item||item.broken)return;
+  // Grounded — enemy items cannot be Jolted
+  if(item._side==='enemy'&&activeSkills.some(s=>s.id==='grounded'))return;
   item.hasteMs=Math.max(item.hasteMs,durationMs);
   log('a','⚡ '+src+' HASTE '+item.name+' '+(durationMs/1000).toFixed(1)+'s');
   fireEvent({type:'HASTE_APPLIED',item:item,side:item._side||null,value:durationMs,source:null});
 }
 function applySlow(item,durationMs,src){
   if(!item||item.broken)return;
+  // Waterproof — player items cannot be Slowed (Wet)
+  if(item._side==='player'&&activeSkills.some(s=>s.id==='waterproof'))return;
   const actual=Math.round(durationMs*(battleState&&battleState.wetDurationMult||1));
   item.slowMs=(item.slowMs||0)+actual;
   log('s','💧 '+src+' SLOW '+item.name+' '+(actual/1000).toFixed(1)+'s');
@@ -2211,9 +2289,9 @@ const TRAINER_DATA=[
     name:'THE ARCHITECT',
     icon:'🏗️',
     tag:'Builds to last',
-    dialogueBefore:'I design systems. You improvise. Let\'s see which one burns longer.',
-    dialogueAfterWin:'The blueprint was flawed. I\'ll rebuild.',
-    dialogueAfterLoss:'Look at the structure you\'ve built. Better than you know.',
+    dialogueBefore:'Show me what you decided to become.',
+    dialogueAfterWin:'You specced into something real. Good.',
+    dialogueAfterLoss:'What were you trying to do? I couldn\'t tell.',
     buildTeam:()=>{
       const mi=(key,upgradeLevel=0)=>{
         const f=getItemFactory(key);if(!f)return null;
@@ -2236,9 +2314,9 @@ const TRAINER_DATA=[
     name:'THE MONK',
     icon:'🧘',
     tag:'Still as stone',
-    dialogueBefore:'I don\'t need to attack. I just need to outlast you.',
-    dialogueAfterWin:'Patience has its limits. You found mine.',
-    dialogueAfterLoss:'Stone wears down the river, given enough time.',
+    dialogueBefore:'Violence isn\'t the only option.',
+    dialogueAfterWin:'Not the only option. But sometimes an effective one.',
+    dialogueAfterLoss:'The wall has broken many a fist.',
     buildTeam:()=>{
       const mi=(key,upgradeLevel=0)=>{
         const f=getItemFactory(key);if(!f)return null;
@@ -2261,9 +2339,9 @@ const TRAINER_DATA=[
     name:'THE MIRROR',
     icon:'🪞',
     tag:'Knows your every move',
-    dialogueBefore:'I\'ve been watching. Everything you built — I can build it too.',
-    dialogueAfterWin:'A reflection can\'t surpass its source. That was always the flaw.',
-    dialogueAfterLoss:'You are what you built.',
+    dialogueBefore:'I GameSharked your build.',
+    dialogueAfterWin:'You found the crack. There\'s always one.',
+    dialogueAfterLoss:'I just held up the glass.',
     buildTeam:()=>{
       const copyItem=(item)=>{
         if(!item)return null;
@@ -2340,7 +2418,7 @@ const TRAINER_DATA=[
         return'Some call it destiny. I call it inevitable.';
       return rivalRecord.wins+'-'+rivalRecord.losses+'. Some call it destiny.';
     },
-    dialogueAfterWin:'...Six wins. That\'s the run.\n\nKip looks up at the sky. The rival is already gone.',
+    dialogueAfterWin:'...Okay. You\'re ready for the tall grass.',
     getDialogueAfterLoss:()=>{
       const total=rivalRecord.wins+rivalRecord.losses;
       if(total===0)return'0-1. I\'ll be here.';
@@ -2564,6 +2642,16 @@ function runBattle(type){
   const sb=document.getElementById('startBattleBtn');if(sb)sb.disabled=true;
   const speedBtn=document.getElementById('speedBtn');if(speedBtn)speedBtn.disabled=true;
   resetItemBattleState(board);resetItemBattleState(enemyBoard);
+  // Fizzle — halve effectAmt of untargetable enemy passive items at battle start
+  if(activeSkills.some(s=>s.id==='fizzle')){
+    [...enemyBoard.front,...enemyBoard.back].forEach(i=>{
+      if(i&&!i.broken&&i.maxHp===0){
+        i.effectAmt=Math.floor((i.effectAmt||0)/2);
+        i.baseEffect=Math.floor((i.baseEffect||0)/2);
+        log('s','💨 Fizzle weakens '+i.name+' (effectAmt → '+i.effectAmt+')');
+      }
+    });
+  }
   registerSkillHandlers();
   fireEvent({type:'BATTLE_START',item:null,side:null,value:null,source:null});
   clearLog();hideItemInfo();log('x','Battle starts!');battleMs=0;
@@ -2573,6 +2661,25 @@ function runBattle(type){
     battleMs+=step;const rem=Math.max(0,FATIGUE_START-battleMs);
     const tt=document.getElementById('timerTxt');if(tt)tt.textContent=(rem/1000).toFixed(1)+'s';
     tickSide(board,'player',step);tickSide(enemyBoard,'enemy',step);
+    // Iron Hide — expires after 10 seconds
+    if(battleState.ironHideActive&&battleMs>=10000){
+      battleState.ironHideActive=false;
+      battleState.ironHideExpired=true;
+      log('s','🦏 Iron Hide expired.');
+    }
+    // Predator — 3 enemy items broken → globalMult ×1.5
+    if(!battleState.predatorActive&&activeSkills.some(s=>s.id==='predator')){
+      const brokenCount=[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&i.broken).length;
+      if(brokenCount>=3){
+        battleState.predatorActive=true;
+        log('s','🐺 Predator activated! All effects ×1.5!');
+      }
+    }
+    // Flow State — activates after 20 seconds of battle
+    if(!battleState.flowStateActive&&battleMs>=20000&&activeSkills.some(s=>s.id==='flow_state')){
+      battleState.flowStateActive=true;
+      log('s','🌀 Flow State activated! All effects ×1.15!');
+    }
     // Benediction — heal back row every 5 seconds
     if(activeSkills.some(s=>s.id==='benediction')){
       battleState.benedictionMs=(battleState.benedictionMs||0)+step;
@@ -2617,6 +2724,7 @@ function resetItemBattleState(b){
     if(item._blazeCounter!==undefined)item._blazeCounter=1;
     if(item._mithridateCount!==undefined)item._mithridateCount=0;
     if(item._miasmaTriggerCount!==undefined)item._miasmaTriggerCount=0;
+    item._lastStandApplied=false;
     // Refrigeration — +1 use to all provisions
     if(isPlayer&&activeSkills.some(s=>s.id==='refrigeration')){
       if(item.itemType==='provision'&&item.uses!==null){
@@ -2638,6 +2746,14 @@ function resetItemBattleState(b){
   if(isPlayer){
     const allFilled=[...board.front,...board.back].every(i=>i!==null);
     battleState.assembledActive=allFilled&&activeSkills.some(s=>s.id==='assembled');
+  }
+  // Apotheosis — scale all player items to Mastered tier (UPGRADE_MULTS[3]=2.0)
+  if(isPlayer&&activeSkills.some(s=>s.id==='apotheosis')){
+    [...board.front,...board.back].forEach(item=>{
+      if(item&&item.baseEffect){
+        item.effectAmt=Math.round(item.baseEffect*(UPGRADE_MULTS[3]||2));
+      }
+    });
   }
   firingEvent=false;
 }
@@ -2735,14 +2851,19 @@ function tickSide(b,side,tickMs){
         if(hpDmg>0){item.hp=Math.max(0,item.hp-hpDmg);log('d','🔥 Burn '+item.name+' -'+hpDmg+' HP');}
         else{log('d','🔥 Burn '+item.name+' absorbed by plating');}
         item.burnStack--;
+        // Asbestos — extra -2 burn stacks per tick on player items
+        if(side==='player'&&activeSkills.some(s=>s.id==='asbestos')){
+          item.burnStack=Math.max(0,item.burnStack-2);
+        }
         if(item.hp<=0&&!item.broken){checkAndBreak(item,side);}
       }
     }
-    // Poison tick — every 1000ms. bypasses shield, straight to HP
+    // Poison tick — every 1000ms (2000ms if Immunity active on player side). bypasses shield
     if(item.poisonStack>0){
       item.poisonTickMs+=tickMs;
-      while(item.poisonTickMs>=1000&&item.poisonStack>0){
-        item.poisonTickMs-=1000;
+      const poisonInterval=(side==='player'&&activeSkills.some(s=>s.id==='immunity'))?2000:1000;
+      while(item.poisonTickMs>=poisonInterval&&item.poisonStack>0){
+        item.poisonTickMs-=poisonInterval;
         if(item.hitCount!==undefined&&item.hitCount!==null){
           item.hitCount--;
           log('d','Poison hit absorbed by '+item.name+' ('+item.hitCount+' hits remaining)');
