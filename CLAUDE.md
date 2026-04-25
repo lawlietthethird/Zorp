@@ -132,16 +132,33 @@ Expansion: day 1 = 1 per row, day 2 = 2 per row, day 3+ = 3 per row.
 
 ## Skill System
 
-SKILLS object contains: prestige (Potential only), beginner (empty), intermediate (empty), advanced (empty), mastered (empty).
+SKILLS: prestige (Potential), beginner (6 skills), intermediate (8 skills), advanced (empty), mastered (empty).
+TYPED_SKILLS removed. Typed skills to be designed later.
+selectNode shows 2 skill choices (slice 0,2).
 
-All old skills removed except Potential. New skills added in Prompt 2 (Beginner/Intermediate) and Prompt 3 (Advanced/Mastered).
+## Beginner Skills (6)
+`thick_fur`: +20 maxHp via mods.maxHpBonus in getSkillMods (feeds into item.maxHp formula).
+`quick_reflexes`: speedMult*=0.90 in getSkillMods.
+`scrappy`: dmgBonus+=6 in getSkillMods.
+`resilience`: first DAMAGE_RECEIVED adds +70 plating, resilienceUsed flag in initBattleState.
+`refrigeration`: +1 use to all provisions in resetItemBattleState forEach.
+`fortified`: +7 extra plating (globalMult-scaled) in applyShield when side===player.
 
-TYPED_SKILLS removed entirely. Typed skills to be designed and added later.
+## Intermediate Skills (8)
+`momentum`: momentumBonus+=4 per player activation in tickSide, consumed in dealDmg/dealDmgRandom/etc.
+`duality`: odd slots (front[0],front[2],back[1]) +10 effectAmt+baseEffect, even slots (front[1],back[0],back[2]) +25 maxHp+baseMaxHp. Second pass in resetItemBattleState after forEach. dualityApplied flag prevents re-application.
+`kickstart`: slot 6 activation Jolts random ally 2s, max 3× per battle. kickstartCount tracks.
+`friction`: slot 6 activation Wets random enemy 2s, max 3× per battle. frictionCount tracks.
+`benediction`: heals back row items 15 HP every 5000ms. benedictionMs accumulates in runBattle interval.
+`assembled`: assembledActive flag set in resetItemBattleState if all 6 slots filled. speedMult*=0.82 in getSkillMods when assembledActive.
+`crescendo`: crescendoCount increments each player activation. At 5: count resets, crescendoReady=true. Next effectFn call multiplies effectAmt×2. crescendoReady cleared after use.
+`epicenter`: slot2SpeedMult*=0.75 and slot5SpeedMult*=0.75 in getSkillMods. Applied per-slot in tickSide via slotNum.
 
-getSkillMods currently only handles Potential. New skill mods added in Prompt 2 and 3.
+## battleState additions (Prompt 2)
+`resilienceUsed:false`, `crescendoCount:0`, `crescendoReady:false`, `benedictionMs:0`, `kickstartCount:0`, `frictionCount:0`, `assembledActive:false`, `dualityApplied:false`
 
 Deleted skill IDs — do not reference:
-`thick_fur`, `quick_reflex`, `scrappy`, `resilience` (skill), `battle_hardened`, `dense_coat`, `pack_rhythm`, `momentum` (old), `apex_strike`, `endurance`, `last_stand`, `iron_hide`, `alpha`, `unbreakable`, `static_field`, `chain_lightning`, `ember_coat`, `wildfire`, `frost_aura`, `deep_freeze`, `plating_mastery`, `fortress`.
+`quick_reflex` (now `quick_reflexes`), `battle_hardened`, `dense_coat`, `pack_rhythm`, `apex_strike`, `endurance`, `last_stand`, `iron_hide`, `alpha`, `unbreakable`, `static_field`, `chain_lightning`, `ember_coat`, `wildfire`, `frost_aura`, `deep_freeze`, `plating_mastery`, `fortress`.
 
 ---
 

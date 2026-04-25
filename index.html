@@ -360,8 +360,24 @@ const SKILLS={
   prestige:[
     {id:'potential',name:'POTENTIAL',icon:'✦',desc:'All your effects +25% while typeless.',rarity:'prestige'},
   ],
-  beginner:[],
-  intermediate:[],
+  beginner:[
+    {id:'thick_fur',name:'Thick Fur',icon:'🐾',desc:'All items gain +20 max HP.',rarity:'beginner'},
+    {id:'quick_reflexes',name:'Quick Reflexes',icon:'⚡',desc:'All items activate 10% faster.',rarity:'beginner'},
+    {id:'scrappy',name:'Scrappy',icon:'💢',desc:'All attack items deal +6 damage.',rarity:'beginner'},
+    {id:'resilience',name:'Resilience',icon:'🛡',desc:'First item hit each battle gains +70 plating.',rarity:'beginner'},
+    {id:'refrigeration',name:'Refrigeration',icon:'❄️',desc:'All provision items gain +1 use at battle start.',rarity:'beginner'},
+    {id:'fortified',name:'Fortified',icon:'🏰',desc:'All plating items generate +7 extra plating per activation.',rarity:'beginner'},
+  ],
+  intermediate:[
+    {id:'momentum',name:'Momentum',icon:'🌊',desc:'Each activation grants +4 damage to the next attack this battle.',rarity:'intermediate'},
+    {id:'duality',name:'Duality',icon:'☯️',desc:'Odd slots gain +10 to effects. Even slots gain +25 max HP.',rarity:'intermediate'},
+    {id:'kickstart',name:'Kickstart',icon:'🔋',desc:'First 3 times slot 6 activates each battle: Jolt a random ally for 2 seconds.',rarity:'intermediate'},
+    {id:'friction',name:'Friction',icon:'💧',desc:'First 3 times slot 6 activates each battle: Wet a random enemy for 2 seconds.',rarity:'intermediate'},
+    {id:'benediction',name:'Benediction',icon:'✨',desc:'Heal all back row items for 15 HP every 5 seconds.',rarity:'intermediate'},
+    {id:'assembled',name:'Assembled',icon:'⚙️',desc:'When all 6 slots are filled at battle start, all items activate 18% faster.',rarity:'intermediate'},
+    {id:'crescendo',name:'Crescendo',icon:'🎵',desc:'Every 5th activation this battle, that activation\'s effects are doubled.',rarity:'intermediate'},
+    {id:'epicenter',name:'Epicenter',icon:'🎯',desc:'Items in slots 2 and 5 activate 25% faster.',rarity:'intermediate'},
+  ],
   advanced:[],
   mastered:[],
 };
@@ -381,9 +397,16 @@ function getSkillMods(){
     platingMult:1.0,
     fatigueMult:1.0,
     globalMult:1.0,
+    slot2SpeedMult:1.0,
+    slot5SpeedMult:1.0,
   };
   activeSkills.forEach(sk=>{
-    if(sk.id==='potential') m.globalMult=Math.max(m.globalMult,1.25);
+    if(sk.id==='potential')      m.globalMult=Math.max(m.globalMult,1.25);
+    if(sk.id==='thick_fur')      m.maxHpBonus+=20;
+    if(sk.id==='quick_reflexes') m.speedMult*=0.90;
+    if(sk.id==='scrappy')        m.dmgBonus+=6;
+    if(sk.id==='epicenter'){     m.slot2SpeedMult*=0.75;m.slot5SpeedMult*=0.75;}
+    if(sk.id==='assembled'&&battleState.assembledActive) m.speedMult*=0.82;
   });
   return m;
 }
@@ -402,6 +425,14 @@ function initBattleState(){
     thunderFired:false,
     poisonApplicationsToEnemy:0,
     phoenixDownAvailable:true,
+    resilienceUsed:false,
+    crescendoCount:0,
+    crescendoReady:false,
+    benedictionMs:0,
+    kickstartCount:0,
+    frictionCount:0,
+    assembledActive:false,
+    dualityApplied:false,
   };
 }
 
@@ -1526,6 +1557,13 @@ function applyDmgTo(target,dmg,src,side){
     return; // damage absorbed, nothing passes through
   }
   const isPlayer=side==='player';
+  // Resilience — first item hit each battle gains +70 plating
+  if(isPlayer&&!battleState.resilienceUsed&&activeSkills.some(s=>s.id==='resilience')){
+    target.shield=(target.shield||0)+70;
+    target.maxShield=Math.max(target.maxShield||0,target.shield);
+    battleState.resilienceUsed=true;
+    log('s','Resilience! '+target.name+' gains +70 plating');
+  }
   let r=dmg;
   if(target.shield>0){const a=Math.min(target.shield,r);target.shield-=a;r-=a;if(a>0)log('s',src+'→'+target.name+' plating -'+a);}
   if(r>0){
@@ -1573,7 +1611,11 @@ function healAll(side,amount,src){
 function applyShield(side,amount,src,targetItem){
   const alive=aliveItems(side).filter(i=>i&&i.maxHp>0);if(!alive.length)return;
   const mods=side==='player'?getSkillMods():{globalMult:1,platingMult:1};
-  const actual=Math.round(amount*mods.globalMult*mods.platingMult);
+  let actual=Math.round(amount*mods.globalMult*mods.platingMult);
+  // Fortified — +7 extra plating per activation (player side only)
+  if(side==='player'&&activeSkills.some(s=>s.id==='fortified')){
+    actual+=Math.round(7*mods.globalMult);
+  }
   const t=targetItem&&!targetItem.broken?targetItem:alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
   t.shield=(t.shield||0)+actual;t.maxShield=Math.max(t.maxShield||0,t.shield);
   if(side==='player')battleState.totalSidePlating+=actual;
@@ -2531,6 +2573,20 @@ function runBattle(type){
     battleMs+=step;const rem=Math.max(0,FATIGUE_START-battleMs);
     const tt=document.getElementById('timerTxt');if(tt)tt.textContent=(rem/1000).toFixed(1)+'s';
     tickSide(board,'player',step);tickSide(enemyBoard,'enemy',step);
+    // Benediction — heal back row every 5 seconds
+    if(activeSkills.some(s=>s.id==='benediction')){
+      battleState.benedictionMs=(battleState.benedictionMs||0)+step;
+      if(battleState.benedictionMs>=5000){
+        battleState.benedictionMs=0;
+        [...board.back].forEach(item=>{
+          if(item&&!item.broken&&item.maxHp>0&&item.hp<item.maxHp){
+            const actual=Math.min(item.maxHp-item.hp,15);
+            item.hp+=actual;
+            if(actual>0)log('h','✨ Benediction heals '+item.name+' +'+actual);
+          }
+        });
+      }
+    }
     updateBattleBars();updateEnemyBars();
     const pKO=checkKO('player'),eKO=checkKO('enemy');
     if(pKO&&eKO){endBattle('win');return;}
@@ -2539,8 +2595,9 @@ function runBattle(type){
   },TICK);
 }
 function resetItemBattleState(b){
-  const mods=getSkillMods();
   const isPlayer=b===board;
+  if(isPlayer)initBattleState(); // initialize battleState before per-item processing
+  const mods=getSkillMods();
   [...b.front,...b.back].forEach(item=>{
     if(!item)return;
     if(isPlayer&&item.baseMaxHp>0){
@@ -2560,9 +2617,29 @@ function resetItemBattleState(b){
     if(item._blazeCounter!==undefined)item._blazeCounter=1;
     if(item._mithridateCount!==undefined)item._mithridateCount=0;
     if(item._miasmaTriggerCount!==undefined)item._miasmaTriggerCount=0;
+    // Refrigeration — +1 use to all provisions
+    if(isPlayer&&activeSkills.some(s=>s.id==='refrigeration')){
+      if(item.itemType==='provision'&&item.uses!==null){
+        item.uses++;item.maxUses++;
+      }
+    }
   });
+  // Duality — odd slots +10 effectAmt, even slots +25 maxHp (second pass so all items are reset first)
+  if(isPlayer&&activeSkills.some(s=>s.id==='duality')&&!battleState.dualityApplied){
+    battleState.dualityApplied=true;
+    [board.front[0],board.front[2],board.back[1]].forEach(item=>{
+      if(item){item.effectAmt=(item.effectAmt||0)+10;item.baseEffect=(item.baseEffect||0)+10;}
+    });
+    [board.front[1],board.back[0],board.back[2]].forEach(item=>{
+      if(item){item.maxHp+=25;item.baseMaxHp+=25;item.hp=item.maxHp;}
+    });
+  }
+  // Assembled — check if all 6 slots filled
+  if(isPlayer){
+    const allFilled=[...board.front,...board.back].every(i=>i!==null);
+    battleState.assembledActive=allFilled&&activeSkills.some(s=>s.id==='assembled');
+  }
   firingEvent=false;
-  if(isPlayer)initBattleState();
 }
 function tickSide(b,side,tickMs){
   const mods=side==='player'?getSkillMods():null;
@@ -2576,17 +2653,64 @@ function tickSide(b,side,tickMs){
     let statusSpeedMult=1.0;
     if(item.hasteMs>0&&item.slowMs===0)statusSpeedMult=0.5;
     else if(item.slowMs>0&&item.hasteMs===0)statusSpeedMult=2.0;
+    // Determine slot number for per-slot speed mods
+    const frontIdx=b.front.indexOf(item);
+    const backIdx=b.back.indexOf(item);
+    let slotNum=-1;
+    if(frontIdx===0)slotNum=1;
+    else if(frontIdx===1)slotNum=2;
+    else if(frontIdx===2)slotNum=3;
+    else if(backIdx===0)slotNum=4;
+    else if(backIdx===1)slotNum=5;
+    else if(backIdx===2)slotNum=6;
     // Skill speed modifiers
     let speedMult=statusSpeedMult;
-    if(mods){speedMult*=mods.speedMult;if(isBack(item))speedMult*=mods.backSpeedMult;}
+    if(mods){
+      speedMult*=mods.speedMult;
+      if(isBack(item))speedMult*=mods.backSpeedMult;
+      if(slotNum===2)speedMult*=(mods.slot2SpeedMult||1.0);
+      if(slotNum===5)speedMult*=(mods.slot5SpeedMult||1.0);
+    }
     const effectiveActMs=(item.baseActMs||item.actMs)*speedMult;
     if(effectiveActMs<=0)return; // technique items — no activation timer, effects via handleEvent only
     item.actElapsed+=tickMs;item.actPct=Math.min(100,item.actElapsed/effectiveActMs*100);
     if(item.actElapsed>=effectiveActMs){
       item.actElapsed=0;item.actPct=0;
       log('a',item.icon+' '+item.name+' activates!');
-      item.effectFn(side,item.effectAmt||item.baseEffect||0,item);
+      // Crescendo — every 5th player activation doubles effects
+      if(side==='player'&&activeSkills.some(s=>s.id==='crescendo')){
+        battleState.crescendoCount++;
+        if(battleState.crescendoCount>=5){battleState.crescendoCount=0;battleState.crescendoReady=true;}
+      }
+      const crescendoMult=(side==='player'&&battleState.crescendoReady)?2:1;
+      battleState.crescendoReady=false;
+      item.effectFn(side,Math.round((item.effectAmt||item.baseEffect||0)*crescendoMult),item);
       fireEvent({type:'ITEM_ACTIVATED',item:item,side:side,value:item.effectAmt||item.baseEffect||0,source:null});
+      // Momentum — +4 damage to next attack
+      if(side==='player'&&activeSkills.some(s=>s.id==='momentum')){
+        battleState.momentumBonus+=4;
+      }
+      // Kickstart and Friction — slot 6 triggers
+      if(side==='player'&&slotNum===6){
+        if(activeSkills.some(s=>s.id==='kickstart')&&battleState.kickstartCount<3){
+          battleState.kickstartCount++;
+          const alive=[...board.front,...board.back].filter(i=>i&&!i.broken);
+          if(alive.length){
+            const t=alive[Math.floor(Math.random()*alive.length)];
+            applyHaste(t,2000,'Kickstart');
+            log('s','⚡ Kickstart — Jolted '+t.name+' 2s ('+battleState.kickstartCount+'/3)');
+          }
+        }
+        if(activeSkills.some(s=>s.id==='friction')&&battleState.frictionCount<3){
+          battleState.frictionCount++;
+          const et=[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&!i.broken&&i.maxHp>0);
+          if(et.length){
+            const t=et[Math.floor(Math.random()*et.length)];
+            applySlow(t,2000,'Friction');
+            log('s','💧 Friction — Wet '+t.name+' 2s ('+battleState.frictionCount+'/3)');
+          }
+        }
+      }
       if(item.uses!==null){item.uses--;if(item.uses<=0){item.broken=true;if(item.onBreak)item.onBreak(item);log('b',item.name+' consumed!');}}
     }
     // Burn tick — every 500ms. shield*2 reduces damage first, remainder to HP
@@ -3012,7 +3136,7 @@ function selectNode(nodeId){
   G.pendingSkillNode=nodeId;
   const node=getNodeById(nodeId);
   const pool=SKILLS[node.rarity]||[];
-  const shuffled=[...pool].sort(()=>Math.random()-.5).slice(0,3);
+  const shuffled=[...pool].sort(()=>Math.random()-.5).slice(0,2);
   setEncTitle('CHOOSE A SKILL — '+node.rarity.toUpperCase());
   const cards=shuffled.map(sk=>'<div class="sk-card" onclick="pickSkill(\''+nodeId+'\',\''+sk.id+'\')"><div class="sk-icon">'+sk.icon+'</div><div class="sk-name">'+sk.name+'</div><div class="sk-desc">'+sk.desc+'</div><div class="sk-rarity rarity-'+node.rarity+'">'+node.rarity+'</div></div>').join('');
   setEncBody('<div class="skill-opts">'+cards+'</div>');
