@@ -130,6 +130,21 @@ Expansion: day 1 = 1 per row, day 2 = 2 per row, day 3+ = 3 per row.
 
 ---
 
+## Skill System
+
+SKILLS object contains: prestige (Potential only), beginner (empty), intermediate (empty), advanced (empty), mastered (empty).
+
+All old skills removed except Potential. New skills added in Prompt 2 (Beginner/Intermediate) and Prompt 3 (Advanced/Mastered).
+
+TYPED_SKILLS removed entirely. Typed skills to be designed and added later.
+
+getSkillMods currently only handles Potential. New skill mods added in Prompt 2 and 3.
+
+Deleted skill IDs — do not reference:
+`thick_fur`, `quick_reflex`, `scrappy`, `resilience` (skill), `battle_hardened`, `dense_coat`, `pack_rhythm`, `momentum` (old), `apex_strike`, `endurance`, `last_stand`, `iron_hide`, `alpha`, `unbreakable`, `static_field`, `chain_lightning`, `ember_coat`, `wildfire`, `frost_aura`, `deep_freeze`, `plating_mastery`, `fortress`.
+
+---
+
 ## TYPES Array
 
 Five types (no typeless entry in the array — typeless is handled separately in showTypeSelect):

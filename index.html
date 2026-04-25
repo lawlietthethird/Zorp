@@ -356,79 +356,34 @@ let treeState = {}; // nodeId → skill object or null
 TREE_NODES.forEach(n => treeState[n.id] = null);
 
 // SKILL POOLS by rarity
-const SKILLS = {
-  prestige: [
-    { id:'potential', name:'POTENTIAL', icon:'✦', desc:'All your effects +25% while typeless.' },
+const SKILLS={
+  prestige:[
+    {id:'potential',name:'POTENTIAL',icon:'✦',desc:'All your effects +25% while typeless.',rarity:'prestige'},
   ],
-  beginner: [
-    { id:'thick_fur',    name:'Thick Fur',       icon:'🐾', desc:'All items gain +20 max HP.' },
-    { id:'quick_reflex', name:'Quick Reflexes',  icon:'⚡', desc:'All items activate 8% faster.' },
-    { id:'scrappy',      name:'Scrappy',         icon:'💢', desc:'All attack items deal +3 damage.' },
-    { id:'resilience',   name:'Resilience',      icon:'🛡', desc:'First item hit each battle gains +15 plating.' },
-  ],
-  intermediate: [
-    { id:'dense_coat',   name:'Dense Coat',      icon:'🧥', desc:'All plating effects +40%.' },
-    { id:'pack_rhythm',  name:'Pack Rhythm',     icon:'🥁', desc:'Back row items activate 15% faster.' },
-    { id:'momentum',     name:'Momentum',        icon:'🌊', desc:'Each activation grants +4 dmg to next attack.' },
-    { id:'battle_hardened', name:'Battle Hardened', icon:'⚔️', desc:'All items gain +15 max HP.' },
-  ],
-  advanced: [
-    { id:'apex_strike',  name:'Apex Strike',     icon:'🔱', desc:'All attack items deal +8 damage.' },
-    { id:'endurance',    name:'Endurance',       icon:'🌿', desc:'Fatigue damage to your items reduced 40%.' },
-    { id:'last_stand',   name:'Last Stand',      icon:'🔥', desc:'When 1 item remains, it gains +50 HP and activates 25% faster.' },
-    { id:'iron_hide',    name:'Iron Hide',       icon:'🪨', desc:'Your items cannot break in the first 10 seconds.' },
-  ],
-  mastered: [
-    { id:'alpha',        name:'Alpha',           icon:'👑', desc:'All your stats +30%.' },
-    { id:'unbreakable',  name:'Unbreakable',     icon:'💠', desc:'Each item ignores one break per battle.' },
-  ],
-};
-
-// Typed skill placeholders
-const TYPED_SKILLS = {
-  electric: [
-    { id:'static_field', name:'Static Field', icon:'⚡', desc:'[ELECTRIC] Intermediate — All your items activate 15% faster.' },
-    { id:'chain_lightning', name:'Chain Lightning', icon:'🌩', desc:'[ELECTRIC] Advanced — Attacks have 20% chance to hit a second random target.' },
-  ],
-  fire: [
-    { id:'ember_coat', name:'Ember Coat', icon:'🔥', desc:'[FIRE] Intermediate — Attacks apply 5 burn damage every 3s.' },
-    { id:'wildfire', name:'Wildfire', icon:'🌋', desc:'[FIRE] Advanced — Burn damage increases by 2 each time it ticks.' },
-  ],
-  ice: [
-    { id:'frost_aura', name:'Frost Aura', icon:'❄️', desc:'[ICE] Intermediate — Enemy items activate 10% slower.' },
-    { id:'deep_freeze', name:'Deep Freeze', icon:'🧊', desc:'[ICE] Advanced — Once per battle, pause all enemy items for 3s.' },
-  ],
-  steel: [
-    { id:'plating_mastery', name:'Plating Mastery', icon:'🛡️', desc:'[STEEL] Intermediate — Plating carries between activations instead of resetting.' },
-    { id:'fortress', name:'Fortress', icon:'🏰', desc:'[STEEL] Advanced — All items start each battle with +40 plating.' },
-  ],
+  beginner:[],
+  intermediate:[],
+  advanced:[],
+  mastered:[],
 };
 
 // Active skills applied to player
-let activeSkills = [];
+let activeSkills=[];
 
-// Battle-scoped state for complex skills
-let battleState = {
-  momentumBonus:0, ironHideActive:false,
-  resilienceUsed:false, unbreakableUsed:{},
-};
+// Battle-scoped state (initialized by initBattleState before each battle)
+let battleState={};
 
 function getSkillMods(){
   const m={
-    maxHpBonus:0, speedMult:1.0, backSpeedMult:1.0,
-    dmgBonus:0, platingMult:1.0, fatigueMult:1.0, globalMult:1.0,
+    maxHpBonus:0,
+    speedMult:1.0,
+    backSpeedMult:1.0,
+    dmgBonus:0,
+    platingMult:1.0,
+    fatigueMult:1.0,
+    globalMult:1.0,
   };
   activeSkills.forEach(sk=>{
-    if(sk.id==='potential')    m.globalMult=Math.max(m.globalMult,1.25);
-    if(sk.id==='alpha')        m.globalMult=Math.max(m.globalMult,1.30);
-    if(sk.id==='thick_fur')    m.maxHpBonus+=20;
-    if(sk.id==='battle_hardened') m.maxHpBonus+=15;
-    if(sk.id==='quick_reflex') m.speedMult*=0.92;
-    if(sk.id==='scrappy')      m.dmgBonus+=3;
-    if(sk.id==='apex_strike')  m.dmgBonus+=8;
-    if(sk.id==='dense_coat')   m.platingMult*=1.4;
-    if(sk.id==='pack_rhythm')  m.backSpeedMult*=0.85;
-    if(sk.id==='endurance')    m.fatigueMult*=0.6;
+    if(sk.id==='potential') m.globalMult=Math.max(m.globalMult,1.25);
   });
   return m;
 }
@@ -436,56 +391,24 @@ function getSkillMods(){
 function initBattleState(){
   battleState={
     momentumBonus:0,
-    ironHideActive:activeSkills.some(s=>s.id==='iron_hide'),
-    ironHideExpired:false,
-    resilienceUsed:false,
-    unbreakableUsed:{},
     fatigueDamageMultiplier:1,
+    totalSidePlating:0,
     burnApplicationsToEnemy:0,
-    fireworksThreshold:6,
+    outbreakTriggered:false,
     slowProcsThisBattle:0,
     floodTriggered:false,
     wetDurationMult:1,
     joltCumulativeMs:0,
     thunderFired:false,
-    totalSidePlating:0,
     poisonApplicationsToEnemy:0,
-    outbreakTriggered:false,
+    phoenixDownAvailable:true,
   };
 }
 
 function registerSkillHandlers(){
+  // Skill handlers registered here when new skills are implemented
   activeSkills.forEach(sk=>{
-    if(sk.id==='momentum'){
-      sk._battleHandler=(event)=>{
-        if(event.type==='ITEM_ACTIVATED'&&event.side==='player'){
-          battleState.momentumBonus+=4;
-        }
-      };
-    }
-    if(sk.id==='resilience'){
-      sk._battleHandler=(event)=>{
-        if(event.type==='DAMAGE_RECEIVED'&&event.side==='player'&&!battleState.resilienceUsed){
-          event.item.shield=(event.item.shield||0)+15;
-          event.item.maxShield=Math.max(event.item.maxShield||0,event.item.shield);
-          battleState.resilienceUsed=true;
-          log('s','Resilience! '+event.item.name+' gains +15 plating');
-        }
-      };
-    }
-    if(sk.id==='last_stand'){
-      sk._battleHandler=(event)=>{
-        if(event.type==='ITEM_BROKEN'&&event.side==='player'){
-          const alive=aliveItems('player').filter(i=>i.maxHp>0);
-          if(alive.length===1&&!alive[0]._lastStandApplied){
-            alive[0].maxHp+=50;
-            alive[0].hp=Math.min(alive[0].hp+50,alive[0].maxHp);
-            alive[0]._lastStandApplied=true;
-            log('s','Last Stand! '+alive[0].name+' surges!');
-          }
-        }
-      };
-    }
+    // placeholder — handlers added per skill in future prompts
   });
 }
 function getNodeById(id){ return TREE_NODES.find(n=>n.id===id); }
@@ -1570,9 +1493,7 @@ function getBoard(s){return s==='player'?board:enemyBoard;}
 function allSlots(s){return[...getBoard(s).front,...getBoard(s).back];}
 function aliveItems(s){return allSlots(s).filter(i=>i&&!i.broken);}
 function potMult(){
-  // Check active skills
   if(activeSkills.find(s=>s.id==='potential'))return 1.25;
-  if(activeSkills.find(s=>s.id==='alpha'))return 1.3;
   return 1.0;
 }
 function maxFrontSlots(){if(G.day<=1)return 1;if(G.day<=3)return 2;return 3;}
@@ -1584,16 +1505,6 @@ function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
 // ============================================================
 function checkAndBreak(item,side){
   if(item.hp<=0&&!item.broken){
-    if(side==='player'&&battleState.ironHideActive){
-      item.hp=1;
-      return;
-    }
-    if(side==='player'&&activeSkills.some(s=>s.id==='unbreakable')&&!battleState.unbreakableUsed[item.id]){
-      item.hp=1;
-      battleState.unbreakableUsed[item.id]=true;
-      log('s','Unbreakable! '+item.name+' survives!');
-      return;
-    }
     // Fire ITEM_BROKEN before marking broken — handlers fire while item still exists
     fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
     item.broken=true;
@@ -1614,11 +1525,6 @@ function applyDmgTo(target,dmg,src,side){
     }
     return; // damage absorbed, nothing passes through
   }
-  // Iron hide — player items can't break in first 10s
-  if(side==='player'&&battleState.ironHideActive){
-    // still take damage, just won't break
-  }
-  // Unbreakable — each item gets one free break
   const isPlayer=side==='player';
   let r=dmg;
   if(target.shield>0){const a=Math.min(target.shield,r);target.shield-=a;r-=a;if(a>0)log('s',src+'→'+target.name+' plating -'+a);}
@@ -2643,7 +2549,7 @@ function resetItemBattleState(b){
       item.effectAmt=Math.round((item.baseEffect||0)*(UPGRADE_MULTS[ul]||1));
     }
     item.actMs=item.baseActMs||item.actMs; // always reset to base speed
-    item.hp=item.maxHp;item.shield=0;item.maxShield=0;item.actElapsed=0;item.actPct=0;item.broken=false;item.uses=item.maxUses;item._lastStandApplied=false;
+    item.hp=item.maxHp;item.shield=0;item.maxShield=0;item.actElapsed=0;item.actPct=0;item.broken=false;item.uses=item.maxUses;
     item.hasteMs=0;item.slowMs=0;item.burnStack=0;item.burnTickMs=0;item.poisonStack=0;item.poisonTickMs=0;
     item._side=b===board?'player':'enemy';
     if(item.baseHitCount!==null&&item.baseHitCount!==undefined){
@@ -2661,9 +2567,6 @@ function resetItemBattleState(b){
 function tickSide(b,side,tickMs){
   const mods=side==='player'?getSkillMods():null;
   const isBack=i=>b.back.includes(i);
-  if(side==='player'&&battleState.ironHideActive&&battleMs>=10000){
-    battleState.ironHideActive=false;battleState.ironHideExpired=true;
-  }
   [...b.front,...b.back].forEach(item=>{
     if(!item||item.broken)return;
     // Count down haste/slow timers
