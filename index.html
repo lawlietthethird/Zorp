@@ -281,16 +281,31 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
         <div class="sp-title">BOND TREE</div>
         <!-- Fox silhouette skill tree SVG — 6 nodes -->
         <svg class="sp-svg" viewBox="0 0 300 70" id="skillSvg">
+          <!-- Snow fox silhouette -->
+          <g id="foxSilhouette" opacity="0.18" fill="#d4dde8">
+            <!-- Body -->
+            <ellipse cx="108" cy="27" rx="78" ry="11"/>
+            <!-- Head -->
+            <ellipse cx="20" cy="26" rx="14" ry="12"/>
+            <!-- Ear -->
+            <polygon points="12,19 17,6 25,18"/>
+            <!-- Front leg -->
+            <rect x="63" y="35" width="11" height="26" rx="5"/>
+            <!-- Back leg -->
+            <rect x="143" y="35" width="11" height="26" rx="5"/>
+            <!-- Tail -->
+            <path d="M192,24 Q228,16 258,7 Q267,4 268,11 Q260,14 228,22 Q198,30 193,33 Z"/>
+          </g>
           <!-- Fox body line -->
-          <line x1="20" y1="28" x2="200" y2="28" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
+          <line x1="20" y1="28" x2="200" y2="28" stroke="rgba(64,192,255,.20)" stroke-width="1.5"/>
           <!-- Front leg down -->
-          <line x1="70" y1="28" x2="70" y2="58" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
+          <line x1="70" y1="28" x2="70" y2="58" stroke="rgba(64,192,255,.20)" stroke-width="1.5"/>
           <!-- Back leg down -->
-          <line x1="150" y1="28" x2="150" y2="58" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
+          <line x1="150" y1="28" x2="150" y2="58" stroke="rgba(64,192,255,.20)" stroke-width="1.5"/>
           <!-- Tail from back shoulder -->
-          <line x1="150" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
+          <line x1="150" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.20)" stroke-width="1.5"/>
           <!-- Tail curve up -->
-          <line x1="200" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
+          <line x1="200" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.20)" stroke-width="1.5"/>
           <!-- Connection lines drawn by JS -->
           <g id="treeLines"></g>
           <!-- HEAD -->
