@@ -282,15 +282,15 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
         <!-- Fox silhouette skill tree SVG — 6 nodes -->
         <svg class="sp-svg" viewBox="0 0 300 70" id="skillSvg">
           <!-- Fox body line -->
-          <line x1="20" y1="28" x2="200" y2="28" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
+          <line x1="20" y1="28" x2="200" y2="28" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
           <!-- Front leg down -->
-          <line x1="70" y1="28" x2="70" y2="58" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
+          <line x1="70" y1="28" x2="70" y2="58" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
           <!-- Back leg down -->
-          <line x1="150" y1="28" x2="150" y2="58" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
+          <line x1="150" y1="28" x2="150" y2="58" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
           <!-- Tail from back shoulder -->
-          <line x1="150" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
+          <line x1="150" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
           <!-- Tail curve up -->
-          <line x1="200" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.08)" stroke-width="1.5"/>
+          <line x1="200" y1="28" x2="265" y2="8" stroke="rgba(64,192,255,.25)" stroke-width="1.5"/>
           <!-- Connection lines drawn by JS -->
           <g id="treeLines"></g>
           <!-- HEAD -->
@@ -397,7 +397,7 @@ const SKILLS={
     {id:'flow_state',name:'Flow State',icon:'🌀',desc:'After 20 seconds of battle have elapsed, all your effects are ×1.15 permanently.',rarity:'advanced'},
   ],
   mastered:[
-    {id:'apotheosis',name:'Apotheosis',icon:'✨',desc:'All your items are treated as Mastered tier — effects scale to maximum.',rarity:'mastered'},
+    {id:'apotheosis',name:'Apotheosis',icon:'✨',desc:'Unupgraded items are treated as Mastered tier this battle. A reason to pivot late.',rarity:'mastered'},
     {id:'fizzle',name:'Fizzle',icon:'💨',desc:'At battle start, halve the effectAmt of all untargetable enemy passive items.',rarity:'mastered'},
   ],
 };
@@ -480,7 +480,11 @@ function isNodeUnlockable(id){
   return treeState[node.parent]!==null; // parent must be filled
 }
 function getAvailableNodes(){
-  return TREE_NODES.filter(n=>n.id!=='head'&&treeState[n.id]===null&&isNodeUnlockable(n.id));
+  return TREE_NODES.filter(n=>{
+    if(n.id==='head')return false;
+    if(n.id==='front_shoulder'&&G.type!==null)return false;
+    return treeState[n.id]===null&&isNodeUnlockable(n.id);
+  });
 }
 function drawTreeLines(){
   const g=document.getElementById('treeLines'); if(!g)return; g.innerHTML='';
@@ -2529,7 +2533,7 @@ function showEncounterBattle(type,wildMonster=null){
   const enemy=isWild?wildMonster:trainer;
   const dlg=isWild
     ?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
-    :'<div class="dialogue"><div class="dlg-name">'+trainer.name+'</div>'+(trainer.getDialogueBefore?trainer.getDialogueBefore():trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'</div>';
+    :'<div class="dialogue"><div class="dlg-name">'+trainer.name+'</div>"'+(trainer.getDialogueBefore?trainer.getDialogueBefore():trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'"</div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — '+trainer.name);
   setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info"><div class="enemy-icon">'+enemy.icon+'</div><div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row" style="margin-top:4px"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
   renderEnemyBoard();
@@ -2725,6 +2729,15 @@ function resetItemBattleState(b){
     if(item._mithridateCount!==undefined)item._mithridateCount=0;
     if(item._miasmaTriggerCount!==undefined)item._miasmaTriggerCount=0;
     item._lastStandApplied=false;
+    // Apotheosis — unupgraded player items scale to Mastered tier
+    if(isPlayer&&activeSkills.some(s=>s.id==='apotheosis')){
+      if((item.upgradeLevel||0)===0){
+        const m=UPGRADE_MULTS[3]||2.0;
+        if(item.baseMaxHp>0){item.maxHp=Math.round(item.baseMaxHp*m);item.hp=item.maxHp;}
+        if(item.baseEffect){item.effectAmt=Math.round(item.baseEffect*m);}
+        if(item.baseHitCount){item.hitCount=Math.round(item.baseHitCount*m);}
+      }
+    }
     // Refrigeration — +1 use to all provisions
     if(isPlayer&&activeSkills.some(s=>s.id==='refrigeration')){
       if(item.itemType==='provision'&&item.uses!==null){
@@ -2746,14 +2759,6 @@ function resetItemBattleState(b){
   if(isPlayer){
     const allFilled=[...board.front,...board.back].every(i=>i!==null);
     battleState.assembledActive=allFilled&&activeSkills.some(s=>s.id==='assembled');
-  }
-  // Apotheosis — scale all player items to Mastered tier (UPGRADE_MULTS[3]=2.0)
-  if(isPlayer&&activeSkills.some(s=>s.id==='apotheosis')){
-    [...board.front,...board.back].forEach(item=>{
-      if(item&&item.baseEffect){
-        item.effectAmt=Math.round(item.baseEffect*(UPGRADE_MULTS[3]||2));
-      }
-    });
   }
   firingEvent=false;
 }
@@ -2941,7 +2946,8 @@ function endBattle(result){
         logEvent({event:'run_complete',wins:G.wins,honor:G.honor,perfect:isPerfect,board:boardSnapshot(),skills:activeSkills.map(s=>s.id)});
       }else{
         const trainerWinner=TRAINER_DATA[G.wins]||TRAINER_DATA[1];
-        sub=(trainerWinner.dialogueAfterWin||'').replace(/\n/g,'<br>')+'<br><br>Win '+G.wins+' of 6.';
+        const afterWinDlg=trainerWinner.dialogueAfterWin||'';
+        sub='"'+afterWinDlg.replace(/\n/g,'<br>')+'"<br><br>— '+trainerWinner.name+'<br><br>Win '+G.wins+' of 6.';
       }
       logEvent({event:'trainer_battle',result:'win',win_number:G.wins,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
     }
@@ -2958,9 +2964,9 @@ function endBattle(result){
     }else{
       const hl=G.day;G.honor=Math.max(0,G.honor-hl);title='DEFEATED';
       const trainerLoser=TRAINER_DATA[G.wins+1]||TRAINER_DATA[1];
-      const loserDlg=trainerLoser.getDialogueAfterLoss?trainerLoser.getDialogueAfterLoss():trainerLoser.dialogueAfterLoss||'';
+      const afterLossDlg=trainerLoser.getDialogueAfterLoss?trainerLoser.getDialogueAfterLoss():trainerLoser.dialogueAfterLoss||'';
       if(G.wins===5){rivalRecord.losses++;localStorage.setItem('rivalLosses',rivalRecord.losses);}
-      sub=loserDlg.replace(/\n/g,'<br>')+'<br><br>Lost '+hl+' honor. '+G.honor+' remaining.'+(G.honor<=0?' SECOND WIND!':'');
+      sub='"'+afterLossDlg.replace(/\n/g,'<br>')+'"<br><br>— '+trainerLoser.name+'<br><br>Lost '+hl+' honor. '+G.honor+' remaining.'+(G.honor<=0?' SECOND WIND!':'');
       btnText=G.honor<=0?'SECOND WIND...':'TRY AGAIN →';
       logEvent({event:'trainer_battle',result:'lose',win_number:G.wins,honor_lost:hl,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
     }
