@@ -190,7 +190,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .iip-sell-row{margin-top:6px;display:none;}
 .iip-sell-btn{font-family:'Cinzel',serif;font-size:8px;font-weight:700;letter-spacing:.06em;padding:4px 12px;background:rgba(220,60,60,.15);color:#dc4040;border:1px solid rgba(220,60,60,.4);border-radius:5px;cursor:pointer;}
 .iip-sell-btn:hover{background:rgba(220,60,60,.3);border-color:rgba(220,60,60,.7);}
-@media(max-width:600px){.item-info-panel{top:auto;bottom:0;}.iip-inner{border-radius:10px 10px 0 0;border-top:1px solid var(--border);border-bottom:none;}}
+@media(max-width:600px){.item-info-panel{top:44px;bottom:auto;}.iip-inner{border-radius:0 0 10px 10px;border-bottom:1px solid var(--border);border-top:none;}}
 .battle-log-popup{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);width:90%;max-width:400px;z-index:300;}
 .blp-inner{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
 .blp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
@@ -740,8 +740,11 @@ function updateFoxImage(){
   if(G.type){
     // Typed: full artwork, 15% larger (138px centered in 120px viewBox)
     el.setAttribute('preserveAspectRatio','xMidYMid meet');
-    el.setAttribute('x','-9');el.setAttribute('y','-9');
     el.setAttribute('width','138');el.setAttribute('height','138');
+    // Hydra: shift toward tail (right) and up slightly
+    const ox=G.monsterType==='hydra'?-3:-9;
+    const oy=G.monsterType==='hydra'?-14:-9;
+    el.setAttribute('x',ox);el.setAttribute('y',oy);
   }else{
     // Default: fill box edge to edge
     el.setAttribute('preserveAspectRatio','xMidYMid slice');
