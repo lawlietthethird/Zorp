@@ -50,7 +50,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .lt{color:rgba(160,120,255,.5);margin-right:4px;}.ld{color:#e85050;}.lh{color:#50e080;}.ls{color:var(--shield);}.la{color:var(--act);}.lb{color:var(--fatigue);font-weight:700;}.lx{color:var(--dim);font-style:italic;}
 /* TYPE / SKILL PICK */
 .type-opts,.skill-opts{display:flex;gap:8px;justify-content:center;}
-.to,.sk-card{flex:1;max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .18s;}
+.to,.sk-card{flex:1;max-width:200px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .18s;}
 .to:hover,.sk-card:hover{border-color:var(--glow);box-shadow:0 0 10px rgba(96,64,160,.3);}
 .ti{font-size:20px;margin-bottom:4px;}.tn{font-family:'Cinzel',serif;font-size:8px;font-weight:700;letter-spacing:.05em;margin-bottom:2px;}.td{font-size:8px;color:var(--dim);line-height:1.3;}
 .sk-icon{font-size:18px;margin-bottom:3px;}
@@ -296,7 +296,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
           <div class="sp-title" style="position:absolute;top:2px;left:4px;font-size:6px;z-index:2">BOND TREE</div>
           <div class="sp-container" style="width:100%;height:100%;">
             <svg class="sp-svg" viewBox="0 0 120 120" id="skillSvg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">
-              <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid slice"/>
+              <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid meet"/>
               <g id="treeLines"></g>
               <!-- HEAD — prestige -->
               <g id="tn-head" data-node="head">
@@ -544,7 +544,7 @@ function drawTreeLines(){
 function getSkillTreeSVGContent(){
   if(G.monsterType==='hydra'){
     return`
-      <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid slice"/>
+      <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid meet"/>
       <g id="treeLines"></g>
       <g id="tn-body" data-node="body">
         <circle cx="60" cy="108" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
@@ -573,7 +573,7 @@ function getSkillTreeSVGContent(){
     `;
   }
   return`
-    <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid slice"/>
+    <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid meet"/>
     <g id="treeLines"></g>
     <g id="tn-head" data-node="head">
       <circle cx="86" cy="27" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
@@ -3374,9 +3374,9 @@ function showTypeSelect(){
   const nonBanned=TYPES.filter(t=>!bannedTypes.includes(t.id));
   const pool=[...nonBanned].sort(()=>Math.random()-.5).slice(0,2);
   lastOfferedTypes=pool.map(t=>t.id);
-  const typeCards=pool.map(t=>`<div class="to" onclick="pickType('${t.id}')" style="${TYPE_COLORS[t.id]||''}"><div class="ti">${t.icon}</div><div class="tn">${t.name}</div><div class="td">${t.desc}</div><div style="margin-top:5px;font-size:6.5px;font-family:'Cinzel',serif;letter-spacing:.04em"><span style="color:#e84060">✗ Lose Potential (+25%)</span><br><span style="color:#50e080">✓ Unlock typed items &amp; skills</span></div></div>`).join('<div style="display:flex;align-items:center;padding:0 6px;font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--dim)">OR</div>');
-  const typelessCard=`<div class="to" onclick="pickType('typeless')" style="border-color:var(--potential);margin-top:8px;max-width:280px"><div style="display:flex;align-items:center;gap:8px;justify-content:center"><div style="font-size:18px">✦</div><div><div class="tn" style="text-align:left">STAY TYPELESS</div><div class="td" style="text-align:left;margin-top:2px"><span style="color:#50e080">✓ Keep Potential (+25% to all effects)</span><br><span style="color:#50e080">✓ Unlock the next bond node</span><br><span style="color:var(--dim)">One offered type may be banned.</span></div></div></div></div>`;
-  setEncBody(`<div class="dialogue"><div class="dlg-name">${G.monsterName.toUpperCase()}</div>${G.monsterName} stands a little different now. Something settled. You feel it too — a pull toward something. Not a name. Not a label. A direction.</div><div style="display:flex;justify-content:center;align-items:stretch">${typeCards}</div><div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:0"><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div><span style="font-family:Cinzel,serif;font-size:8px;color:var(--dim);letter-spacing:.1em">OR</span><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div></div><div style="display:flex;justify-content:center">${typelessCard}</div>`);
+  const typeCards=pool.map(t=>`<div class="to" onclick="pickType('${t.id}')" style="${TYPE_COLORS[t.id]||''}"><div class="ti">${t.icon}</div><div class="tn">${t.name}</div><div class="td">${t.desc}</div><div style="margin-top:4px;font-size:6px;font-family:'Cinzel',serif;letter-spacing:.03em"><span style="color:#e84060">✗ Lose Potential</span><br><span style="color:#50e080">✓ Typed items &amp; skills</span></div></div>`).join('');
+  const typelessCard=`<div class="to" onclick="pickType('typeless')" style="border-color:var(--potential)"><div class="ti">✦</div><div class="tn">TYPELESS</div><div class="td" style="margin-top:2px"><span style="color:#50e080">✓ Keep Potential (+25%)</span><br><span style="color:#50e080">✓ Next bond node</span><br><span style="color:var(--dim)">May ban one type.</span></div></div>`;
+  setEncBody(`<div class="dialogue" style="margin-bottom:6px"><div class="dlg-name">${G.monsterName.toUpperCase()}</div>Something settled. A pull toward a direction — not a label, a path.</div><div class="type-opts">${typeCards}${typelessCard}</div>`);
 }
 function pickType(id){
   if(id==='typeless'){
