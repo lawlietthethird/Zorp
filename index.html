@@ -296,33 +296,33 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
               <g id="treeLines"></g>
               <!-- HEAD — prestige -->
               <g id="tn-head" data-node="head">
-                <circle cx="88" cy="28" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1.5"/>
-                <text x="88" y="32" text-anchor="middle" font-size="8" fill="#5030a0">✦</text>
+                <circle cx="82" cy="22" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+                <text x="82" y="26" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">✦</text>
               </g>
               <!-- FRONT_SHOULDER — beginner -->
               <g id="tn-front_shoulder" data-node="front_shoulder">
-                <circle cx="72" cy="52" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
-                <text x="72" y="56" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+                <circle cx="76" cy="62" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+                <text x="76" y="66" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
               </g>
               <!-- BACK_SHOULDER — intermediate -->
               <g id="tn-back_shoulder" data-node="back_shoulder">
-                <circle cx="50" cy="50" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
-                <text x="50" y="54" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+                <circle cx="50" cy="60" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+                <text x="50" y="64" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
               </g>
               <!-- FRONT_FOOT — intermediate -->
               <g id="tn-front_foot" data-node="front_foot">
-                <circle cx="75" cy="98" r="6" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
-                <text x="75" y="102" text-anchor="middle" font-size="5" fill="#1a0830">◇</text>
+                <circle cx="75" cy="98" r="6" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+                <text x="75" y="102" text-anchor="middle" font-size="5" fill="rgba(210,170,255,0.85)">◇</text>
               </g>
               <!-- BACK_FOOT — advanced -->
               <g id="tn-back_foot" data-node="back_foot">
-                <circle cx="43" cy="98" r="6" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
-                <text x="43" y="102" text-anchor="middle" font-size="5" fill="#1a0830">◇</text>
+                <circle cx="43" cy="98" r="6" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+                <text x="43" y="102" text-anchor="middle" font-size="5" fill="rgba(210,170,255,0.85)">◇</text>
               </g>
               <!-- TAIL_TIP — mastered -->
               <g id="tn-tail_tip" data-node="tail_tip">
-                <circle cx="20" cy="14" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="2"/>
-                <text x="20" y="18" text-anchor="middle" font-size="8" fill="#1a0830">★</text>
+                <circle cx="20" cy="32" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+                <text x="20" y="36" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
               </g>
             </svg>
           </div>
@@ -501,7 +501,7 @@ function getAvailableNodes(){
 function drawTreeLines(){
   const g=document.getElementById('treeLines'); if(!g)return; g.innerHTML='';
   // Node center positions matching SVG
-  const pos={head:[88,28],front_shoulder:[72,52],back_shoulder:[50,50],front_foot:[75,98],back_foot:[43,98],tail_tip:[20,14]};
+  const pos={head:[82,22],front_shoulder:[76,62],back_shoulder:[50,60],front_foot:[75,98],back_foot:[43,98],tail_tip:[20,32]};
   TREE_NODES.forEach(n=>{
     if(!n.parent)return;
     const [x1,y1]=pos[n.parent]||[0,0]; const [x2,y2]=pos[n.id]||[0,0];
