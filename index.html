@@ -22,7 +22,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 /* ENCOUNTER */
 .encounter{flex:1;min-height:0;overflow:hidden;background:var(--panel);border:1px solid var(--border);border-radius:10px 10px 0 0;display:flex;flex-direction:column;padding:8px 12px;gap:6px;}
 .enc-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.15em;color:var(--dim);margin-bottom:2px;}
-.enc-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;overflow:hidden;}
+.enc-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;}
 .draft-row{display:flex;gap:8px;justify-content:center;}
 .dc{flex:1;max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .18s;}
 .dc:hover{border-color:var(--glow);background:var(--card-h);box-shadow:0 0 10px rgba(96,64,160,.3);}
@@ -3975,9 +3975,8 @@ function showProfessorIntro(){
   setEncBody(profLayout(
     `<div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
-      "Ah. Another one. Sit down, sit down — don't touch anything."<br><br>
-      "You're here because you want a monster companion. To battle other trainers. To journey out there and come back — if you come back — knowing something you didn't know when you left."<br><br>
-      "I've seen a thousand trainers walk through that door. Some made it to the big city. Some got stuck in that haunted tower on Route 6 for three weeks. One of them ended up on a cruise ship somehow. Still sends postcards."<br><br>
+      "Ah. Another one. Sit down — don't touch anything."<br><br>
+      "You want a monster companion. To battle trainers, journey out there, come back knowing something you didn't when you left."<br><br>
       "Anyway. You're still here. That's something."
     </div>`,
     `<div class="btn-row">
