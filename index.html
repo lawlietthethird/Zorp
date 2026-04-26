@@ -218,6 +218,9 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
   .sp-svg{width:160px;height:160px;}
   .ecard{width:calc(33.333% - 4px);max-width:none;}
 }
+.prof-screen{display:flex;gap:10px;align-items:flex-start;width:100%;}
+.prof-image{flex-shrink:0;width:90px;object-fit:contain;object-position:bottom;}
+.prof-text{flex:1;min-width:0;}
 </style>
 </head>
 <body>
@@ -680,6 +683,8 @@ const FOX_WATER='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777134269/G
 const FOX_STEEL='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777132809/Gemini_Generated_Image_8afusv8afusv8afu-removebg-preview_boilj0.png';
 const FOX_TOXIC='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777132740/Gemini_Generated_Image_56z93q56z93q56z9-removebg-preview_eyod8w.png';
 const HYDRA_DEFAULT='';
+const PROFESSOR_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777166099/ChatGPT_Image_Apr_25__2026__09_16_30_PM-removebg-preview_prpzbb.png';
+const HYDRA_DEFAULT_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777148657/Gemini_Generated_Image_6ifvla6ifvla6ifv-removebg-preview_gzuwmg.png';
 const HYDRA_ELECTRIC='';
 const HYDRA_FIRE='';
 const HYDRA_WATER='';
@@ -3762,6 +3767,7 @@ function showTutorialJourney(){
 
 // Demo battle — completely isolated from main game state
 let demoInterval=null;
+let demoResetTimeout=null;
 let demoMs=0;
 let demoItems={
   shield:null,
@@ -3873,13 +3879,23 @@ function tickDemo(){
   const shieldDead=shield.broken;
   if(sparkDead||shieldDead){
     renderDemoCards();
-    setTimeout(()=>{
-      if(document.getElementById('demoBattleContainer')){
-        initDemoItems();
-        setDemoCommentary('Watch the bars carefully...');
-        renderDemoCards();
+    setDemoCommentary(
+      spark.broken&&!shield.broken?'Bubble Shield wins! Fatigue rewards endurance.':
+      shield.broken&&!spark.broken?'Spark Charm wins!':
+      'Both broken — a tie! Ties count as wins.'
+    );
+    clearInterval(demoInterval);
+    demoInterval=null;
+    demoResetTimeout=setTimeout(()=>{
+      const container=document.getElementById('demoBattleContainer');
+      if(container){
+        const btn=document.createElement('div');
+        btn.style.cssText='text-align:center;margin-top:6px;width:100%;';
+        btn.innerHTML='<button class="btn btn-p" style="font-size:8px;padding:4px 10px" onclick="startDemoBattle()">↺ REPLAY</button>';
+        container.appendChild(btn);
       }
-    },2000);
+      demoResetTimeout=null;
+    },1500);
     return;
   }
   renderDemoCards();
@@ -3893,13 +3909,34 @@ function startDemoBattle(){
   demoInterval=setInterval(tickDemo,100);
 }
 function stopDemoBattle(){
-  if(demoInterval){clearInterval(demoInterval);demoInterval=null;}
-  demoMs=0;demoFatigueMs=0;demoFatigueActive=false;
+  if(demoInterval){
+    clearInterval(demoInterval);
+    demoInterval=null;
+  }
+  if(demoResetTimeout){
+    clearTimeout(demoResetTimeout);
+    demoResetTimeout=null;
+  }
+  demoMs=0;
+  demoFatigueMs=0;
+  demoFatigueActive=false;
 }
 
 // ============================================================
 // PROFESSOR FLOW
 // ============================================================
+function profLayout(dialogueHTML,extraHTML){
+  return`
+    <div class="prof-screen">
+      <img class="prof-image" src="${PROFESSOR_IMG}" alt="The Professor"/>
+      <div class="prof-text">
+        ${dialogueHTML}
+      </div>
+    </div>
+    ${extraHTML||''}
+  `;
+}
+
 let professorStep=0;
 let selectedMonsterType='fox';
 
@@ -3929,86 +3966,86 @@ function showProfessorStep(){
 
 function showProfessorIntro(){
   setEncTitle('THE PROFESSOR');
-  setEncBody(`
-    <div class="dialogue">
+  setEncBody(profLayout(
+    `<div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
       "Ah. Another one. Sit down, sit down — don't touch anything."<br><br>
       "You're here because you want a monster companion. To battle other trainers. To journey out there and come back — if you come back — knowing something you didn't know when you left."<br><br>
       "I've seen a thousand trainers walk through that door. Some made it to the big city. Some got stuck in that haunted tower on Route 6 for three weeks. One of them ended up on a cruise ship somehow. Still sends postcards."<br><br>
       "Anyway. You're still here. That's something."
-    </div>
-    <div class="btn-row">
+    </div>`,
+    `<div class="btn-row">
       <button class="btn btn-p" onclick="professorStep=1;showProfessorStep()">CONTINUE →</button>
-    </div>
-  `);
+    </div>`
+  ));
 }
 
 function showProfessorShop(){
   setEncTitle('THE PROFESSOR — Gift Shop');
-  setEncBody(`
-    <div class="dialogue">
+  setEncBody(profLayout(
+    `<div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
       "Before we begin — can I interest you in some merchandise? I have a full line. Hats, shirts, a very tasteful necklace with my emblem on it. Very popular."
-    </div>
-    <div class="btn-row">
+    </div>`,
+    `<div class="btn-row">
       <button class="btn btn-p" onclick="professorShopBrowse()">BROWSE</button>
       <button class="btn btn-d" onclick="professorShopDecline()">NO THANK YOU</button>
-    </div>
-  `);
+    </div>`
+  ));
 }
 
 function professorShopBrowse(){
-  setEncBody(`
-    <div class="dialogue">
+  setEncBody(profLayout(
+    `<div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
-      "Excellent taste —"<br><br>
-      "...Hm. Fine."
-    </div>
-    <div class="btn-row">
+      "Excellent taste. Take your time, look around —"<br><br>
+      "...You're not going to buy anything, are you."<br><br>
+      "Hm."
+    </div>`,
+    `<div class="btn-row">
       <button class="btn btn-p" onclick="professorStep=2;showProfessorStep()">CONTINUE →</button>
-    </div>
-  `);
+    </div>`
+  ));
 }
 
 function professorShopDecline(){
-  setEncBody(`
-    <div class="dialogue">
+  setEncBody(profLayout(
+    `<div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
       "Are you sure? The other child seemed to quite like my wares. Bought the necklace on the spot. Didn't even haggle."<br><br>
       "Anyway."
-    </div>
-    <div class="btn-row">
+    </div>`,
+    `<div class="btn-row">
       <button class="btn btn-p" onclick="professorStep=2;showProfessorStep()">CONTINUE →</button>
-    </div>
-  `);
+    </div>`
+  ));
 }
 
 function showMonsterSelection(){
   setEncTitle('THE PROFESSOR — Choose Your Companion');
-  setEncBody(`
-    <div class="dialogue">
+  setEncBody(profLayout(
+    `<div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
-      "Different companions develop differently. The fox learns steadily — small skills that compound, one powerful technique at the end of a long journey. The hydra? Slow start. Its early skills are rudimentary. But give it time and both heads develop fully... well. You'll see."<br><br>
-      "Choose carefully. You'll be spending a lot of time together."
-    </div>
-    <div class="draft-row" style="gap:12px;justify-content:center;margin-top:8px">
-      <div class="dc ${selectedMonsterType==='fox'?'sel':''}" onclick="selectMonster('fox')" style="max-width:180px;cursor:pointer">
-        <div class="di">🦊</div>
-        <div class="dn">THE FOX</div>
-        <div class="dd" style="margin:4px 0">Steady growth. One mastered skill at the tail tip.</div>
-        <div style="font-family:Cinzel,serif;font-size:7px;color:var(--dim);margin-top:4px">✦ → ○ → ◈ → ◈ → ◆ → ★</div>
+      "Different companions develop differently. The fox learns steadily — one powerful technique at the end. The hydra starts slow, but give it time and both heads develop fully. Choose carefully."
+    </div>`,
+    `<div class="draft-row" style="gap:8px;justify-content:center;margin-top:6px">
+      <div class="dc ${selectedMonsterType==='fox'?'sel':''}" onclick="selectMonster('fox')" style="max-width:140px;cursor:pointer;padding:6px;">
+        <img src="${FOX_DEFAULT}" style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 3px"/>
+        <div class="dn" style="font-size:7px">THE FOX</div>
+        <div class="dd" style="margin:3px 0;font-size:7px">Steady growth. One mastered skill.</div>
+        <div style="font-family:Cinzel,serif;font-size:6px;color:var(--dim)">✦→○→◈→◈→◆→★</div>
       </div>
-      <div class="dc ${selectedMonsterType==='hydra'?'sel':''}" onclick="selectMonster('hydra')" style="max-width:180px;cursor:pointer">
-        <div class="di">🐉</div>
-        <div class="dn">THE HYDRA</div>
-        <div class="dd" style="margin:4px 0">Weak early skills. Two mastered skills at the head tips.</div>
-        <div style="font-family:Cinzel,serif;font-size:7px;color:var(--dim);margin-top:4px">✦ → ○ → ○ → ○ → ★ → ★</div>
+      <div class="dc ${selectedMonsterType==='hydra'?'sel':''}" onclick="selectMonster('hydra')" style="max-width:140px;cursor:pointer;padding:6px;">
+        <img src="${HYDRA_DEFAULT_IMG}" style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 3px"/>
+        <div class="dn" style="font-size:7px">THE HYDRA</div>
+        <div class="dd" style="margin:3px 0;font-size:7px">Weak early. Two mastered skills.</div>
+        <div style="font-family:Cinzel,serif;font-size:6px;color:var(--dim)">✦→○→○→○→★→★</div>
       </div>
     </div>
-    <div class="btn-row" style="margin-top:8px">
+    <div class="btn-row" style="margin-top:6px">
       <button class="btn btn-p" onclick="confirmMonsterSelection()">SELECT ${selectedMonsterType.toUpperCase()} →</button>
-    </div>
-  `);
+    </div>`
+  ));
 }
 
 function selectMonster(type){
@@ -4026,14 +4063,15 @@ function confirmMonsterSelection(){
 
 function showMonsterNaming(){
   setEncTitle('THE PROFESSOR — Name Your Companion');
-  setEncBody(`
-    <div class="dialogue">
+  setEncBody(profLayout(
+    `<div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
       "One more thing. They need a name. Something they'll answer to. Something you won't regret shouting across a battlefield."<br><br>
       "Take your time. Or don't. I have other things to do."
-    </div>
-    <div style="text-align:center;margin:12px 0">
-      <div style="font-size:32px;margin-bottom:8px">${selectedMonsterType==='fox'?'🦊':'🐉'}</div>
+    </div>`,
+    `<div style="text-align:center;margin:12px 0">
+      <img src="${selectedMonsterType==='fox'?FOX_DEFAULT:HYDRA_DEFAULT_IMG}"
+        style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 8px"/>
       <input id="monsterNameInput" type="text" maxlength="12"
         style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:Cinzel,serif;font-size:14px;padding:6px 12px;text-align:center;width:160px;"
         placeholder="${selectedMonsterType==='fox'?'Kip':'Hydrax'}"
@@ -4041,8 +4079,8 @@ function showMonsterNaming(){
     </div>
     <div class="btn-row">
       <button class="btn btn-p" onclick="confirmMonsterName()">CONFIRM →</button>
-    </div>
-  `);
+    </div>`
+  ));
   setTimeout(()=>{const inp=document.getElementById('monsterNameInput');if(inp)inp.focus();},100);
 }
 
@@ -4057,15 +4095,15 @@ function confirmMonsterName(){
 
 function showRivalNaming(){
   setEncTitle('THE PROFESSOR — One More Thing');
-  setEncBody(`
-    <div class="dialogue">
+  setEncBody(profLayout(
+    `<div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
       "Oh — and there's one more thing. Another trainer heading out on the same journey. Left yesterday actually."<br><br>
       "You know them. Of course you know them. You're the only two kids in this entire shitty little town. Their mother's out on the deck every afternoon — lovely woman, very dedicated to her tan — I mean, you've lived next door your whole life. Nice kid actually. Bought the necklace."<br><br>
       "Kids these days. Take one of my beloved monsters and off they go. No forwarding address. No postcard. Badge ceremony in the big city and suddenly they're too important to write."<br><br>
       "Anyway. What's the name again?"
-    </div>
-    <div style="text-align:center;margin:12px 0">
+    </div>`,
+    `<div style="text-align:center;margin:12px 0">
       <input id="rivalNameInput" type="text" maxlength="12"
         style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:Cinzel,serif;font-size:14px;padding:6px 12px;text-align:center;width:160px;"
         placeholder="Their name..."
@@ -4073,8 +4111,8 @@ function showRivalNaming(){
     </div>
     <div class="btn-row">
       <button class="btn btn-p" onclick="confirmRivalName()">BEGIN JOURNEY →</button>
-    </div>
-  `);
+    </div>`
+  ));
   setTimeout(()=>{const inp=document.getElementById('rivalNameInput');if(inp)inp.focus();},100);
 }
 

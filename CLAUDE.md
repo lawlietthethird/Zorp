@@ -497,3 +497,19 @@ startDemoBattle(): stops existing interval, inits items, starts new interval.
 stopDemoBattle(): clears interval, resets demo state. Called on NEXT, SKIP, and tutorial completion.
 
 Demo outcome: Spark Charm (80hp) dies to fatigue faster than Bubble Shield (200hp). Bubble Shield wins. Loop resets after 2s.
+
+## Professor Screen Layout
+
+profLayout(dialogueHTML, extraHTML): wraps content with professor image (90px) on left, content on right. Used on all professor screens.
+
+PROFESSOR_IMG: Cloudinary URL for professor character image.
+HYDRA_DEFAULT_IMG: Cloudinary URL for default hydra image.
+
+Monster selection: compact cards with 60x60px images, shortened dialogue, SELECT button always visible.
+
+Browse path: three beat joke — excited, player doesn't buy, disappointment.
+Decline path: necklace reference.
+
+## Demo Battle Fix
+demoResetTimeout: separate timeout handle for post-battle REPLAY button. Cancelled by stopDemoBattle.
+Demo no longer auto-loops — stops on completion, shows REPLAY button after 1.5s, NEXT and SKIP always accessible.
