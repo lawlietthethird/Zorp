@@ -3653,6 +3653,121 @@ let notifTimer;
 function showNotif(msg,duration=2400){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');clearTimeout(notifTimer);notifTimer=setTimeout(()=>el.classList.remove('show'),duration);}
 
 // ============================================================
+// TUTORIAL SYSTEM
+// ============================================================
+let tutorialStep=0;
+
+function showTutorial(){
+  tutorialStep=0;
+  showTutorialStep();
+}
+
+function showTutorialStep(){
+  switch(tutorialStep){
+    case 0: showTutorialCards(); break;
+    case 1: showTutorialFight(); break;
+    case 2: showTutorialKeywords(); break;
+    case 3: showTutorialJourney(); break;
+    case 4:
+      markTutorialSeen();
+      professorStep=5;
+      showProfessorStep();
+      break;
+  }
+}
+
+function skipTutorial(){
+  markTutorialSeen();
+  professorStep=5;
+  showProfessorStep();
+}
+
+function showTutorialCards(){
+  setEncTitle('THE PROFESSOR — How This Works');
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "Pay attention. Each item on your board has bars. The green bar is HP — how much punishment it takes before it stops working entirely. The purple bar is the activation timer — when it fills, the item does its thing. The blue bar is plating — it absorbs damage before HP takes a hit."<br><br>
+      "Simple enough for even you to understand. Watch."
+    </div>
+    <div id="demoBattleContainer" style="margin:8px 0;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;gap:8px;justify-content:center;align-items:center;">
+    </div>
+    <div id="demoCommentary" style="font-size:9px;color:var(--dim);font-style:italic;text-align:center;min-height:16px;margin-top:4px"></div>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-d" onclick="skipTutorial()">SKIP</button>
+      <button class="btn btn-p" onclick="tutorialStep=1;stopDemoBattle();showTutorialStep()">NEXT →</button>
+    </div>
+  `);
+  startDemoBattle();
+}
+
+function showTutorialFight(){
+  setEncTitle('THE PROFESSOR — The Fight');
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "Your items fight automatically. You don't control them during battle — you built them beforehand. That's the job. Build something that wins without you holding its hand."<br><br>
+      "When ALL of a player's items are broken the fight is over. First side with nothing left loses. If both sides run out at the same time it's a tie — and ties count as wins. Remember that."<br><br>
+      "One more thing. See that demo running? Notice how long it's taking? Everything gets tired eventually. The longer a fight drags on the more damage both sides take — and it accelerates. Build something that wins fast or build something that outlasts. Don't build something that does neither."
+    </div>
+    <div id="demoBattleContainer" style="margin:8px 0;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;gap:8px;justify-content:center;align-items:center;">
+    </div>
+    <div id="demoCommentary" style="font-size:9px;color:var(--dim);font-style:italic;text-align:center;min-height:16px;margin-top:4px"></div>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-d" onclick="skipTutorial()">SKIP</button>
+      <button class="btn btn-p" onclick="tutorialStep=2;stopDemoBattle();showTutorialStep()">NEXT →</button>
+    </div>
+  `);
+  startDemoBattle();
+}
+
+function showTutorialKeywords(){
+  setEncTitle('THE PROFESSOR — Keywords');
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "Some items apply special conditions. These matter. Pay attention to what your opponent is running."<br><br>
+      "<span style="color:#ff7030">🔥 Burn</span> — ticks damage every second. Plating absorbs half. Stacks permanently."<br><br>
+      "<span style="color:#50e050">☠️ Poison</span> — ticks damage every second. Bypasses plating entirely. Sneaky."<br><br>
+      "<span style="color:#f0c040">⚡ Jolt</span> — makes items activate faster. Good for you, bad when it's on them."<br><br>
+      "<span style="color:#4090ff">💧 Wet</span> — makes items activate slower. Good when it's on them."<br><br>
+      "These stack. These persist. These change fights. If you ignore them you will lose to someone who doesn't."
+    </div>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-d" onclick="skipTutorial()">SKIP</button>
+      <button class="btn btn-p" onclick="tutorialStep=3;showTutorialStep()">NEXT →</button>
+    </div>
+  `);
+}
+
+function showTutorialJourney(){
+  setEncTitle('THE PROFESSOR — The Journey');
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "You'll travel across multiple days. Each day has shops where you buy items, a wild encounter for gold, and a trainer battle at the end."<br><br>
+      "Win trainer battles and your bond with ${G.monsterName} deepens — unlock new skills on the bond tree. The tree is permanent. Choose carefully."<br><br>
+      "You have an Honor bar. Trainer losses cost Honor scaled to the day number — day 3 loss costs 3 Honor. Wild losses cost nothing. When Honor hits zero you get one last chance. One. After that the journey ends."<br><br>
+      "Six wins completes a run. That's it. Six wins."<br><br>
+      "Any questions? Good. I don't have time for them anyway."
+    </div>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-d" onclick="skipTutorial()">SKIP</button>
+      <button class="btn btn-p" onclick="tutorialStep=4;showTutorialStep()">FINISH →</button>
+    </div>
+  `);
+}
+
+function startDemoBattle(){
+  const container=document.getElementById('demoBattleContainer');
+  if(container)container.innerHTML='<div style="color:var(--dim);font-size:9px;font-style:italic;text-align:center;padding:8px">Preparing demo...</div>';
+}
+function stopDemoBattle(){
+  const container=document.getElementById('demoBattleContainer');
+  if(container)container.innerHTML='';
+}
+
+// ============================================================
 // PROFESSOR FLOW
 // ============================================================
 let professorStep=0;
@@ -3670,8 +3785,12 @@ function showProfessorStep(){
     case 2: showMonsterSelection(); break;
     case 3: showMonsterNaming(); break;
     case 4:
-      if(checkTutorialSeen()){showRivalNaming();}
-      else{showRivalNaming();}
+      if(checkTutorialSeen()){
+        professorStep=5;
+        showProfessorStep();
+      }else{
+        showTutorial();
+      }
       break;
     case 5: showRivalNaming(); break;
     case 6: beginRun(); break;

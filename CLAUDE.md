@@ -460,3 +460,22 @@ zorpTutorialSeen: 'true' when tutorial completed once
 zorpRivalName: persisted rival name across resets
 
 Rival tag: always 'Not Gary' — the professor named them.
+
+## Tutorial System
+
+showTutorial(): entry point, sets tutorialStep=0, calls showTutorialStep().
+showTutorialStep(): switch on tutorialStep 0-4. Cases 0-3 show screens. Case 4 marks tutorial seen and advances professor flow to step 5.
+skipTutorial(): marks tutorial seen, advances professor flow to step 5 immediately.
+tutorialStep: local counter, not in G object.
+
+Tutorial screens:
+0: showTutorialCards — card anatomy explanation + demo battle
+1: showTutorialFight — auto-battle explanation + demo battle
+2: showTutorialKeywords — burn/poison/jolt/wet
+3: showTutorialJourney — honor/wins/bond tree
+
+Demo battle: startDemoBattle() and stopDemoBattle() are stubs filled in by Prompt 3.
+demoBattleContainer: div inside tutorial screens 0 and 1 where demo renders.
+demoCommentary: div below demo showing professor commentary updates.
+
+zorpTutorialSeen localStorage flag set by markTutorialSeen() when tutorial completes or is skipped.
