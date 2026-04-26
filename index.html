@@ -32,11 +32,11 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .dialogue{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text);line-height:1.6;font-style:italic;}
 .dlg-name{font-family:'Cinzel',serif;font-size:10px;font-weight:700;font-style:normal;color:var(--gold);margin-bottom:3px;}
 /* ENEMY BOARD */
-.enemy-area{display:flex;gap:10px;align-items:stretch;flex:1;min-height:0;}
-.enemy-info{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:120px;flex-shrink:0;}
-.enemy-icon{font-size:36px;}.enemy-name{font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:.1em;}
-.enemy-tag{font-size:8px;color:var(--dim);}.enemy-board{flex:1;display:flex;flex-direction:column;gap:4px;min-height:0;}
-.eboard-row{display:flex;flex:1;min-height:0;gap:5px;align-items:stretch;}
+.enemy-area{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0;}
+.enemy-info{display:flex;flex-direction:row;align-items:center;gap:8px;flex-shrink:0;width:100%;}
+.enemy-icon{font-size:26px;flex-shrink:0;}.enemy-name{font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:.1em;}
+.enemy-tag{font-size:8px;color:var(--dim);}.enemy-board{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;min-height:0;}
+.eboard-row{display:flex;flex:1;min-height:0;min-width:0;gap:5px;align-items:stretch;}
 .enc-row-label{font-family:'Cinzel',serif;font-size:7px;writing-mode:vertical-rl;transform:rotate(180deg);width:10px;flex-shrink:0;color:var(--dim);}
 /* BATTLE */
 .battle-status{display:flex;align-items:center;gap:10px;}
@@ -99,7 +99,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .board-row{flex:1;min-height:0;display:flex;align-items:center;gap:4px;}
 .rl{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.07em;writing-mode:vertical-rl;transform:rotate(180deg);width:11px;flex-shrink:0;}
 .rl.f{color:var(--front);}.rl.b{color:var(--back);}
-.slots{flex:1;height:100%;display:flex;gap:4px;}
+.slots{flex:1;min-width:0;height:100%;display:flex;gap:4px;}
 .swap-hint{font-size:9px;color:var(--dim);font-style:italic;text-align:right;}
 /* ITEM CARD */
 .ic{flex:1;min-width:0;height:100%;border-radius:7px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
@@ -216,7 +216,6 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
   .right-col{height:160px;}
   .sp-container{width:160px;height:160px;}
   .sp-svg{width:160px;height:160px;}
-  .enemy-info{width:160px;}
 }
 </style>
 </head>
@@ -2571,7 +2570,7 @@ function showEncounterBattle(type,wildMonster=null){
     ?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
     :'<div class="dialogue"><div class="dlg-name">'+trainer.name+'</div>"'+(trainer.getDialogueBefore?trainer.getDialogueBefore():trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'"</div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — '+trainer.name);
-  setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info"><div class="enemy-icon">'+enemy.icon+'</div><div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row" style="margin-top:4px"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
+  setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info"><div class="enemy-icon">'+enemy.icon+'</div><div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
   renderEnemyBoard();
 }
 function toggleSpeed(){
