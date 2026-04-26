@@ -218,9 +218,9 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
   .sp-svg{width:160px;height:160px;}
   .ecard{width:calc(33.333% - 4px);max-width:none;}
 }
-.prof-screen{display:flex;gap:10px;align-items:flex-end;width:100%;}
-.prof-image{flex-shrink:0;width:180px;object-fit:contain;object-position:bottom;align-self:flex-end;}
-.prof-text{flex:1;min-width:0;}
+.prof-screen{display:flex;gap:10px;align-items:flex-start;width:100%;}
+.prof-image{flex-shrink:0;width:180px;object-fit:contain;object-position:top;align-self:flex-start;}
+.prof-text{flex:1;min-width:0;align-self:flex-start;}
 </style>
 </head>
 <body>
@@ -704,9 +704,12 @@ function getFoxImage(){
   const base=G.monsterType==='hydra'?HYDRA_DEFAULT:FOX_DEFAULT;
   return(G.type&&map[G.type]&&map[G.type].startsWith('https://'))?map[G.type]:base;
 }
+let professorFlowActive=false;
 function updateFoxImage(){
   const el=document.getElementById('foxImageSvg');
-  if(el)el.setAttribute('href',getFoxImage());
+  if(!el)return;
+  if(professorFlowActive){el.setAttribute('href','');return;}
+  el.setAttribute('href',getFoxImage());
 }
 function updateMonsterDisplay(){
   const nameEl=document.querySelector('.zorp-name');
@@ -3942,6 +3945,7 @@ let professorStep=0;
 let selectedMonsterType='fox';
 
 function showProfessorFlow(){
+  professorFlowActive=true;
   professorStep=0;
   showProfessorStep();
 }
@@ -4127,6 +4131,7 @@ function confirmRivalName(){
 }
 
 function beginRun(){
+  professorFlowActive=false;
   G.day=1;G.dayStep=0;
   updateUI();renderBoard();rebuildSkillTreeSVG();renderTrack();
   activateCurrentNode();
