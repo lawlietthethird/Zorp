@@ -737,6 +737,8 @@ function updateFoxImage(){
   if(!el)return;
   if(professorFlowActive){el.setAttribute('href','');return;}
   el.setAttribute('href',getFoxImage());
+  // Default forms fill the box; typed forms show full artwork
+  el.setAttribute('preserveAspectRatio',G.type?'xMidYMid meet':'xMidYMid slice');
 }
 function updateMonsterDisplay(){
   const nameEl=document.querySelector('.zorp-name');
