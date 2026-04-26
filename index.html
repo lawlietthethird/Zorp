@@ -218,8 +218,8 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
   .sp-svg{width:160px;height:160px;}
   .ecard{width:calc(33.333% - 4px);max-width:none;}
 }
-.prof-screen{display:flex;gap:10px;align-items:flex-start;width:100%;}
-.prof-image{flex-shrink:0;width:90px;object-fit:contain;object-position:bottom;}
+.prof-screen{display:flex;gap:10px;align-items:flex-end;width:100%;}
+.prof-image{flex-shrink:0;width:180px;object-fit:contain;object-position:bottom;align-self:flex-end;}
 .prof-text{flex:1;min-width:0;}
 </style>
 </head>
@@ -3887,12 +3887,17 @@ function tickDemo(){
     clearInterval(demoInterval);
     demoInterval=null;
     demoResetTimeout=setTimeout(()=>{
+      const existing=document.getElementById('demoEndButtons');
+      if(existing)existing.remove();
       const container=document.getElementById('demoBattleContainer');
-      if(container){
-        const btn=document.createElement('div');
-        btn.style.cssText='text-align:center;margin-top:6px;width:100%;';
-        btn.innerHTML='<button class="btn btn-p" style="font-size:8px;padding:4px 10px" onclick="startDemoBattle()">↺ REPLAY</button>';
-        container.appendChild(btn);
+      if(container&&container.parentNode){
+        const endBtns=document.createElement('div');
+        endBtns.id='demoEndButtons';
+        endBtns.style.cssText='display:flex;gap:8px;justify-content:center;margin-top:6px;';
+        endBtns.innerHTML=
+          '<button class="btn btn-d" style="font-size:8px;padding:4px 10px" onclick="startDemoBattle()">↺ REPLAY</button>'+
+          '<button class="btn btn-p" style="font-size:8px;padding:4px 12px" onclick="tutorialStep='+(tutorialStep+1)+';stopDemoBattle();showTutorialStep()">NEXT →</button>';
+        container.parentNode.insertBefore(endBtns,container.nextSibling);
       }
       demoResetTimeout=null;
     },1500);
@@ -3909,14 +3914,10 @@ function startDemoBattle(){
   demoInterval=setInterval(tickDemo,100);
 }
 function stopDemoBattle(){
-  if(demoInterval){
-    clearInterval(demoInterval);
-    demoInterval=null;
-  }
-  if(demoResetTimeout){
-    clearTimeout(demoResetTimeout);
-    demoResetTimeout=null;
-  }
+  if(demoInterval){clearInterval(demoInterval);demoInterval=null;}
+  if(demoResetTimeout){clearTimeout(demoResetTimeout);demoResetTimeout=null;}
+  const endBtns=document.getElementById('demoEndButtons');
+  if(endBtns)endBtns.remove();
   demoMs=0;
   demoFatigueMs=0;
   demoFatigueActive=false;
