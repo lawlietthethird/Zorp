@@ -522,9 +522,9 @@ function drawTreeLines(){
     front_foot:[75,98],back_foot:[43,98],tail_tip:[27,42]
   };
   const hydraPos={
-    body:[60,108],neck_split:[60,78],
-    mid_left:[30,48],mid_right:[90,48],
-    head_left:[18,15],head_right:[102,15]
+    body:[60,108],neck_split:[60,88],
+    mid_left:[30,62],mid_right:[90,62],
+    head_left:[18,32],head_right:[102,32]
   };
   const pos=G.monsterType==='hydra'?hydraPos:foxPos;
   getTreeNodes().forEach(n=>{
@@ -551,24 +551,24 @@ function getSkillTreeSVGContent(){
         <text x="60" y="112" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">✦</text>
       </g>
       <g id="tn-neck_split" data-node="neck_split">
-        <circle cx="60" cy="78" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
-        <text x="60" y="82" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
+        <circle cx="60" cy="88" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+        <text x="60" y="92" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
       </g>
       <g id="tn-mid_left" data-node="mid_left">
-        <circle cx="30" cy="48" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
-        <text x="30" y="52" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
+        <circle cx="30" cy="62" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+        <text x="30" y="66" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
       </g>
       <g id="tn-mid_right" data-node="mid_right">
-        <circle cx="90" cy="48" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
-        <text x="90" y="52" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
+        <circle cx="90" cy="62" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+        <text x="90" y="66" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
       </g>
       <g id="tn-head_left" data-node="head_left">
-        <circle cx="18" cy="15" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
-        <text x="18" y="19" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
+        <circle cx="18" cy="32" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+        <text x="18" y="36" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
       </g>
       <g id="tn-head_right" data-node="head_right">
-        <circle cx="102" cy="15" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
-        <text x="102" y="19" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
+        <circle cx="102" cy="32" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+        <text x="102" y="36" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
       </g>
     `;
   }
