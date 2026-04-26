@@ -479,3 +479,21 @@ demoBattleContainer: div inside tutorial screens 0 and 1 where demo renders.
 demoCommentary: div below demo showing professor commentary updates.
 
 zorpTutorialSeen localStorage flag set by markTutorialSeen() when tutorial completes or is skipped.
+
+## Demo Battle System
+
+Completely isolated from main game state. Uses demoItems object with shield and spark properties.
+demoInterval: setInterval handle. Always cleared by stopDemoBattle before starting new demo.
+demoMs: elapsed battle time in ms.
+demoFatigueMs: elapsed fatigue time.
+demoFatigueActive: boolean, true when demoMs>=30000.
+
+makeDemoItem(id,name,icon,maxHp,actMs,type): creates demo item. type='shield' sets effectAmt=30, type='attack' sets effectAmt=13.
+initDemoItems(): creates fresh Bubble Shield (200hp, 6s) and Spark Charm (80hp, 3s). Resets all demo state.
+tickDemo(): runs every 100ms. Ticks both items. Spark Charm damages shield item. Bubble Shield plates self. Fatigue at 30s. Auto-resets after 2s delay when demo ends.
+renderDemoCards(): rebuilds demoBattleContainer innerHTML. Shows both cards with live bars.
+setDemoCommentary(text): updates demoCommentary div with professor commentary.
+startDemoBattle(): stops existing interval, inits items, starts new interval.
+stopDemoBattle(): clears interval, resets demo state. Called on NEXT, SKIP, and tutorial completion.
+
+Demo outcome: Spark Charm (80hp) dies to fatigue faster than Bubble Shield (200hp). Bubble Shield wins. Loop resets after 2s.

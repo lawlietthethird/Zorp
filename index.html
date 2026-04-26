@@ -3669,6 +3669,7 @@ function showTutorialStep(){
     case 2: showTutorialKeywords(); break;
     case 3: showTutorialJourney(); break;
     case 4:
+      stopDemoBattle();
       markTutorialSeen();
       professorStep=5;
       showProfessorStep();
@@ -3677,6 +3678,7 @@ function showTutorialStep(){
 }
 
 function skipTutorial(){
+  stopDemoBattle();
   markTutorialSeen();
   professorStep=5;
   showProfessorStep();
@@ -3758,13 +3760,141 @@ function showTutorialJourney(){
   `);
 }
 
-function startDemoBattle(){
+// Demo battle — completely isolated from main game state
+let demoInterval=null;
+let demoMs=0;
+let demoItems={
+  shield:null,
+  spark:null,
+};
+let demoFatigueMs=0;
+let demoFatigueActive=false;
+
+function makeDemoItem(id,name,icon,maxHp,actMs,type){
+  return{
+    id,name,icon,maxHp,hp:maxHp,
+    actMs,baseActMs:actMs,
+    actElapsed:0,actPct:0,
+    shield:0,maxShield:0,
+    broken:false,
+    type,
+    effectAmt:type==='shield'?30:13,
+  };
+}
+
+function initDemoItems(){
+  demoItems.shield=makeDemoItem('demo_shield','Bubble Shield','🫧',200,6000,'shield');
+  demoItems.spark=makeDemoItem('demo_spark','Spark Charm','⚡',80,3000,'attack');
+  demoMs=0;
+  demoFatigueMs=0;
+  demoFatigueActive=false;
+}
+
+function renderDemoCards(){
   const container=document.getElementById('demoBattleContainer');
-  if(container)container.innerHTML='<div style="color:var(--dim);font-size:9px;font-style:italic;text-align:center;padding:8px">Preparing demo...</div>';
+  if(!container)return;
+  const shield=demoItems.shield;
+  const spark=demoItems.spark;
+  if(!shield||!spark)return;
+  const makeCard=(item)=>{
+    const hpPct=item.maxHp>0?(item.hp/item.maxHp*100):0;
+    const shPct=item.maxShield>0?(item.shield/item.maxShield*100):0;
+    const actPct=item.actPct||0;
+    const hpColor=hpPct>60?'#50e080':hpPct>30?'#e0a030':'#e84040';
+    const brokenStyle=item.broken?'opacity:.3;':'';
+    return`<div style="width:90px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px;text-align:center;position:relative;${brokenStyle}"><div style="font-size:22px;margin-bottom:2px">${item.broken?'✕':item.icon}</div><div style="font-family:Cinzel,serif;font-size:6px;font-weight:700;margin-bottom:2px">${item.name}</div><div style="font-size:6px;color:var(--gold);font-family:Cinzel,serif">${item.hp}/${item.maxHp}</div>${item.shield>0?`<div style="font-size:6px;color:var(--shield)">🛡${item.shield}</div>`:''}<div style="margin-top:4px;display:flex;flex-direction:column;gap:1px;">${item.maxShield>0||item.shield>0?`<div style="height:3px;background:rgba(0,0,0,.4);border-radius:2px;overflow:hidden"><div style="height:100%;width:${shPct}%;background:var(--shield);border-radius:2px"></div></div>`:''}<div style="height:3px;background:rgba(0,0,0,.4);border-radius:2px;overflow:hidden"><div style="height:100%;width:${hpPct}%;background:${hpColor};border-radius:2px"></div></div><div style="height:3px;background:rgba(0,0,0,.4);border-radius:2px;overflow:hidden"><div style="height:100%;width:${actPct}%;background:var(--act);border-radius:2px"></div></div></div>${item.broken?'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px;color:rgba(100,80,120,.4);">✕</div>':''}</div>`;
+  };
+  const timerTxt=demoFatigueActive?
+    `<div style="font-family:Cinzel,serif;font-size:8px;color:var(--fatigue);text-align:center">⚠ FATIGUE</div>`:
+    `<div style="font-family:Cinzel,serif;font-size:8px;color:var(--gold);text-align:center">${Math.max(0,(30000-demoMs)/1000).toFixed(1)}s</div>`;
+  container.innerHTML=makeCard(spark)+`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0 4px">${timerTxt}<div style="font-size:10px;color:var(--dim)">VS</div></div>`+makeCard(shield);
+}
+
+function setDemoCommentary(text){
+  const el=document.getElementById('demoCommentary');
+  if(el)el.textContent=text;
+}
+
+function tickDemo(){
+  if(!demoItems.shield||!demoItems.spark)return;
+  const TICK=100;
+  demoMs+=TICK;
+  const spark=demoItems.spark;
+  const shield=demoItems.shield;
+  // Tick Spark Charm
+  if(!spark.broken){
+    spark.actElapsed+=TICK;
+    spark.actPct=Math.min(100,spark.actElapsed/spark.actMs*100);
+    if(spark.actElapsed>=spark.actMs){
+      spark.actElapsed=0;spark.actPct=0;
+      let dmg=spark.effectAmt;
+      if(shield.shield>0){
+        const absorbed=Math.min(shield.shield,dmg);
+        shield.shield-=absorbed;dmg-=absorbed;
+        setDemoCommentary('Spark Charm hits — plating absorbs '+absorbed+' damage!');
+      }else{
+        setDemoCommentary('Spark Charm hits '+shield.name+' for '+dmg+' damage!');
+      }
+      if(dmg>0){
+        shield.hp=Math.max(0,shield.hp-dmg);
+        if(shield.hp<=0){shield.broken=true;setDemoCommentary('Bubble Shield is broken!');}
+      }
+    }
+  }
+  // Tick Bubble Shield
+  if(!shield.broken){
+    shield.actElapsed+=TICK;
+    shield.actPct=Math.min(100,shield.actElapsed/shield.actMs*100);
+    if(shield.actElapsed>=shield.actMs){
+      shield.actElapsed=0;shield.actPct=0;
+      shield.shield=(shield.shield||0)+shield.effectAmt;
+      shield.maxShield=Math.max(shield.maxShield||0,shield.shield);
+      setDemoCommentary('Bubble Shield activates — gains +'+shield.effectAmt+' plating!');
+    }
+  }
+  // Fatigue at 30s
+  if(demoMs>=30000){
+    if(!demoFatigueActive){
+      demoFatigueActive=true;
+      setDemoCommentary('Fatigue begins — both items take increasing damage!');
+    }
+    demoFatigueMs+=TICK;
+    const fatigueDmg=Math.min(20,2+Math.floor(demoFatigueMs/2000)*2);
+    if(!spark.broken){
+      spark.hp=Math.max(0,spark.hp-fatigueDmg);
+      if(spark.hp<=0){spark.broken=true;setDemoCommentary('Spark Charm collapses from fatigue! Bubble Shield wins!');}
+    }
+    if(!shield.broken){
+      shield.hp=Math.max(0,shield.hp-Math.round(fatigueDmg*0.5));
+      if(shield.hp<=0){shield.broken=true;}
+    }
+  }
+  const sparkDead=spark.broken;
+  const shieldDead=shield.broken;
+  if(sparkDead||shieldDead){
+    renderDemoCards();
+    setTimeout(()=>{
+      if(document.getElementById('demoBattleContainer')){
+        initDemoItems();
+        setDemoCommentary('Watch the bars carefully...');
+        renderDemoCards();
+      }
+    },2000);
+    return;
+  }
+  renderDemoCards();
+}
+
+function startDemoBattle(){
+  stopDemoBattle();
+  initDemoItems();
+  renderDemoCards();
+  setDemoCommentary('Watch the bars carefully...');
+  demoInterval=setInterval(tickDemo,100);
 }
 function stopDemoBattle(){
-  const container=document.getElementById('demoBattleContainer');
-  if(container)container.innerHTML='';
+  if(demoInterval){clearInterval(demoInterval);demoInterval=null;}
+  demoMs=0;demoFatigueMs=0;demoFatigueActive=false;
 }
 
 // ============================================================
