@@ -20,7 +20,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
 .pb{font-family:'Cinzel',serif;font-size:8px;letter-spacing:.12em;color:var(--glow);background:rgba(96,64,160,.15);padding:2px 8px;border-radius:8px;border:1px solid rgba(96,64,160,.3);}
 .page{display:flex;flex-direction:column;max-width:960px;margin:0 auto;padding:0;height:calc(100vh - 44px);overflow:hidden;}
 /* ENCOUNTER */
-.encounter{background:var(--panel);border:1px solid var(--border);border-radius:10px 10px 0 0;flex-shrink:0;height:auto;display:flex;flex-direction:column;padding:10px 12px;gap:6px;overflow:hidden;min-height:0;}
+.encounter{background:var(--panel);border:1px solid var(--border);border-radius:10px 10px 0 0;flex:1;min-height:0;display:flex;flex-direction:column;padding:10px 12px;gap:6px;overflow:hidden;}
 .enc-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.15em;color:var(--dim);margin-bottom:2px;}
 .enc-body{flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden;}
 .draft-row{display:flex;gap:8px;justify-content:center;}
@@ -67,9 +67,6 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
 .re-title{font-family:'Cinzel',serif;font-size:26px;font-weight:900;letter-spacing:.15em;margin-bottom:6px;}
 .re-win{color:#50e080;}.re-lose{color:#e84040;}.re-flawless{color:var(--gold);text-shadow:0 0 20px rgba(240,192,64,.8),0 0 40px rgba(240,192,64,.4);}
 .re-sub{color:var(--dim);font-size:12px;margin-bottom:16px;line-height:1.6;}
-/* DAY TRACK */
-.day-track{background:rgba(10,8,18,.8);border:1px solid var(--border);border-radius:5px;padding:4px 6px;display:flex;align-items:center;gap:0;overflow-x:auto;overflow-y:hidden;flex-shrink:0;scrollbar-width:none;-webkit-overflow-scrolling:touch;height:52px;}
-.day-track::-webkit-scrollbar{display:none;}
 .track-node{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;transition:all .2s;position:relative;z-index:1;flex-shrink:0;}
 .track-node.done .node-stamp{opacity:.5;border-color:var(--border);}
 .track-node.done .node-stamp::after{content:'✓';position:absolute;top:-4px;right:-4px;font-size:9px;color:#50e080;background:var(--bg);border-radius:50%;padding:1px;}
@@ -82,10 +79,13 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
 .track-connector{flex:1;height:2px;background:var(--border);min-width:16px;max-width:40px;margin-top:-22px;position:relative;z-index:0;}
 .track-connector.done-conn{background:rgba(80,224,128,.3);}
 /* PLAYER SECTION */
-.player-section{background:var(--panel);border:1px solid var(--border);border-radius:0 0 10px 10px;border-top:none;padding:8px 10px;display:flex;flex-direction:row;gap:8px;flex-shrink:0;height:340px;}
-.bond-col{width:155px;flex-shrink:0;display:flex;flex-direction:column;background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;}
-.right-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
-.player-header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;}
+.player-section{background:var(--panel);border:1px solid var(--border);border-radius:0 0 10px 10px;border-top:none;display:flex;flex-direction:column;flex-shrink:0;height:350px;overflow:hidden;}
+.player-header{display:flex;flex-direction:row;flex-shrink:0;height:160px;overflow:hidden;}
+.bond-col{width:160px;height:160px;flex-shrink:0;position:relative;border-right:1px solid var(--border);}
+.right-col{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:4px 8px;gap:4px;}
+.zorp-row{display:flex;align-items:center;gap:6px;flex-shrink:0;height:28px;}
+.day-track-inline{flex:1;display:flex;align-items:center;gap:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 0;}
+.day-track-inline::-webkit-scrollbar{display:none;}
 .zorp-mini{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:55px;}
 .zorp-icon{font-size:22px;filter:drop-shadow(0 0 8px rgba(64,192,255,.4));animation:breathe 3s ease-in-out infinite;}
 @keyframes breathe{0%,100%{filter:drop-shadow(0 0 6px rgba(64,192,255,.3))}50%{filter:drop-shadow(0 0 14px rgba(64,192,255,.7))}}
@@ -95,14 +95,14 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
 .skill-panel{flex:1;background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;}
 .sp-title{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.12em;color:var(--dim);margin-bottom:4px;text-align:center;}
 .sp-svg{width:100%;height:70px;}
-.board-area{display:flex;flex-direction:column;gap:4px;}
-.board-row{display:flex;align-items:center;gap:4px;}
+.board-area{flex-shrink:0;display:flex;flex-direction:column;gap:4px;padding:4px 6px;height:186px;}
+.board-row{display:flex;align-items:center;gap:4px;flex:1;}
 .rl{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.07em;writing-mode:vertical-rl;transform:rotate(180deg);width:11px;flex-shrink:0;}
 .rl.f{color:var(--front);}.rl.b{color:var(--back);}
-.slots{display:flex;gap:4px;flex:1;}
+.slots{display:flex;gap:4px;flex:1;height:100%;}
 .swap-hint{font-size:9px;color:var(--dim);font-style:italic;text-align:right;}
 /* ITEM CARD */
-.ic{flex:1;min-width:0;aspect-ratio:1;border-radius:7px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.ic{flex:1;aspect-ratio:1;border-radius:7px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .ic:hover:not(.locked){border-color:var(--glow);}
 .ic.sel,.ecard.sel{border-color:var(--sel)!important;box-shadow:0 0 10px rgba(255,224,64,.35);}
 .ic.locked{background:rgba(15,10,22,.5);border-style:dashed;opacity:.3;cursor:default;}
@@ -275,62 +275,67 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
     <div class="enc-body" id="encBody"></div>
   </div>
   <div class="player-section">
-    <!-- LEFT — Bond tree panel (square) -->
-    <div class="bond-col">
-      <div class="sp-title">BOND TREE</div>
-      <div class="sp-container">
-        <img id="foxImage" class="fox-bg-image" src="" alt="Kip"/>
-        <svg class="sp-svg" viewBox="0 0 120 120" id="skillSvg">
-          <g id="treeLines"></g>
-          <!-- HEAD — prestige, pre-filled, fox head far left -->
-          <g id="tn-head" data-node="head">
-            <circle cx="20" cy="55" r="10" fill="#1a1525" stroke="#3a2f50" stroke-width="1.5"/>
-            <text x="20" y="59" text-anchor="middle" font-size="9" fill="#5030a0">✦</text>
-          </g>
-          <!-- FRONT_SHOULDER — beginner -->
-          <g id="tn-front_shoulder" data-node="front_shoulder">
-            <circle cx="52" cy="30" r="8" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="52" y="34" text-anchor="middle" font-size="7" fill="#2a1040">○</text>
-          </g>
-          <!-- BACK_SHOULDER — intermediate -->
-          <g id="tn-back_shoulder" data-node="back_shoulder">
-            <circle cx="82" cy="30" r="8" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="82" y="34" text-anchor="middle" font-size="7" fill="#2a1040">○</text>
-          </g>
-          <!-- FRONT_FOOT — intermediate -->
-          <g id="tn-front_foot" data-node="front_foot">
-            <circle cx="50" cy="90" r="7" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="50" y="94" text-anchor="middle" font-size="6" fill="#1a0830">◇</text>
-          </g>
-          <!-- BACK_FOOT — advanced -->
-          <g id="tn-back_foot" data-node="back_foot">
-            <circle cx="80" cy="90" r="7" fill="#1a1525" stroke="#3a2f50" stroke-width="1"/>
-            <text x="80" y="94" text-anchor="middle" font-size="6" fill="#1a0830">◇</text>
-          </g>
-          <!-- TAIL_TIP — mastered, far right -->
-          <g id="tn-tail_tip" data-node="tail_tip">
-            <circle cx="108" cy="55" r="10" fill="#1a1525" stroke="#3a2f50" stroke-width="2"/>
-            <text x="108" y="59" text-anchor="middle" font-size="9" fill="#1a0830">★</text>
-          </g>
-        </svg>
+    <div class="player-header">
+      <!-- LEFT: Fox square bond tree -->
+      <div class="bond-col">
+        <div class="skill-panel" style="width:100%;height:100%;padding:0;position:relative;">
+          <div class="sp-title" style="position:absolute;top:2px;left:4px;font-size:6px;z-index:2">BOND TREE</div>
+          <div class="sp-container" style="width:100%;height:100%;">
+            <svg class="sp-svg" viewBox="0 0 120 120" id="skillSvg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">
+              <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid meet"/>
+              <g id="treeLines"></g>
+              <!-- HEAD — prestige -->
+              <g id="tn-head" data-node="head">
+                <circle cx="88" cy="28" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1.5"/>
+                <text x="88" y="32" text-anchor="middle" font-size="8" fill="#5030a0">✦</text>
+              </g>
+              <!-- FRONT_SHOULDER — beginner -->
+              <g id="tn-front_shoulder" data-node="front_shoulder">
+                <circle cx="72" cy="52" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
+                <text x="72" y="56" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+              </g>
+              <!-- BACK_SHOULDER — intermediate -->
+              <g id="tn-back_shoulder" data-node="back_shoulder">
+                <circle cx="50" cy="50" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
+                <text x="50" y="54" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+              </g>
+              <!-- FRONT_FOOT — intermediate -->
+              <g id="tn-front_foot" data-node="front_foot">
+                <circle cx="75" cy="98" r="6" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
+                <text x="75" y="102" text-anchor="middle" font-size="5" fill="#1a0830">◇</text>
+              </g>
+              <!-- BACK_FOOT — advanced -->
+              <g id="tn-back_foot" data-node="back_foot">
+                <circle cx="43" cy="98" r="6" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
+                <text x="43" y="102" text-anchor="middle" font-size="5" fill="#1a0830">◇</text>
+              </g>
+              <!-- TAIL_TIP — mastered -->
+              <g id="tn-tail_tip" data-node="tail_tip">
+                <circle cx="20" cy="14" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="2"/>
+                <text x="20" y="18" text-anchor="middle" font-size="8" fill="#1a0830">★</text>
+              </g>
+            </svg>
+          </div>
+        </div>
       </div>
-    </div>
-    <!-- RIGHT — ZORP info, day track, board -->
-    <div class="right-col">
-      <div class="player-header">
-        <div class="zorp-mini">
+      <!-- RIGHT: ZORP info + day track -->
+      <div class="right-col">
+        <div class="zorp-row">
           <div class="zorp-name">ZORP</div>
           <div class="type-badge type-pot" id="typeBadge">✦ POTENTIAL</div>
         </div>
-        <div style="text-align:right">
-          <div style="font-family:'Cinzel',serif;font-size:8px;color:var(--dim);margin-bottom:3px">LOADOUT</div>
-          <div class="swap-hint">Click item → slot to swap</div>
-        </div>
+        <div class="day-track-inline" id="dayTrack"></div>
       </div>
-      <div class="day-track" id="dayTrack"></div>
-      <div class="board-area">
-        <div class="board-row"><div class="rl f">FRONT</div><div class="slots" id="frontSlots"></div></div>
-        <div class="board-row"><div class="rl b">BACK</div><div class="slots" id="backSlots"></div></div>
+    </div>
+    <!-- BOARD: full width below header -->
+    <div class="board-area">
+      <div class="board-row">
+        <div class="rl f">FRONT</div>
+        <div class="slots" id="frontSlots"></div>
+      </div>
+      <div class="board-row">
+        <div class="rl b">BACK</div>
+        <div class="slots" id="backSlots"></div>
       </div>
     </div>
   </div>
@@ -486,7 +491,7 @@ function getAvailableNodes(){
 function drawTreeLines(){
   const g=document.getElementById('treeLines'); if(!g)return; g.innerHTML='';
   // Node center positions matching SVG
-  const pos={head:[20,55],front_shoulder:[52,30],back_shoulder:[82,30],front_foot:[50,90],back_foot:[80,90],tail_tip:[108,55]};
+  const pos={head:[88,28],front_shoulder:[72,52],back_shoulder:[50,50],front_foot:[75,98],back_foot:[43,98],tail_tip:[20,14]};
   TREE_NODES.forEach(n=>{
     if(!n.parent)return;
     const [x1,y1]=pos[n.parent]||[0,0]; const [x2,y2]=pos[n.id]||[0,0];
@@ -585,8 +590,8 @@ function getFoxImage(){
   return(G.type&&map[G.type])?map[G.type]:FOX_DEFAULT;
 }
 function updateFoxImage(){
-  const el=document.getElementById('foxImage');
-  if(el)el.src=getFoxImage();
+  const el=document.getElementById('foxImageSvg');
+  if(el)el.setAttribute('href',getFoxImage());
 }
 
 const ITEMS={
