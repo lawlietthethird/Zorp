@@ -34,7 +34,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 /* ENEMY BOARD */
 .enemy-area{display:flex;gap:10px;align-items:stretch;flex:1;min-height:0;}
 .enemy-info{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:120px;flex-shrink:0;}
-.enemy-icon{font-size:36px;}.enemy-name{font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:.1em;}
+.enemy-icon{font-size:72px;}.enemy-name{font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:.1em;}
 .enemy-tag{font-size:8px;color:var(--dim);}.enemy-board{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;min-height:0;}
 .eboard-row{display:flex;flex:1;min-height:0;min-width:0;gap:4px;align-items:stretch;}
 .ecard{flex:0 0 auto;width:calc(50% - 4px);max-width:110px;height:100%;border-radius:6px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;}
@@ -378,6 +378,7 @@ const HYDRA_TREE_NODES=[
 function getTreeNodes(){
   return G.monsterType==='hydra'?HYDRA_TREE_NODES:FOX_TREE_NODES;
 }
+function getPrestigeNodeId(){return getTreeNodes()[0].id;}
 
 // Which nodes are unlocked (filled with a skill)
 let treeState = {}; // nodeId → skill object or null
@@ -507,8 +508,9 @@ function isNodeUnlockable(id){
   return treeState[node.parent]!==null; // parent must be filled
 }
 function getAvailableNodes(){
+  const prestigeId=getPrestigeNodeId();
   return getTreeNodes().filter(n=>{
-    if(n.id==='head')return false;
+    if(n.id===prestigeId)return false;
     if(n.id==='front_shoulder'&&G.type!==null)return false;
     return treeState[n.id]===null&&isNodeUnlockable(n.id);
   });
@@ -520,9 +522,9 @@ function drawTreeLines(){
     front_foot:[75,98],back_foot:[43,98],tail_tip:[27,42]
   };
   const hydraPos={
-    body:[15,60],neck_split:[40,60],
-    mid_left:[70,30],mid_right:[70,90],
-    head_left:[105,20],head_right:[105,100]
+    body:[60,108],neck_split:[60,78],
+    mid_left:[30,48],mid_right:[90,48],
+    head_left:[18,15],head_right:[102,15]
   };
   const pos=G.monsterType==='hydra'?hydraPos:foxPos;
   getTreeNodes().forEach(n=>{
@@ -545,28 +547,28 @@ function getSkillTreeSVGContent(){
       <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid slice"/>
       <g id="treeLines"></g>
       <g id="tn-body" data-node="body">
-        <circle cx="15" cy="60" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1.5"/>
-        <text x="15" y="64" text-anchor="middle" font-size="8" fill="#5030a0">✦</text>
+        <circle cx="60" cy="108" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+        <text x="60" y="112" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">✦</text>
       </g>
       <g id="tn-neck_split" data-node="neck_split">
-        <circle cx="40" cy="60" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
-        <text x="40" y="64" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+        <circle cx="60" cy="78" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+        <text x="60" y="82" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
       </g>
       <g id="tn-mid_left" data-node="mid_left">
-        <circle cx="70" cy="30" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
-        <text x="70" y="34" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+        <circle cx="30" cy="48" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+        <text x="30" y="52" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
       </g>
       <g id="tn-mid_right" data-node="mid_right">
-        <circle cx="70" cy="90" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
-        <text x="70" y="94" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+        <circle cx="90" cy="48" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+        <text x="90" y="52" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
       </g>
       <g id="tn-head_left" data-node="head_left">
-        <circle cx="105" cy="20" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="2"/>
-        <text x="105" y="24" text-anchor="middle" font-size="8" fill="#1a0830">★</text>
+        <circle cx="18" cy="15" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+        <text x="18" y="19" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
       </g>
       <g id="tn-head_right" data-node="head_right">
-        <circle cx="105" cy="100" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="2"/>
-        <text x="105" y="104" text-anchor="middle" font-size="8" fill="#1a0830">★</text>
+        <circle cx="102" cy="15" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+        <text x="102" y="19" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
       </g>
     `;
   }
@@ -605,6 +607,11 @@ function rebuildSkillTreeSVG(){
   svg.innerHTML=getSkillTreeSVGContent();
   treeState={};
   getTreeNodes().forEach(n=>treeState[n.id]=null);
+  // Re-sync prestige root with active prestige skill (Potential or type awakening)
+  const rootId=getPrestigeNodeId();
+  const activePrestige=activeSkills.find(s=>s.id==='potential'||(s.id&&s.id.endsWith('_awakening')));
+  if(activePrestige){treeState[rootId]=activePrestige;}
+  else{treeState[rootId]=SKILLS.prestige[0];if(!activeSkills.find(s=>s.id==='potential'))activeSkills=[SKILLS.prestige[0]];}
   renderSkillTree();
   updateFoxImage();
 }
@@ -614,13 +621,13 @@ function renderSkillTree(){
     const g=document.getElementById('tn-'+n.id); if(!g)return;
     const circ=g.querySelector('circle'); const txt=g.querySelector('text');
     const skill=treeState[n.id];
-    const available=isNodeUnlockable(n.id)&&treeState[n.id]===null&&n.id!=='head';
+    const available=isNodeUnlockable(n.id)&&treeState[n.id]===null&&n.id!==getPrestigeNodeId();
     const rarityColors={prestige:'#8040c0',beginner:'#60a060',intermediate:'#4070c0',advanced:'#9050b0',mastered:'#c07820'};
     if(skill){
       circ.setAttribute('fill','rgba(96,48,160,.35)');
       circ.setAttribute('stroke',rarityColors[n.rarity]||'#6040a0');
       txt.textContent=skill.icon||'✦';txt.setAttribute('font-size','8');txt.setAttribute('fill','#e8d8ff');
-      if(n.id==='tail_tip'){
+      if(n.rarity==='mastered'){
         circ.setAttribute('r','10');
         circ.setAttribute('stroke','#c07820');
         circ.setAttribute('fill','rgba(192,120,32,.25)');
@@ -2713,7 +2720,7 @@ function showEncounterBattle(type,wildMonster=null){
   }
   const enemy=isWild?wildMonster:trainer;
   const trainerImgHTML=trainer&&trainer.img&&trainer.img.startsWith('https://')?
-    `<img src="${trainer.img}" style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto"/>`:
+    `<img src="${trainer.img}" style="width:120px;height:auto;object-fit:contain;display:block;margin:0 auto"/>`:
     `<div class="enemy-icon">${enemy.icon||'😤'}</div>`;
   const dlg=isWild
     ?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
@@ -3385,7 +3392,7 @@ function pickType(id){
     G.type=id;
     const t=TYPES.find(x=>x.id===id);
     const typeSkill={id:id+'_awakening',name:t.name+' AWAKENING',icon:t.icon,desc:'Unlocks '+t.name+' items and skills.'};
-    treeState['head']=typeSkill;
+    treeState[getPrestigeNodeId()]=typeSkill;
     // Remove Potential buff, add type awakening
     activeSkills=activeSkills.filter(s=>s.id!=='potential');
     activeSkills.push(typeSkill);
@@ -4174,8 +4181,8 @@ function resetRun(){
   getTreeNodes().forEach(n=>treeState[n.id]=null);
   activeSkills.forEach(sk=>{sk._battleHandler=null;});
   activeSkills=[];bannedTypes=[];lastOfferedTypes=[];
-  // Pre-fill HEAD with Potential — Zorp starts with it
-  treeState['head']=SKILLS.prestige[0];
+  // Pre-fill prestige root with Potential — Zorp starts with it
+  treeState[getPrestigeNodeId()]=SKILLS.prestige[0];
   activeSkills=[SKILLS.prestige[0]];
   const badge=document.getElementById('typeBadge');
   badge.textContent='✦ POTENTIAL';badge.className='type-badge type-pot';badge.style.cssText='';
