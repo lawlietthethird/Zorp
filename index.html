@@ -749,8 +749,8 @@ function updateFoxImage(){
     // Typed: full artwork, 15% larger (138px centered in 120px viewBox)
     el.setAttribute('preserveAspectRatio','xMidYMid meet');
     el.setAttribute('width','138');el.setAttribute('height','138');
-    // Hydra: shift toward tail (right) and up slightly
-    const ox=G.monsterType==='hydra'?-3:-9;
+    // Hydra: shift left and up slightly
+    const ox=G.monsterType==='hydra'?-18:-9;
     const oy=G.monsterType==='hydra'?-14:-9;
     el.setAttribute('x',ox);el.setAttribute('y',oy);
   }else{
@@ -3774,9 +3774,8 @@ function showTutorialFight(){
   setEncBody(`
     <div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
-      "Your items fight automatically. You don't control them during battle — you built them beforehand. That's the job. Build something that wins without you holding its hand."<br><br>
-      "When ALL of a player's items are broken the fight is over. First side with nothing left loses. If both sides run out at the same time it's a tie — and ties count as wins. Remember that."<br><br>
-      "One more thing. See that demo running? Notice how long it's taking? Everything gets tired eventually. The longer a fight drags on the more damage both sides take — and it accelerates. Build something that wins fast or build something that outlasts. Don't build something that does neither."
+      "Your items fight automatically. You built them beforehand — that's the job. Build something that wins without you holding its hand."<br><br>
+      "When all of a side's items are broken, they lose. If both sides break at the same time, it's a tie — and ties count as wins. Fights don't last forever: the longer it drags on, the more damage both sides take."
     </div>
     <div id="demoBattleContainer" style="margin:8px 0;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:8px;display:flex;gap:8px;justify-content:center;align-items:center;">
     </div>
