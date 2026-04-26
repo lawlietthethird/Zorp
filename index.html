@@ -523,8 +523,8 @@ function drawTreeLines(){
   };
   const hydraPos={
     body:[60,108],neck_split:[60,88],
-    mid_left:[38,70],mid_right:[82,70],
-    head_left:[26,40],head_right:[94,40]
+    mid_left:[42,74],mid_right:[78,74],
+    head_left:[30,44],head_right:[90,44]
   };
   const pos=G.monsterType==='hydra'?hydraPos:foxPos;
   getTreeNodes().forEach(n=>{
@@ -555,20 +555,20 @@ function getSkillTreeSVGContent(){
         <text x="60" y="92" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
       </g>
       <g id="tn-mid_left" data-node="mid_left">
-        <circle cx="38" cy="70" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
-        <text x="38" y="74" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
+        <circle cx="42" cy="74" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+        <text x="42" y="78" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
       </g>
       <g id="tn-mid_right" data-node="mid_right">
-        <circle cx="82" cy="70" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
-        <text x="82" y="74" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
+        <circle cx="78" cy="74" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+        <text x="78" y="78" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
       </g>
       <g id="tn-head_left" data-node="head_left">
-        <circle cx="26" cy="40" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
-        <text x="26" y="44" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
+        <circle cx="30" cy="44" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+        <text x="30" y="48" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
       </g>
       <g id="tn-head_right" data-node="head_right">
-        <circle cx="94" cy="40" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
-        <text x="94" y="44" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
+        <circle cx="90" cy="44" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+        <text x="90" y="48" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
       </g>
     `;
   }
