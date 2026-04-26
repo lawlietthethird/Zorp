@@ -3936,9 +3936,9 @@ function profLayout(dialogueHTML,extraHTML){
       <img class="prof-image" src="${PROFESSOR_IMG}" alt="The Professor"/>
       <div class="prof-text">
         ${dialogueHTML}
+        ${extraHTML||''}
       </div>
     </div>
-    ${extraHTML||''}
   `;
 }
 
