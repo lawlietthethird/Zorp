@@ -36,6 +36,14 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .enemy-info{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:120px;flex-shrink:0;}
 .enemy-icon{font-size:72px;}.enemy-name{font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:.1em;}
 .enemy-tag{font-size:8px;color:var(--dim);}.enemy-board{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;min-height:0;}
+.trainer-avatar{width:120px;height:auto;object-fit:contain;display:block;}
+@media(max-width:600px){
+  .enemy-area{flex-direction:column;gap:4px;}
+  .enemy-info{width:100%;flex-direction:row;justify-content:flex-start;align-items:center;gap:8px;height:auto;flex-shrink:0;padding:0 2px;}
+  .enemy-icon{font-size:44px;line-height:1;}
+  .trainer-avatar{width:44px;height:44px;object-fit:contain;}
+  .enemy-name{font-size:10px;}.enemy-tag{font-size:8px;}
+}
 .eboard-row{display:flex;flex:1;min-height:0;min-width:0;gap:4px;align-items:stretch;}
 .ecard{flex:0 0 auto;width:calc(50% - 4px);max-width:110px;height:100%;border-radius:6px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;}
 .enc-row-label{font-family:'Cinzel',serif;font-size:7px;writing-mode:vertical-rl;transform:rotate(180deg);width:10px;flex-shrink:0;color:var(--dim);}
@@ -2734,7 +2742,7 @@ function showEncounterBattle(type,wildMonster=null){
   }
   const enemy=isWild?wildMonster:trainer;
   const trainerImgHTML=trainer&&trainer.img&&trainer.img.startsWith('https://')?
-    `<img src="${trainer.img}" style="width:120px;height:auto;object-fit:contain;display:block;margin:0 auto"/>`:
+    `<img src="${trainer.img}" class="trainer-avatar"/>`:
     `<div class="enemy-icon">${enemy.icon||'😤'}</div>`;
   const dlg=isWild
     ?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
