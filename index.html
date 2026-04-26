@@ -377,7 +377,7 @@ function getTreeNodes(){
 
 // Which nodes are unlocked (filled with a skill)
 let treeState = {}; // nodeId → skill object or null
-getTreeNodes().forEach(n => treeState[n.id] = null);
+FOX_TREE_NODES.forEach(n => treeState[n.id] = null); // G not yet defined here — always fox on init
 
 // SKILL POOLS by rarity
 const SKILLS={
