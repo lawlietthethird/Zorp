@@ -513,3 +513,18 @@ Decline path: necklace reference.
 ## Demo Battle Fix
 demoResetTimeout: separate timeout handle for post-battle REPLAY button. Cancelled by stopDemoBattle.
 Demo no longer auto-loops — stops on completion, shows REPLAY button after 1.5s, NEXT and SKIP always accessible.
+
+## Hydra Typed Images
+HYDRA_STEEL, HYDRA_ELECTRIC, HYDRA_TOXIC, HYDRA_FIRE, HYDRA_WATER — all Cloudinary URLs.
+getFoxImage() handles both fox and hydra typed variants.
+
+## Trainer Images
+TRAINER_RIVAL_IMG, TRAINER_INVESTOR_IMG — populated.
+TRAINER_ARCHITECT_IMG, TRAINER_MONK_IMG, TRAINER_MIRROR_IMG, TRAINER_RIVAL_RETURNS_IMG — empty strings pending art.
+Each TRAINER_DATA entry has img field. showEncounterBattle uses img if URL valid, falls back to emoji.
+
+## Rival Name
+G.rivalName drives all rival references throughout the game.
+TRAINER_DATA[1] and TRAINER_DATA[6] name fields are getters returning G.rivalName.toUpperCase().
+No hardcoded 'THE RIVAL' or 'RIVAL' strings remain in dialogue or battle titles.
+Rival name persists in localStorage as zorpRivalName.

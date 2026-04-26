@@ -686,11 +686,17 @@ const FOX_TOXIC='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777132740/G
 const HYDRA_DEFAULT='';
 const PROFESSOR_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777166099/ChatGPT_Image_Apr_25__2026__09_16_30_PM-removebg-preview_prpzbb.png';
 const HYDRA_DEFAULT_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777148657/Gemini_Generated_Image_6ifvla6ifvla6ifv-removebg-preview_gzuwmg.png';
-const HYDRA_ELECTRIC='';
-const HYDRA_FIRE='';
-const HYDRA_WATER='';
-const HYDRA_STEEL='';
-const HYDRA_TOXIC='';
+const HYDRA_STEEL='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777161861/ChatGPT_Image_Apr_25__2026__08_05_10_PM-removebg-preview_god6mu.png';
+const HYDRA_ELECTRIC='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777161886/ChatGPT_Image_Apr_25__2026__08_05_44_PM-removebg-preview_dottqq.png';
+const HYDRA_TOXIC='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777164218/ChatGPT_Image_Apr_25__2026__08_44_57_PM-removebg-preview_auih1i.png';
+const HYDRA_FIRE='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777164492/ChatGPT_Image_Apr_25__2026__08_49_28_PM-removebg-preview_bhma5g.png';
+const HYDRA_WATER='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777165246/ChatGPT_Image_Apr_25__2026__09_02_18_PM-removebg-preview_u4nmsa.png';
+const TRAINER_RIVAL_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777207230/ChatGPT_Image_Apr_26__2026__08_41_45_AM-removebg-preview_xbm2ct.png';
+const TRAINER_INVESTOR_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777215281/ChatGPT_Image_Apr_26__2026__10_56_11_AM-removebg-preview_li4ccr.png';
+const TRAINER_ARCHITECT_IMG='';
+const TRAINER_MONK_IMG='';
+const TRAINER_MIRROR_IMG='';
+const TRAINER_RIVAL_RETURNS_IMG='';
 const WORN_LOCKET_GOLD='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Locket-removebg-preview_dgojxs.png';
 const WORN_LOCKET_SILVER='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Locket_broken-removebg-preview_if88z5.png';
 const HEAVY_WALKING_STICK='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130716/Gemini_Generated_Image_qil4q3qil4q3qil4-removebg-preview_a2olut.png';
@@ -699,11 +705,24 @@ const SHARPENING_STONE='https://res.cloudinary.com/dgmzeqmfs/image/upload/v17771
 const SHARPENING_STONE_BROKEN='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Gemini_Generated_Image_izbksizbksizbksi-removebg-preview_hgod7k.png';
 
 function getFoxImage(){
-  const foxMap={electric:FOX_ELECTRIC,fire:FOX_FIRE,water:FOX_WATER,steel:FOX_STEEL,toxic:FOX_TOXIC};
-  const hydraMap={electric:HYDRA_ELECTRIC,fire:HYDRA_FIRE,water:HYDRA_WATER,steel:HYDRA_STEEL,toxic:HYDRA_TOXIC};
+  const foxMap={
+    electric:FOX_ELECTRIC,
+    fire:FOX_FIRE,
+    water:FOX_WATER,
+    steel:FOX_STEEL,
+    toxic:FOX_TOXIC,
+  };
+  const hydraMap={
+    electric:HYDRA_ELECTRIC,
+    fire:HYDRA_FIRE,
+    water:HYDRA_WATER,
+    steel:HYDRA_STEEL,
+    toxic:HYDRA_TOXIC,
+  };
   const map=G.monsterType==='hydra'?hydraMap:foxMap;
-  const base=G.monsterType==='hydra'?HYDRA_DEFAULT:FOX_DEFAULT;
-  return(G.type&&map[G.type]&&map[G.type].startsWith('https://'))?map[G.type]:base;
+  const base=G.monsterType==='hydra'?HYDRA_DEFAULT_IMG:FOX_DEFAULT;
+  const url=G.type&&map[G.type]?map[G.type]:base;
+  return url&&url.startsWith('https://')?url:base;
 }
 let professorFlowActive=true; // starts true — game always opens with professor flow; beginRun() clears it
 function updateFoxImage(){
@@ -2401,7 +2420,8 @@ function startWild(idx){
 const TRAINER_DATA=[
   null, // index 0 unused
   {
-    name:'THE RIVAL',
+    get name(){return G.rivalName.toUpperCase();},
+    img:TRAINER_RIVAL_IMG,
     icon:'😤',
     tag:'Your old neighbour',
     dialogueBefore:'You don\'t even have a type yet. A monster without identity is nothing. Let me show you.',
@@ -2425,6 +2445,7 @@ const TRAINER_DATA=[
   },
   {
     name:'THE INVESTOR',
+    img:TRAINER_INVESTOR_IMG,
     icon:'💰',
     tag:'Knows the value of things',
     dialogueBefore:'I invested in the right things.',
@@ -2447,6 +2468,7 @@ const TRAINER_DATA=[
   },
   {
     name:'THE ARCHITECT',
+    img:TRAINER_ARCHITECT_IMG,
     icon:'🏗️',
     tag:'Builds to last',
     dialogueBefore:'Show me what you decided to become.',
@@ -2472,6 +2494,7 @@ const TRAINER_DATA=[
   },
   {
     name:'THE MONK',
+    img:TRAINER_MONK_IMG,
     icon:'🧘',
     tag:'Still as stone',
     dialogueBefore:'Violence isn\'t the only option.',
@@ -2497,6 +2520,7 @@ const TRAINER_DATA=[
   },
   {
     name:'THE MIRROR',
+    img:TRAINER_MIRROR_IMG,
     icon:'🪞',
     tag:'Knows your every move',
     dialogueBefore:'I GameSharked your build.',
@@ -2566,7 +2590,8 @@ const TRAINER_DATA=[
     }
   },
   {
-    name:'THE RIVAL',
+    get name(){return G.rivalName.toUpperCase();},
+    img:TRAINER_RIVAL_RETURNS_IMG,
     icon:'😤',
     get tag(){return'Not Gary'},
     getDialogueBefore:()=>{
@@ -2687,11 +2712,14 @@ function showEncounterBattle(type,wildMonster=null){
     }
   }
   const enemy=isWild?wildMonster:trainer;
+  const trainerImgHTML=trainer&&trainer.img&&trainer.img.startsWith('https://')?
+    `<img src="${trainer.img}" style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto"/>`:
+    `<div class="enemy-icon">${enemy.icon||'😤'}</div>`;
   const dlg=isWild
     ?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
     :'<div class="dialogue"><div class="dlg-name">'+trainer.name+'</div>"'+(trainer.getDialogueBefore?trainer.getDialogueBefore():trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'"</div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — '+trainer.name);
-  setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info"><div class="enemy-icon">'+enemy.icon+'</div><div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
+  setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info">'+(!isWild?trainerImgHTML:'<div class="enemy-icon">'+enemy.icon+'</div>')+'<div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
   renderEnemyBoard();
 }
 function toggleSpeed(){
