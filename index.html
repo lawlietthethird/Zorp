@@ -296,8 +296,8 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
               <g id="treeLines"></g>
               <!-- HEAD — prestige -->
               <g id="tn-head" data-node="head">
-                <circle cx="82" cy="22" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
-                <text x="82" y="26" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">✦</text>
+                <circle cx="86" cy="27" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+                <text x="86" y="31" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">✦</text>
               </g>
               <!-- FRONT_SHOULDER — beginner -->
               <g id="tn-front_shoulder" data-node="front_shoulder">
@@ -306,8 +306,8 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
               </g>
               <!-- BACK_SHOULDER — intermediate -->
               <g id="tn-back_shoulder" data-node="back_shoulder">
-                <circle cx="50" cy="60" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
-                <text x="50" y="64" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
+                <circle cx="50" cy="66" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+                <text x="50" y="70" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
               </g>
               <!-- FRONT_FOOT — intermediate -->
               <g id="tn-front_foot" data-node="front_foot">
@@ -321,8 +321,8 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
               </g>
               <!-- TAIL_TIP — mastered -->
               <g id="tn-tail_tip" data-node="tail_tip">
-                <circle cx="20" cy="32" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
-                <text x="20" y="36" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
+                <circle cx="27" cy="42" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+                <text x="27" y="46" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
               </g>
             </svg>
           </div>
@@ -501,7 +501,7 @@ function getAvailableNodes(){
 function drawTreeLines(){
   const g=document.getElementById('treeLines'); if(!g)return; g.innerHTML='';
   // Node center positions matching SVG
-  const pos={head:[82,22],front_shoulder:[76,62],back_shoulder:[50,60],front_foot:[75,98],back_foot:[43,98],tail_tip:[20,32]};
+  const pos={head:[86,27],front_shoulder:[76,62],back_shoulder:[50,66],front_foot:[75,98],back_foot:[43,98],tail_tip:[27,42]};
   TREE_NODES.forEach(n=>{
     if(!n.parent)return;
     const [x1,y1]=pos[n.parent]||[0,0]; const [x2,y2]=pos[n.id]||[0,0];
