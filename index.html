@@ -22,7 +22,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 /* ENCOUNTER */
 .encounter{flex:1;min-height:0;overflow:hidden;background:var(--panel);border:1px solid var(--border);border-radius:10px 10px 0 0;display:flex;flex-direction:column;padding:8px 12px;gap:6px;}
 .enc-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.15em;color:var(--dim);margin-bottom:2px;}
-.enc-body{flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden;}
+.enc-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;overflow:hidden;}
 .draft-row{display:flex;gap:8px;justify-content:center;}
 .dc{flex:1;max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .18s;}
 .dc:hover{border-color:var(--glow);background:var(--card-h);box-shadow:0 0 10px rgba(96,64,160,.3);}
@@ -32,11 +32,11 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .dialogue{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text);line-height:1.6;font-style:italic;}
 .dlg-name{font-family:'Cinzel',serif;font-size:10px;font-weight:700;font-style:normal;color:var(--gold);margin-bottom:3px;}
 /* ENEMY BOARD */
-.enemy-area{display:flex;gap:10px;align-items:flex-start;}
-.enemy-info{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:80px;}
+.enemy-area{display:flex;gap:10px;align-items:stretch;flex:1;min-height:0;}
+.enemy-info{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:70px;flex-shrink:0;}
 .enemy-icon{font-size:36px;}.enemy-name{font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:.1em;}
-.enemy-tag{font-size:8px;color:var(--dim);}.enemy-board{flex:1;}
-.eboard-row{display:flex;gap:5px;margin-bottom:5px;}
+.enemy-tag{font-size:8px;color:var(--dim);}.enemy-board{flex:1;display:flex;flex-direction:column;gap:4px;min-height:0;}
+.eboard-row{display:flex;flex:1;min-height:0;gap:5px;align-items:stretch;}
 .enc-row-label{font-family:'Cinzel',serif;font-size:7px;writing-mode:vertical-rl;transform:rotate(180deg);width:10px;flex-shrink:0;color:var(--dim);}
 /* BATTLE */
 .battle-status{display:flex;align-items:center;gap:10px;}
@@ -121,7 +121,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .cbo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(100,80,120,.3);z-index:3;}
 .clock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--border);}
 /* ENEMY CARDS */
-.ecard{width:80px;height:80px;border-radius:6px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;flex-shrink:0;}
+.ecard{flex:1;min-width:0;height:100%;max-height:90px;border-radius:6px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;}
 .ecard.ebroken{background:var(--broken-bg);border-color:var(--broken-b);}
 .eci{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px 2px 12px;}
 .eicon{font-size:22px;}.ename{font-family:'Cinzel',serif;font-size:6px;font-weight:700;text-align:center;}
