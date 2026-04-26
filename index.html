@@ -4034,14 +4034,14 @@ function showMonsterSelection(){
       "Different companions develop differently. The fox learns steadily — one powerful technique at the end. The hydra starts slow, but give it time and both heads develop fully. Choose carefully."
     </div>`,
     `<div class="draft-row" style="gap:8px;justify-content:center;margin-top:6px">
-      <div class="dc ${selectedMonsterType==='fox'?'sel':''}" onclick="selectMonster('fox')" style="max-width:140px;cursor:pointer;padding:6px;">
-        <img src="${FOX_DEFAULT}" style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 3px"/>
+      <div class="dc ${selectedMonsterType==='fox'?'sel':''}" onclick="selectMonster('fox')" style="max-width:175px;cursor:pointer;padding:6px;">
+        <img src="${FOX_DEFAULT}" style="width:75px;height:75px;object-fit:contain;display:block;margin:0 auto 3px"/>
         <div class="dn" style="font-size:7px">THE FOX</div>
         <div class="dd" style="margin:3px 0;font-size:7px">Steady growth. One mastered skill.</div>
         <div style="font-family:Cinzel,serif;font-size:6px;color:var(--dim)">✦→○→◈→◈→◆→★</div>
       </div>
-      <div class="dc ${selectedMonsterType==='hydra'?'sel':''}" onclick="selectMonster('hydra')" style="max-width:140px;cursor:pointer;padding:6px;">
-        <img src="${HYDRA_DEFAULT_IMG}" style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 3px"/>
+      <div class="dc ${selectedMonsterType==='hydra'?'sel':''}" onclick="selectMonster('hydra')" style="max-width:175px;cursor:pointer;padding:6px;">
+        <img src="${HYDRA_DEFAULT_IMG}" style="width:75px;height:75px;object-fit:contain;display:block;margin:0 auto 3px"/>
         <div class="dn" style="font-size:7px">THE HYDRA</div>
         <div class="dd" style="margin:3px 0;font-size:7px">Weak early. Two mastered skills.</div>
         <div style="font-family:Cinzel,serif;font-size:6px;color:var(--dim)">✦→○→○→○→★→★</div>
@@ -4103,10 +4103,8 @@ function showRivalNaming(){
   setEncBody(profLayout(
     `<div class="dialogue">
       <div class="dlg-name">THE PROFESSOR</div>
-      "Oh — and there's one more thing. Another trainer heading out on the same journey. Left yesterday actually."<br><br>
-      "You know them. Of course you know them. You're the only two kids in this entire shitty little town. Their mother's out on the deck every afternoon — lovely woman, very dedicated to her tan — I mean, you've lived next door your whole life. Nice kid actually. Bought the necklace."<br><br>
-      "Kids these days. Take one of my beloved monsters and off they go. No forwarding address. No postcard. Badge ceremony in the big city and suddenly they're too important to write."<br><br>
-      "Anyway. What's the name again?"
+      "One more thing. Another trainer left yesterday — same journey. You know them. Only two kids in this town. They bought the necklace."<br><br>
+      "Took one of my monsters, off they went. No postcard. Anyway. What's the name again?"
     </div>`,
     `<div style="text-align:center;margin:12px 0">
       <input id="rivalNameInput" type="text" maxlength="12"
