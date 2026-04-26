@@ -775,17 +775,12 @@ function markTutorialSeen(){
 const ITEMS={
   left_claws:()=>{const item=makeItem('left_claws','Left Claws','🐾','Weapon',100,4000,'4s → 15 dmg · leftmost',(s,a)=>dealDmg(opp(s),a,'Left Claws'),2,null,15,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||15,cls:'dmg'}];return item;},
   spark_charm:()=>{const item=makeItem('spark_charm','Spark Charm','⚡','Weapon',80,3000,'3s → 13 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Spark Charm'),2,null,13,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||13,cls:'dmg'}];return item;},
-  ration_bag:()=>{const item=makeItem('ration_bag','Ration Bag','👝','Untargetable',0,10000,'10s → Heal 60 · 1 use',(s,a)=>healItem(s,a,'Ration Bag'),2,1,60,'provision','beginner');item.stats=[{icon:'✚',value:(i)=>i.effectAmt||60,cls:'heal'}];return item;},
   bubble_shield:()=>{const item=makeItem('bubble_shield','Bubble Shield','🫧','Armor',200,6000,'6s → Plate random ally +30',(s,a)=>applyShield(s,a,'Bubble Shield'),2,null,30,'armor','beginner');item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||30,cls:'shield'}];return item;},
-  basic_berry:()=>{const item=makeItem('basic_berry','Basic Berry','🫐','Untargetable',0,8000,'8s → Heal 100 · 1 use',(s,a)=>healItem(s,a,'Basic Berry'),2,1,100,'provision','beginner');item.stats=[{icon:'✚',value:(i)=>i.effectAmt||100,cls:'heal'}];return item;},
-  iron_paw:()=>{const item=makeItem('iron_paw','Iron Paw','🔩','Weapon',120,5000,'5s → 20 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Iron Paw'),4,null,20,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||20,cls:'dmg'}];return item;},
-  hard_shell:()=>{const item=makeItem('hard_shell','Hard Shell','🐚','Armor',150,8000,'8s → Plate random ally +50',(s,a)=>applyShield(s,a,'Hard Shell'),4,null,50,'armor','intermediate');item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||50,cls:'shield'}];return item;},
-  berry_pouch:()=>{const item=makeItem('berry_pouch','Berry Pouch','🍇','Untargetable',0,12000,'12s → Heal all 40 · 2 uses',(s,a)=>healAll(s,a,'Berry Pouch'),4,2,40,'provision','intermediate');item.stats=[{icon:'✚',value:(i)=>i.effectAmt||40,cls:'heal'}];return item;},
 };
 const SHOP_POOLS=[
-  ['left_claws','spark_charm','ration_bag'],
-  ['bubble_shield','basic_berry','iron_paw'],
-  ['hard_shell','berry_pouch','iron_paw','bubble_shield'],
+  ['left_claws','spark_charm','bubble_shield'],
+  ['bubble_shield','left_claws','spark_charm'],
+  ['bubble_shield','left_claws','spark_charm'],
 ];
 const NEGATIVE_STATUSES=new Set(['BURN_APPLIED','POISON_APPLIED','SLOW_APPLIED']);
 
@@ -794,21 +789,16 @@ const TYPED_ITEMS={
   // ELECTRIC ⚡
   lightning_claw:()=>{const item=makeItem('lightning_claw','Lightning Claw','⚡','Weapon',90,2500,'2.5s → 10 dmg · random + self Jolt 1.5s',(s,a,self)=>{dealDmgRandom(opp(s),a,'Lightning Claw');applyHaste(self,1500,'Lightning Claw');},8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'⚡',value:'1.5s',cls:'haste'}];return item;},
   arc_bolt:()=>{const item=makeItem('arc_bolt','Arc Bolt','🌩️','Weapon',110,5000,'5s → 10 dmg · hits 2 random targets',(s,a)=>dealDmgTwoRandom(s,a,'Arc Bolt'),8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'}];return item;},
-  charge_pack:()=>{const item=makeItem('charge_pack','Charge Pack','🔋','Untargetable',0,9000,'9s → Heal 60 + Jolt 2s to slowest ally · 2 uses',(s,a)=>{healItem(s,a,'Charge Pack');const alive=aliveItems(s).filter(i=>i.maxHp>0);if(alive.length){const t=alive.reduce((a,b)=>a.actPct<b.actPct?a:b);applyHaste(t,2000,'Charge Pack');}},4,2,60,'provision','intermediate');item.stats=[{icon:'✚',value:60,cls:'heal'},{icon:'⚡',value:'2s',cls:'haste'}];return item;},
   // FIRE 🔥
   ember_fang:()=>{const item=makeItem('ember_fang','Ember Fang','🔥','Weapon',110,4000,'4s → 10 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,10,'Ember Fang','burn',a),4,null,3,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
-  scorched_shell:()=>{const item=makeItem('scorched_shell','Scorched Shell','🐚','Armor',140,6000,'6s → Plate random ally +45 + 2 Burn to enemy',(s,a)=>{applyShield(s,45,'Scorched Shell');const t=randomEnemyItem(opp(s));if(t)applyBurn(t,a,'Scorched Shell');},4,null,2,'armor','intermediate');item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||45,cls:'shield'},{icon:'🔥',value:3,cls:'burn'}];return item;},
   cinder_claw:()=>{const item=makeItem('cinder_claw','Cinder Claw','🌋','Weapon',90,3000,'3s → 5 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,5,'Cinder Claw','burn',a),2,null,3,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||5,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
-  flame_wick:()=>{const item=makeItem('flame_wick','Flame Wick','🕯️','Untargetable',0,10000,'10s → Heal 60 + 2 Burn to enemy · 1 use',(s,a)=>{healItem(s,60,'Flame Wick');const t=randomEnemyItem(opp(s));if(t)applyBurn(t,a,'Flame Wick');},4,1,2,'provision','intermediate');item.stats=[{icon:'✚',value:60,cls:'heal'},{icon:'🔥',value:2,cls:'burn'}];return item;},
   // WATER 💧
   tide_fang:()=>{const item=makeItem('tide_fang','Tide Fang','🌊','Weapon',105,4000,'4s → 14 dmg + 2s Wet',(s,a)=>dealDmgWithStatus(s,a,'Tide Fang','slow',2000),4,null,14,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||14,cls:'dmg'},{icon:'💧',value:'2s',cls:'slow'}];return item;},
   tidal_shell:()=>{const item=makeItem('tidal_shell','Tidal Shell','🐌','Armor',180,8000,'8s → Plate random ally +40 + 1.5s Wet to enemy',(s,a)=>{applyShield(s,a,'Tidal Shell');const t=randomEnemyItem(opp(s));if(t)applySlow(t,1500,'Tidal Shell');},4,null,40,'armor','intermediate');item.stats=[{icon:'🛡',value:40,cls:'shield'},{icon:'💧',value:'1.5s',cls:'slow'}];return item;},
   riptide:()=>{const item=makeItem('riptide','Riptide','🌀','Weapon',120,5000,'5s → 20 dmg · back row',(s,a)=>dealDmgBackRow(s,a,'Riptide'),8,null,20,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||20,cls:'dmg'}];return item;},
   current_band:()=>{const item=makeItem('current_band','Current Band','💧','Weapon',80,3000,'3s → 9 dmg + 1s Wet',(s,a)=>dealDmgWithStatus(s,a,'Current Band','slow',1000),2,null,9,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||9,cls:'dmg'},{icon:'💧',value:'1s',cls:'slow'}];return item;},
   // STEEL 🛡️
-  iron_carapace:()=>{const item=makeItem('iron_carapace','Iron Carapace','🪨','Armor',260,7000,'7s → Plate random ally +65',(s,a)=>applyShield(s,a,'Iron Carapace'),8,null,65,'armor','advanced');item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||65,cls:'shield'}];return item;},
   bulwark_stance:()=>{const item=makeItem('bulwark_stance','Bulwark Stance','🛡️','Armor',150,5000,'5s → Plate ALL allies +20',(s,a)=>applyShieldAll(s,a,'Bulwark Stance'),8,null,20,'armor','advanced');item.stats=[{icon:'🛡🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];return item;},
-  forge_core:()=>{const item=makeItem('forge_core','Forge Core','⚙️','Untargetable',0,11000,'11s → Heal all 40 + Plate most wounded +25 · 2 uses',(s,a)=>{healAll(s,a,'Forge Core');const alive=aliveItems(s).filter(i=>i.maxHp>0);if(alive.length){const t=alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);t.shield=(t.shield||0)+25;t.maxShield=Math.max(t.maxShield||0,t.shield);}},8,2,40,'provision','advanced');item.stats=[{icon:'✚',value:40,cls:'heal'},{icon:'🛡',value:25,cls:'shield'}];return item;},
   alloy_fang:()=>{const item=makeItem('alloy_fang','Alloy Fang','⚔️','Weapon',140,6000,'6s → 22 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Alloy Fang'),8,null,22,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||22,cls:'dmg'}];return item;},
   // TOXIC ☠️
   venom_fang:()=>{
@@ -838,11 +828,11 @@ const TYPED_ITEMS={
   },
 };
 const TYPED_ITEM_POOLS={
-  electric:['lightning_claw','arc_bolt','charge_pack'],
-  fire:    ['ember_fang','scorched_shell','cinder_claw','flame_wick'],
+  electric:['lightning_claw','arc_bolt'],
+  fire:    ['ember_fang','cinder_claw'],
   water:   ['tide_fang','tidal_shell','riptide','current_band'],
-  steel:   ['iron_carapace','bulwark_stance','forge_core','alloy_fang'],
-  toxic:   ['venom_fang'],
+  steel:   ['bulwark_stance','alloy_fang'],
+  toxic:   ['venom_fang','caustic_mantle','mithridate','miasma','outbreak'],
 };
 const MOM_ITEMS={
   worn_locket:()=>{
@@ -1747,7 +1737,7 @@ const DAY1_WILD={
 const WILD_MONSTERS=[
   {name:'Thornback',icon:'🦔',tag:'Prickly Fighter',front:[mk('left_claws'),mk('spark_charm'),null],back:[null,null,null]},
   {name:'Mudpup',icon:'🐊',tag:'Swamp Crawler',front:[mk('bubble_shield'),mk('left_claws'),null],back:[null,null,null]},
-  {name:'Gloomwing',icon:'🦇',tag:'Shadow Flyer',front:[mk('spark_charm'),mk('hard_shell'),null],back:[null,null,null]},
+  {name:'Gloomwing',icon:'🦇',tag:'Shadow Flyer',front:[mk('spark_charm'),mk('ironclad'),null],back:[null,null,null]},
 ];
 
 // ============================================================
@@ -2464,11 +2454,11 @@ const TRAINER_DATA=[
           burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
       };
       if(G.day<=1){
-        enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];
+        enemyBoard.front=[mi('arc_bolt'),mi('bubble_shield'),null];
         enemyBoard.back=[null,null,null];
       }else{
-        enemyBoard.front=[mi('iron_paw'),mi('bubble_shield'),null];
-        enemyBoard.back=[mi('basic_berry'),null,null];
+        enemyBoard.front=[mi('arc_bolt'),mi('bubble_shield'),null];
+        enemyBoard.back=[mi('emergency_ration'),null,null];
       }
     }
   },
@@ -2491,8 +2481,8 @@ const TRAINER_DATA=[
           broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
           burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
       };
-      enemyBoard.front=[mi('hard_shell',1),mi('iron_paw',1),null];
-      enemyBoard.back=[mi('basic_berry'),null,null];
+      enemyBoard.front=[mi('ironclad',1),mi('arc_bolt',1),null];
+      enemyBoard.back=[mi('emergency_ration'),null,null];
     }
   },
   {
@@ -2659,7 +2649,7 @@ const TRAINER_DATA=[
         enemyBoard.front[2]=mi('ironclad',1);
         enemyBoard.back[0]=mi('temper',1);
         enemyBoard.back[1]=mi('wrecking_ball',2);
-        enemyBoard.back[2]=mi('hard_shell',2);
+        enemyBoard.back[2]=mi('tidal_shell',2);
         // SKILL NOTE: Would have Plating Mastery typed skill if trainer skills implemented
 
       }else if(G.type==='fire'){
@@ -2694,10 +2684,10 @@ const TRAINER_DATA=[
 
       }else if(G.type==='steel'){
         // PLACEHOLDER — Toxic counter when Toxic items implemented
-        enemyBoard.front[0]=mi('hard_shell',2);
-        enemyBoard.front[1]=mi('iron_paw',2);
+        enemyBoard.front[0]=mi('ironclad',2);
+        enemyBoard.front[1]=mi('alloy_fang',2);
         enemyBoard.front[2]=mi('thorn_mantle',1);
-        enemyBoard.back[0]=mi('berry_pouch',2);
+        enemyBoard.back[0]=mi('emergency_ration',2);
         enemyBoard.back[1]=mi('bubble_shield',2);
         enemyBoard.back[2]=mi('spark_charm',2);
         // PLACEHOLDER: Replace with Toxic counter build when Toxic items implemented
@@ -2705,10 +2695,10 @@ const TRAINER_DATA=[
 
       }else{
         // Typeless — strong generic board, no clear archetype
-        enemyBoard.front[0]=mi('hard_shell',2);
-        enemyBoard.front[1]=mi('iron_paw',2);
+        enemyBoard.front[0]=mi('ironclad',2);
+        enemyBoard.front[1]=mi('alloy_fang',2);
         enemyBoard.front[2]=mi('thorn_mantle',1);
-        enemyBoard.back[0]=mi('berry_pouch',2);
+        enemyBoard.back[0]=mi('emergency_ration',2);
         enemyBoard.back[1]=mi('bubble_shield',2);
         enemyBoard.back[2]=mi('spark_charm',2);
         // SKILL NOTE: Typeless rival runs best generic board

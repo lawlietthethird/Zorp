@@ -413,6 +413,12 @@ Poison stacks are now permanent — they never decrement through ticking. `poiso
 
 `toxic_cloud`, `rot_berry`, `corrode` removed from TYPED_ITEMS entirely.
 
+Removed from ITEMS: ration_bag, basic_berry, iron_paw, hard_shell, berry_pouch.
+Removed from TYPED_ITEMS: charge_pack (electric), scorched_shell (fire), flame_wick (fire), iron_carapace (steel), forge_core (steel).
+
+Trainer and wild boards updated to use only existing valid item keys.
+TYPED_ITEM_POOLS updated to reflect removals.
+
 ## POISON_ITEMS pool
 
 Contains: caustic_mantle, mithridate, miasma, outbreak.
