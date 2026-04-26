@@ -430,3 +430,33 @@ Contains: caustic_mantle, mithridate, miasma, outbreak.
 
 **battleState.poisonApplicationsToEnemy:** Incremented by 1 in `applyPoison` when `item._side==='enemy'`.
 **battleState.outbreakTriggered:** Set true when `poisonApplicationsToEnemy>=10` in `checkOutbreak`.
+
+---
+
+## Monster System
+
+G.monsterType: 'fox' or 'hydra'. Set during professor flow.
+G.monsterName: player-named. Defaults 'Kip' (fox) or 'Hydrax' (hydra). Persists per run.
+G.rivalName: player-named. Persists in localStorage as 'zorpRivalName'. Default 'Rival'.
+
+FOX_TREE_NODES: head, front_shoulder, back_shoulder, front_foot, back_foot, tail_tip.
+HYDRA_TREE_NODES: body, neck_split, mid_left, mid_right, head_left, head_right.
+getTreeNodes(): returns correct array based on G.monsterType.
+rebuildSkillTreeSVG(): rebuilds SVG, resets treeState, calls renderSkillTree and updateFoxImage.
+getSkillTreeSVGContent(): returns SVG nodes for current monster type.
+drawTreeLines(): uses foxPos or hydraPos based on G.monsterType.
+
+Professor flow order:
+0: showProfessorIntro
+1: showProfessorShop (browse or decline)
+2: showMonsterSelection
+3: showMonsterNaming
+4: showRivalNaming (tutorialSeen check present but currently routes to showRivalNaming either way)
+5: showRivalNaming (after tutorial, currently unused)
+6: beginRun
+
+localStorage keys:
+zorpTutorialSeen: 'true' when tutorial completed once
+zorpRivalName: persisted rival name across resets
+
+Rival tag: always 'Not Gary' — the professor named them.

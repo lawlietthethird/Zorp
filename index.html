@@ -355,7 +355,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 // ============================================================
 // SKILL TREE ARCHITECTURE
 // ============================================================
-const TREE_NODES=[
+const FOX_TREE_NODES=[
   {id:'head',           rarity:'prestige',     parent:null,              label:'HEAD'},
   {id:'front_shoulder', rarity:'beginner',     parent:'head',            label:'SHOULDER'},
   {id:'back_shoulder',  rarity:'intermediate', parent:'front_shoulder',  label:'SHOULDER'},
@@ -363,10 +363,21 @@ const TREE_NODES=[
   {id:'back_foot',      rarity:'advanced',     parent:'back_shoulder',   label:'HINDLEG'},
   {id:'tail_tip',       rarity:'mastered',     parent:'back_shoulder',   label:'TAIL'},
 ];
+const HYDRA_TREE_NODES=[
+  {id:'body',       rarity:'prestige', parent:null,         label:'BODY'},
+  {id:'neck_split', rarity:'beginner', parent:'body',       label:'NECK'},
+  {id:'mid_left',   rarity:'beginner', parent:'neck_split', label:'LEFT'},
+  {id:'mid_right',  rarity:'beginner', parent:'neck_split', label:'RIGHT'},
+  {id:'head_left',  rarity:'mastered', parent:'mid_left',   label:'HEAD'},
+  {id:'head_right', rarity:'mastered', parent:'mid_right',  label:'HEAD'},
+];
+function getTreeNodes(){
+  return G.monsterType==='hydra'?HYDRA_TREE_NODES:FOX_TREE_NODES;
+}
 
 // Which nodes are unlocked (filled with a skill)
 let treeState = {}; // nodeId → skill object or null
-TREE_NODES.forEach(n => treeState[n.id] = null);
+getTreeNodes().forEach(n => treeState[n.id] = null);
 
 // SKILL POOLS by rarity
 const SKILLS={
@@ -485,37 +496,117 @@ function registerSkillHandlers(){
     // placeholder — handlers added per skill in future prompts
   });
 }
-function getNodeById(id){ return TREE_NODES.find(n=>n.id===id); }
+function getNodeById(id){ return getTreeNodes().find(n=>n.id===id); }
 function isNodeUnlockable(id){
   const node=getNodeById(id); if(!node)return false;
   if(!node.parent)return true; // head always unlockable
   return treeState[node.parent]!==null; // parent must be filled
 }
 function getAvailableNodes(){
-  return TREE_NODES.filter(n=>{
+  return getTreeNodes().filter(n=>{
     if(n.id==='head')return false;
     if(n.id==='front_shoulder'&&G.type!==null)return false;
     return treeState[n.id]===null&&isNodeUnlockable(n.id);
   });
 }
 function drawTreeLines(){
-  const g=document.getElementById('treeLines'); if(!g)return; g.innerHTML='';
-  // Node center positions matching SVG
-  const pos={head:[86,27],front_shoulder:[76,62],back_shoulder:[50,66],front_foot:[75,98],back_foot:[43,98],tail_tip:[27,42]};
-  TREE_NODES.forEach(n=>{
+  const g=document.getElementById('treeLines');if(!g)return;g.innerHTML='';
+  const foxPos={
+    head:[86,27],front_shoulder:[76,62],back_shoulder:[50,66],
+    front_foot:[75,98],back_foot:[43,98],tail_tip:[27,42]
+  };
+  const hydraPos={
+    body:[15,60],neck_split:[40,60],
+    mid_left:[70,30],mid_right:[70,90],
+    head_left:[105,20],head_right:[105,100]
+  };
+  const pos=G.monsterType==='hydra'?hydraPos:foxPos;
+  getTreeNodes().forEach(n=>{
     if(!n.parent)return;
-    const [x1,y1]=pos[n.parent]||[0,0]; const [x2,y2]=pos[n.id]||[0,0];
-    const filled=treeState[n.id]!==null; const parentFilled=treeState[n.parent]!==null;
+    const [x1,y1]=pos[n.parent]||[0,0];
+    const [x2,y2]=pos[n.id]||[0,0];
+    const filled=treeState[n.id]!==null;
+    const parentFilled=treeState[n.parent]!==null;
     const line=document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',x1);line.setAttribute('y1',y1);line.setAttribute('x2',x2);line.setAttribute('y2',y2);
-    line.setAttribute('stroke',filled?'rgba(160,96,255,.6)':parentFilled?'rgba(96,64,160,.4)':'rgba(58,47,80,.4)');
+    line.setAttribute('x1',x1);line.setAttribute('y1',y1);
+    line.setAttribute('x2',x2);line.setAttribute('y2',y2);
+    line.setAttribute('stroke',filled?'rgba(160,96,255,.6)':parentFilled?'rgba(96,64,160,.4)':'rgba(58,47,80,.25)');
     line.setAttribute('stroke-width','1.5');
     g.appendChild(line);
   });
 }
+function getSkillTreeSVGContent(){
+  if(G.monsterType==='hydra'){
+    return`
+      <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid slice"/>
+      <g id="treeLines"></g>
+      <g id="tn-body" data-node="body">
+        <circle cx="15" cy="60" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1.5"/>
+        <text x="15" y="64" text-anchor="middle" font-size="8" fill="#5030a0">✦</text>
+      </g>
+      <g id="tn-neck_split" data-node="neck_split">
+        <circle cx="40" cy="60" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
+        <text x="40" y="64" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+      </g>
+      <g id="tn-mid_left" data-node="mid_left">
+        <circle cx="70" cy="30" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
+        <text x="70" y="34" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+      </g>
+      <g id="tn-mid_right" data-node="mid_right">
+        <circle cx="70" cy="90" r="7" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="1"/>
+        <text x="70" y="94" text-anchor="middle" font-size="6" fill="#2a1040">○</text>
+      </g>
+      <g id="tn-head_left" data-node="head_left">
+        <circle cx="105" cy="20" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="2"/>
+        <text x="105" y="24" text-anchor="middle" font-size="8" fill="#1a0830">★</text>
+      </g>
+      <g id="tn-head_right" data-node="head_right">
+        <circle cx="105" cy="100" r="9" fill="rgba(26,21,37,.75)" stroke="#3a2f50" stroke-width="2"/>
+        <text x="105" y="104" text-anchor="middle" font-size="8" fill="#1a0830">★</text>
+      </g>
+    `;
+  }
+  return`
+    <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid slice"/>
+    <g id="treeLines"></g>
+    <g id="tn-head" data-node="head">
+      <circle cx="86" cy="27" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+      <text x="86" y="31" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">✦</text>
+    </g>
+    <g id="tn-front_shoulder" data-node="front_shoulder">
+      <circle cx="76" cy="62" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+      <text x="76" y="66" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
+    </g>
+    <g id="tn-back_shoulder" data-node="back_shoulder">
+      <circle cx="50" cy="66" r="7" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+      <text x="50" y="70" text-anchor="middle" font-size="6" fill="rgba(210,170,255,0.85)">○</text>
+    </g>
+    <g id="tn-front_foot" data-node="front_foot">
+      <circle cx="75" cy="98" r="6" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+      <text x="75" y="102" text-anchor="middle" font-size="5" fill="rgba(210,170,255,0.85)">◇</text>
+    </g>
+    <g id="tn-back_foot" data-node="back_foot">
+      <circle cx="43" cy="98" r="6" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.45)" stroke-width="1"/>
+      <text x="43" y="102" text-anchor="middle" font-size="5" fill="rgba(210,170,255,0.85)">◇</text>
+    </g>
+    <g id="tn-tail_tip" data-node="tail_tip">
+      <circle cx="27" cy="42" r="9" fill="rgba(10,8,20,0.25)" stroke="rgba(160,96,255,0.55)" stroke-width="1.5"/>
+      <text x="27" y="46" text-anchor="middle" font-size="8" fill="rgba(210,170,255,0.9)">★</text>
+    </g>
+  `;
+}
+function rebuildSkillTreeSVG(){
+  const svg=document.getElementById('skillSvg');
+  if(!svg)return;
+  svg.innerHTML=getSkillTreeSVGContent();
+  treeState={};
+  getTreeNodes().forEach(n=>treeState[n.id]=null);
+  renderSkillTree();
+  updateFoxImage();
+}
 function renderSkillTree(){
   drawTreeLines();
-  TREE_NODES.forEach(n=>{
+  getTreeNodes().forEach(n=>{
     const g=document.getElementById('tn-'+n.id); if(!g)return;
     const circ=g.querySelector('circle'); const txt=g.querySelector('text');
     const skill=treeState[n.id];
@@ -548,7 +639,7 @@ function renderSkillTree(){
 // ============================================================
 // STATE
 // ============================================================
-const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false};
+const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',monsterType:'fox',rivalName:'Rival',tutorialSeen:false,secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false};
 let bannedTypes=[];
 let rivalRecord={wins:parseInt(localStorage.getItem('rivalWins')||'0'),losses:parseInt(localStorage.getItem('rivalLosses')||'0')};
 let lastOfferedTypes=[];
@@ -588,6 +679,12 @@ const FOX_FIRE='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777133428/Ge
 const FOX_WATER='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777134269/Gemini_Generated_Image_p8j76mp8j76mp8j7-removebg-preview_ypx0ub.png';
 const FOX_STEEL='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777132809/Gemini_Generated_Image_8afusv8afusv8afu-removebg-preview_boilj0.png';
 const FOX_TOXIC='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777132740/Gemini_Generated_Image_56z93q56z93q56z9-removebg-preview_eyod8w.png';
+const HYDRA_DEFAULT='';
+const HYDRA_ELECTRIC='';
+const HYDRA_FIRE='';
+const HYDRA_WATER='';
+const HYDRA_STEEL='';
+const HYDRA_TOXIC='';
 const WORN_LOCKET_GOLD='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Locket-removebg-preview_dgojxs.png';
 const WORN_LOCKET_SILVER='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Locket_broken-removebg-preview_if88z5.png';
 const HEAVY_WALKING_STICK='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130716/Gemini_Generated_Image_qil4q3qil4q3qil4-removebg-preview_a2olut.png';
@@ -596,12 +693,26 @@ const SHARPENING_STONE='https://res.cloudinary.com/dgmzeqmfs/image/upload/v17771
 const SHARPENING_STONE_BROKEN='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Gemini_Generated_Image_izbksizbksizbksi-removebg-preview_hgod7k.png';
 
 function getFoxImage(){
-  const map={electric:FOX_ELECTRIC,fire:FOX_FIRE,water:FOX_WATER,steel:FOX_STEEL,toxic:FOX_TOXIC};
-  return(G.type&&map[G.type])?map[G.type]:FOX_DEFAULT;
+  const foxMap={electric:FOX_ELECTRIC,fire:FOX_FIRE,water:FOX_WATER,steel:FOX_STEEL,toxic:FOX_TOXIC};
+  const hydraMap={electric:HYDRA_ELECTRIC,fire:HYDRA_FIRE,water:HYDRA_WATER,steel:HYDRA_STEEL,toxic:HYDRA_TOXIC};
+  const map=G.monsterType==='hydra'?hydraMap:foxMap;
+  const base=G.monsterType==='hydra'?HYDRA_DEFAULT:FOX_DEFAULT;
+  return(G.type&&map[G.type]&&map[G.type].startsWith('https://'))?map[G.type]:base;
 }
 function updateFoxImage(){
   const el=document.getElementById('foxImageSvg');
   if(el)el.setAttribute('href',getFoxImage());
+}
+function updateMonsterDisplay(){
+  const nameEl=document.querySelector('.zorp-name');
+  if(nameEl)nameEl.textContent=G.monsterName.toUpperCase();
+  updateFoxImage();
+}
+function checkTutorialSeen(){
+  return localStorage.getItem('zorpTutorialSeen')==='true';
+}
+function markTutorialSeen(){
+  localStorage.setItem('zorpTutorialSeen','true');
 }
 
 const ITEMS={
@@ -917,7 +1028,7 @@ const PACIFIST_ITEMS={
     item.sellPopup={
       title:'You close the Tome of Patience.',
       body:'The boulder rolls back down.',
-      reaction:'Kip is slightly unsettled.'
+      reaction:G.monsterName+' is slightly unsettled.'
     };
     item.handleEvent=(event)=>{
       if(event.type!=='FATIGUE_START')return;
@@ -2285,7 +2396,7 @@ const TRAINER_DATA=[
     icon:'😤',
     tag:'Your old neighbour',
     dialogueBefore:'You don\'t even have a type yet. A monster without identity is nothing. Let me show you.',
-    dialogueAfterWin:'...Huh.\n\nKip looks up at you. No words needed. Something was proven just now — not to him. To each other.',
+    get dialogueAfterWin(){return'...Huh.\n\n'+G.monsterName+' looks up at you. No words needed. Something was proven just now — not to him. To each other.'},
     dialogueAfterLoss:'Knew it. Run on home. Your mother\'s waiting and you\'re not ready for the tall grass.',
     buildTeam:()=>{
       const mi=key=>{
@@ -2448,7 +2559,7 @@ const TRAINER_DATA=[
   {
     name:'THE RIVAL',
     icon:'😤',
-    tag:'Back again — and angry',
+    get tag(){return'Not Gary'},
     getDialogueBefore:()=>{
       const total=rivalRecord.wins+rivalRecord.losses;
       if(total===0)return'Some call it destiny. I call it inevitable.';
@@ -2976,7 +3087,7 @@ function endBattle(result){
       if(G.wins>=6){
         rivalRecord.wins++;localStorage.setItem('rivalWins',rivalRecord.wins);
         const isPerfect=G.honor===13;
-        if(isPerfect){title='FLAWLESS';sub='Six wins. Zero losses. Kip knew all along.';}
+        if(isPerfect){title='FLAWLESS';sub='Six wins. Zero losses. '+G.monsterName+' knew all along.';}
         else{sub='Six wins. The run is complete.';}
         btnText='PLAY AGAIN';btnOnclick='resetRun()';
         logEvent({event:'run_complete',wins:G.wins,honor:G.honor,perfect:isPerfect,board:boardSnapshot(),skills:activeSkills.map(s=>s.id)});
@@ -3030,7 +3141,7 @@ function continueAfterResult(){
         showSecondWind();
       }else if(G.honor<=0&&G.secondWindUsed){
         setEncTitle('DEFEATED');
-        setEncBody('<div class="result-enc"><div class="re-title re-lose">DEFEATED</div><div class="re-sub">Kip gave everything.<br><br>'+G.wins+' wins.</div><div class="btn-row"><button class="btn btn-p" onclick="resetRun()">PLAY AGAIN</button></div></div>');
+        setEncBody('<div class="result-enc"><div class="re-title re-lose">DEFEATED</div><div class="re-sub">'+G.monsterName+' gave everything.<br><br>'+G.wins+' wins.</div><div class="btn-row"><button class="btn btn-p" onclick="resetRun()">PLAY AGAIN</button></div></div>');
       }else{
         advanceDay();
       }
@@ -3075,7 +3186,7 @@ const SECOND_WIND_BUFFS=[
 function showSecondWind(){
   G.secondWindUsed=true;
   setEncTitle('SECOND WIND');
-  const dialogue='<div class="dialogue"><div class="dlg-name">—</div>Kip hits the ground.<br><br>You kneel beside them. No words. Just the two of you and the sound of something ending.<br><br>Then Kip gets up.<br><br>Not because they have to. Not because you asked.<br><br>Something let go. Something that had been held a long time.<br><br>Kip looks different. You\'re not sure how. You\'re not sure it matters.</div>';
+  const dialogue='<div class="dialogue"><div class="dlg-name">—</div>'+G.monsterName+' hits the ground.<br><br>You kneel beside them. No words. Just the two of you and the sound of something ending.<br><br>Then '+G.monsterName+' gets up.<br><br>Not because they have to. Not because you asked.<br><br>Something let go. Something that had been held a long time.<br><br>'+G.monsterName+' looks different. You\'re not sure how. You\'re not sure it matters.</div>';
   const offered=[...SECOND_WIND_BUFFS].sort(()=>Math.random()-.5).slice(0,3);
   const cards=offered.map(b=>'<div class="dc" onclick="pickSecondWindBuff(\''+b.id+'\')"><div class="di">'+b.icon+'</div><div class="dn">'+b.name+'</div><div class="dd">'+b.desc+'</div></div>').join('');
   setEncBody(dialogue+'<div style="font-family:Cinzel,serif;font-size:8px;letter-spacing:.1em;color:var(--dim);text-align:center;margin:6px 0">CHOOSE WHAT CHANGED</div><div class="draft-row">'+cards+'</div>');
@@ -3221,7 +3332,7 @@ function showTypeSelect(){
   lastOfferedTypes=pool.map(t=>t.id);
   const typeCards=pool.map(t=>`<div class="to" onclick="pickType('${t.id}')" style="${TYPE_COLORS[t.id]||''}"><div class="ti">${t.icon}</div><div class="tn">${t.name}</div><div class="td">${t.desc}</div><div style="margin-top:5px;font-size:6.5px;font-family:'Cinzel',serif;letter-spacing:.04em"><span style="color:#e84060">✗ Lose Potential (+25%)</span><br><span style="color:#50e080">✓ Unlock typed items &amp; skills</span></div></div>`).join('<div style="display:flex;align-items:center;padding:0 6px;font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--dim)">OR</div>');
   const typelessCard=`<div class="to" onclick="pickType('typeless')" style="border-color:var(--potential);margin-top:8px;max-width:280px"><div style="display:flex;align-items:center;gap:8px;justify-content:center"><div style="font-size:18px">✦</div><div><div class="tn" style="text-align:left">STAY TYPELESS</div><div class="td" style="text-align:left;margin-top:2px"><span style="color:#50e080">✓ Keep Potential (+25% to all effects)</span><br><span style="color:#50e080">✓ Unlock the next bond node</span><br><span style="color:var(--dim)">One offered type may be banned.</span></div></div></div></div>`;
-  setEncBody(`<div class="dialogue"><div class="dlg-name">KIP</div>Kip stands a little different now. Something settled. You feel it too — a pull toward something. Not a name. Not a label. A direction.</div><div style="display:flex;justify-content:center;align-items:stretch">${typeCards}</div><div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:0"><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div><span style="font-family:Cinzel,serif;font-size:8px;color:var(--dim);letter-spacing:.1em">OR</span><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div></div><div style="display:flex;justify-content:center">${typelessCard}</div>`);
+  setEncBody(`<div class="dialogue"><div class="dlg-name">${G.monsterName.toUpperCase()}</div>${G.monsterName} stands a little different now. Something settled. You feel it too — a pull toward something. Not a name. Not a label. A direction.</div><div style="display:flex;justify-content:center;align-items:stretch">${typeCards}</div><div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-top:0"><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div><span style="font-family:Cinzel,serif;font-size:8px;color:var(--dim);letter-spacing:.1em">OR</span><div style="flex:1;height:1px;background:var(--border);max-width:100px"></div></div><div style="display:flex;justify-content:center">${typelessCard}</div>`);
 }
 function pickType(id){
   if(id==='typeless'){
@@ -3495,7 +3606,7 @@ function refreshShopAffordability(){
 }
 function log(type,msg){const el=document.getElementById('battleLog');if(!el)return;const div=document.createElement('div');const t=(battleMs/1000).toFixed(1);const cls={d:'ld',h:'lh',s:'ls',a:'la',b:'lb',x:'lx'}[type]||'lx';div.innerHTML='<span class="lt">'+t+'s</span><span class="'+cls+'">'+msg+'</span>';el.appendChild(div);el.scrollTop=el.scrollHeight;}
 function clearLog(){const el=document.getElementById('battleLog');if(el)el.innerHTML='';}
-function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/6';document.getElementById('phaseBadge').textContent='DAY '+G.day;refreshShopAffordability();renderSecondWindNode();updateFoxImage();}
+function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/6';document.getElementById('phaseBadge').textContent='DAY '+G.day;refreshShopAffordability();renderSecondWindNode();updateFoxImage();updateMonsterDisplay();}
 function renderSecondWindNode(){
   let el=document.getElementById('secondWindNode');
   if(!G.secondWindBuff){
@@ -3542,14 +3653,206 @@ let notifTimer;
 function showNotif(msg,duration=2400){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');clearTimeout(notifTimer);notifTimer=setTimeout(()=>el.classList.remove('show'),duration);}
 
 // ============================================================
+// PROFESSOR FLOW
+// ============================================================
+let professorStep=0;
+let selectedMonsterType='fox';
+
+function showProfessorFlow(){
+  professorStep=0;
+  showProfessorStep();
+}
+
+function showProfessorStep(){
+  switch(professorStep){
+    case 0: showProfessorIntro(); break;
+    case 1: showProfessorShop(); break;
+    case 2: showMonsterSelection(); break;
+    case 3: showMonsterNaming(); break;
+    case 4:
+      if(checkTutorialSeen()){showRivalNaming();}
+      else{showRivalNaming();}
+      break;
+    case 5: showRivalNaming(); break;
+    case 6: beginRun(); break;
+  }
+}
+
+function showProfessorIntro(){
+  setEncTitle('THE PROFESSOR');
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "Ah. Another one. Sit down, sit down — don't touch anything."<br><br>
+      "You're here because you want a monster companion. To battle other trainers. To journey out there and come back — if you come back — knowing something you didn't know when you left."<br><br>
+      "I've seen a thousand trainers walk through that door. Some made it to the big city. Some got stuck in that haunted tower on Route 6 for three weeks. One of them ended up on a cruise ship somehow. Still sends postcards."<br><br>
+      "Anyway. You're still here. That's something."
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="professorStep=1;showProfessorStep()">CONTINUE →</button>
+    </div>
+  `);
+}
+
+function showProfessorShop(){
+  setEncTitle('THE PROFESSOR — Gift Shop');
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "Before we begin — can I interest you in some merchandise? I have a full line. Hats, shirts, a very tasteful necklace with my emblem on it. Very popular."
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="professorShopBrowse()">BROWSE</button>
+      <button class="btn btn-d" onclick="professorShopDecline()">NO THANK YOU</button>
+    </div>
+  `);
+}
+
+function professorShopBrowse(){
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "Excellent taste —"<br><br>
+      "...Hm. Fine."
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="professorStep=2;showProfessorStep()">CONTINUE →</button>
+    </div>
+  `);
+}
+
+function professorShopDecline(){
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "Are you sure? The other child seemed to quite like my wares. Bought the necklace on the spot. Didn't even haggle."<br><br>
+      "Anyway."
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="professorStep=2;showProfessorStep()">CONTINUE →</button>
+    </div>
+  `);
+}
+
+function showMonsterSelection(){
+  setEncTitle('THE PROFESSOR — Choose Your Companion');
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "Different companions develop differently. The fox learns steadily — small skills that compound, one powerful technique at the end of a long journey. The hydra? Slow start. Its early skills are rudimentary. But give it time and both heads develop fully... well. You'll see."<br><br>
+      "Choose carefully. You'll be spending a lot of time together."
+    </div>
+    <div class="draft-row" style="gap:12px;justify-content:center;margin-top:8px">
+      <div class="dc ${selectedMonsterType==='fox'?'sel':''}" onclick="selectMonster('fox')" style="max-width:180px;cursor:pointer">
+        <div class="di">🦊</div>
+        <div class="dn">THE FOX</div>
+        <div class="dd" style="margin:4px 0">Steady growth. One mastered skill at the tail tip.</div>
+        <div style="font-family:Cinzel,serif;font-size:7px;color:var(--dim);margin-top:4px">✦ → ○ → ◈ → ◈ → ◆ → ★</div>
+      </div>
+      <div class="dc ${selectedMonsterType==='hydra'?'sel':''}" onclick="selectMonster('hydra')" style="max-width:180px;cursor:pointer">
+        <div class="di">🐉</div>
+        <div class="dn">THE HYDRA</div>
+        <div class="dd" style="margin:4px 0">Weak early skills. Two mastered skills at the head tips.</div>
+        <div style="font-family:Cinzel,serif;font-size:7px;color:var(--dim);margin-top:4px">✦ → ○ → ○ → ○ → ★ → ★</div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-p" onclick="confirmMonsterSelection()">SELECT ${selectedMonsterType.toUpperCase()} →</button>
+    </div>
+  `);
+}
+
+function selectMonster(type){
+  selectedMonsterType=type;
+  showMonsterSelection();
+}
+
+function confirmMonsterSelection(){
+  G.monsterType=selectedMonsterType;
+  G.monsterName=selectedMonsterType==='fox'?'Kip':'Hydrax';
+  rebuildSkillTreeSVG();
+  professorStep=3;
+  showProfessorStep();
+}
+
+function showMonsterNaming(){
+  setEncTitle('THE PROFESSOR — Name Your Companion');
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "One more thing. They need a name. Something they'll answer to. Something you won't regret shouting across a battlefield."<br><br>
+      "Take your time. Or don't. I have other things to do."
+    </div>
+    <div style="text-align:center;margin:12px 0">
+      <div style="font-size:32px;margin-bottom:8px">${selectedMonsterType==='fox'?'🦊':'🐉'}</div>
+      <input id="monsterNameInput" type="text" maxlength="12"
+        style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:Cinzel,serif;font-size:14px;padding:6px 12px;text-align:center;width:160px;"
+        placeholder="${selectedMonsterType==='fox'?'Kip':'Hydrax'}"
+        value="${G.monsterName}"/>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="confirmMonsterName()">CONFIRM →</button>
+    </div>
+  `);
+  setTimeout(()=>{const inp=document.getElementById('monsterNameInput');if(inp)inp.focus();},100);
+}
+
+function confirmMonsterName(){
+  const inp=document.getElementById('monsterNameInput');
+  const name=inp?inp.value.trim():'';
+  G.monsterName=name||(selectedMonsterType==='fox'?'Kip':'Hydrax');
+  updateMonsterDisplay();
+  professorStep=4;
+  showProfessorStep();
+}
+
+function showRivalNaming(){
+  setEncTitle('THE PROFESSOR — One More Thing');
+  setEncBody(`
+    <div class="dialogue">
+      <div class="dlg-name">THE PROFESSOR</div>
+      "Oh — and there's one more thing. Another trainer heading out on the same journey. Left yesterday actually."<br><br>
+      "You know them. Of course you know them. You're the only two kids in this entire shitty little town. Their mother's out on the deck every afternoon — lovely woman, very dedicated to her tan — I mean, you've lived next door your whole life. Nice kid actually. Bought the necklace."<br><br>
+      "Kids these days. Take one of my beloved monsters and off they go. No forwarding address. No postcard. Badge ceremony in the big city and suddenly they're too important to write."<br><br>
+      "Anyway. What's the name again?"
+    </div>
+    <div style="text-align:center;margin:12px 0">
+      <input id="rivalNameInput" type="text" maxlength="12"
+        style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:Cinzel,serif;font-size:14px;padding:6px 12px;text-align:center;width:160px;"
+        placeholder="Their name..."
+        value="${G.rivalName==='Rival'?'':G.rivalName}"/>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-p" onclick="confirmRivalName()">BEGIN JOURNEY →</button>
+    </div>
+  `);
+  setTimeout(()=>{const inp=document.getElementById('rivalNameInput');if(inp)inp.focus();},100);
+}
+
+function confirmRivalName(){
+  const inp=document.getElementById('rivalNameInput');
+  const name=inp?inp.value.trim():'';
+  G.rivalName=name||'Rival';
+  localStorage.setItem('zorpRivalName',G.rivalName);
+  if(checkTutorialSeen()){beginRun();}
+  else{markTutorialSeen();beginRun();}
+}
+
+function beginRun(){
+  G.day=1;G.dayStep=0;
+  updateUI();renderBoard();rebuildSkillTreeSVG();renderTrack();
+  activateCurrentNode();
+}
+
+// ============================================================
 // RESET
 // ============================================================
 function resetRun(){
   stopBattle();
-  G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;G.consolationPending=false;
+  G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;G.consolationPending=false;G.monsterType='fox';G.monsterName='Kip';
   board={front:[null,null,null],back:[null,null,null]};
   enemyBoard={front:[null,null,null],back:[null,null,null]};
-  TREE_NODES.forEach(n=>treeState[n.id]=null);
+  getTreeNodes().forEach(n=>treeState[n.id]=null);
   activeSkills.forEach(sk=>{sk._battleHandler=null;});
   activeSkills=[];bannedTypes=[];lastOfferedTypes=[];
   // Pre-fill HEAD with Potential — Zorp starts with it
@@ -3557,10 +3860,11 @@ function resetRun(){
   activeSkills=[SKILLS.prestige[0]];
   const badge=document.getElementById('typeBadge');
   badge.textContent='✦ POTENTIAL';badge.className='type-badge type-pot';badge.style.cssText='';
-  updateUI();renderBoard();renderSkillTree();renderTrack();activateCurrentNode();
+  updateUI();renderBoard();renderSkillTree();renderTrack();
   updateFoxImage();
   sessionId=Math.random().toString(36).slice(2,10);
   logEvent({event:'run_start'});
+  showProfessorFlow();
 }
 
 // ============================================================
@@ -3595,6 +3899,8 @@ function logEvent(data){
 // ============================================================
 // INIT
 // ============================================================
+const savedRivalName=localStorage.getItem('zorpRivalName');
+if(savedRivalName)G.rivalName=savedRivalName;
 treeState['head']=SKILLS.prestige[0];
 activeSkills=[SKILLS.prestige[0]];
 updateUI();renderBoard();renderSkillTree();renderTrack();activateCurrentNode();
