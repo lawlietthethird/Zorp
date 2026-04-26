@@ -4152,9 +4152,10 @@ const savedRivalName=localStorage.getItem('zorpRivalName');
 if(savedRivalName)G.rivalName=savedRivalName;
 treeState['head']=SKILLS.prestige[0];
 activeSkills=[SKILLS.prestige[0]];
-updateUI();renderBoard();renderSkillTree();renderTrack();activateCurrentNode();
+updateUI();renderBoard();renderSkillTree();renderTrack();
 updateFoxImage();
 logEvent({event:'run_start'});
+showProfessorFlow();
 window.addEventListener('beforeunload',()=>{
   logEvent({event:'session_end',board:boardSnapshot(),skills:activeSkills.map(s=>s.id),gold:G.gold});
 });
