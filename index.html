@@ -79,9 +79,9 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
 .track-connector{flex:1;height:2px;background:var(--border);min-width:16px;max-width:40px;margin-top:-22px;position:relative;z-index:0;}
 .track-connector.done-conn{background:rgba(80,224,128,.3);}
 /* PLAYER SECTION */
-.player-section{background:var(--panel);border:1px solid var(--border);border-radius:0 0 10px 10px;border-top:none;display:flex;flex-direction:column;flex-shrink:0;height:350px;overflow:hidden;}
+.player-section{background:var(--panel);border:1px solid var(--border);border-radius:0 0 10px 10px;border-top:none;display:flex;flex-direction:column;flex-shrink:0;height:340px;overflow:hidden;padding:0;}
 .player-header{display:flex;flex-direction:row;flex-shrink:0;height:160px;overflow:hidden;}
-.bond-col{width:160px;height:160px;flex-shrink:0;position:relative;border-right:1px solid var(--border);}
+.bond-col{width:160px;height:160px;flex-shrink:0;position:relative;border-right:1px solid var(--border);overflow:hidden;}
 .right-col{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:4px 8px;gap:4px;}
 .zorp-row{display:flex;align-items:center;gap:6px;flex-shrink:0;height:28px;}
 .day-track-inline{flex:1;display:flex;align-items:center;gap:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 0;}
@@ -92,9 +92,9 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
 .zorp-name{font-family:'Cinzel',serif;font-size:9px;font-weight:900;letter-spacing:.1em;}
 .type-badge{padding:2px 8px;border-radius:10px;font-family:'Cinzel',serif;font-size:7px;font-weight:700;letter-spacing:.1em;border:1px solid;}
 .type-pot{background:rgba(64,192,255,.1);border-color:var(--potential);color:var(--potential);}
-.skill-panel{flex:1;background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;}
+.skill-panel{flex:1;background:rgba(0,0,0,.2);border:1px solid var(--border);border-radius:6px;padding:0;width:100%;height:100%;position:relative;}
 .sp-title{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.12em;color:var(--dim);margin-bottom:4px;text-align:center;}
-.sp-svg{width:100%;height:70px;}
+.sp-svg{width:100%;height:100%;display:block;position:absolute;inset:0;}
 .board-area{flex-shrink:0;display:flex;flex-direction:column;gap:4px;padding:4px 6px;height:186px;}
 .board-row{display:flex;align-items:center;gap:4px;flex:1;}
 .rl{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.07em;writing-mode:vertical-rl;transform:rotate(180deg);width:11px;flex-shrink:0;}
@@ -205,9 +205,9 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
 .ic.rarity-advanced:hover:not(.locked){border-color:#7a4acc;}
 .ic.rarity-mastered{background:#1e1608;border-color:#6a4a10;box-shadow:inset 0 1px 0 rgba(192,128,32,.3),inset 0 -1px 0 rgba(0,0,0,.3);}
 .ic.rarity-mastered:hover:not(.locked){border-color:#c08020;}
-.sp-container{position:relative;width:100%;aspect-ratio:1;}
+.sp-container{width:100%;height:100%;position:relative;display:block;}
 .fox-bg-image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;opacity:0.9;pointer-events:none;}
-.sp-svg{position:absolute;inset:0;width:100%;height:100%;}
+.sp-svg{width:100%;height:100%;display:block;position:absolute;inset:0;}
 </style>
 </head>
 <body>
@@ -282,7 +282,7 @@ body{background:var(--bg);color:var(--text);font-family:'Crimson Pro',serif;heig
           <div class="sp-title" style="position:absolute;top:2px;left:4px;font-size:6px;z-index:2">BOND TREE</div>
           <div class="sp-container" style="width:100%;height:100%;">
             <svg class="sp-svg" viewBox="0 0 120 120" id="skillSvg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">
-              <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid meet"/>
+              <image id="foxImageSvg" href="" x="0" y="0" width="120" height="120" preserveAspectRatio="xMidYMid slice"/>
               <g id="treeLines"></g>
               <!-- HEAD — prestige -->
               <g id="tn-head" data-node="head">
