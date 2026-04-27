@@ -391,9 +391,9 @@ Contains: ironclad, aegis, temper, wrecking_ball, thornback_armor.
 
 TRAINER_DATA[6].buildTeam reads G.type and builds counter board:
 - electric → Steel counter (Thornback Armor, Aegis, Ironclad, Temper, Wrecking Ball, Hard Shell)
-- fire → Water counter (Glacier, Hydro Cannon, Whirlpool, Deluge, Hot Springs, Tidal Shell)
+- fire → Water counter (Glacier, Hydro Cannon, Whirlpool, Deluge, Hot Springs, Coral)
 - water → Electric counter (Live Wire, Dual Shock, Charging Station, Feedback, Thunder, Arc Bolt)
-- toxic → Fire counter (Cinder Claw, Ember Fang, Arsonist, Stoke, Fireworks, Blaze)
+- toxic → Fire counter (Scorch, Inferno, Arsonist, Stoke, Fireworks, Blaze)
 - steel → Placeholder generic (replace when Toxic items implemented)
 - null/typeless → Strong generic board
 
@@ -534,3 +534,16 @@ G.rivalName drives all rival references throughout the game.
 TRAINER_DATA[1] and TRAINER_DATA[6] name fields are getters returning G.rivalName.toUpperCase().
 No hardcoded 'THE RIVAL' or 'RIVAL' strings remain in dialogue or battle titles.
 Rival name persists in localStorage as zorpRivalName.
+
+## Item Renames
+left_claws → Hook
+spark_charm → Surge
+cinder_claw → Scorch
+ember_fang → Inferno
+current_band → Water Gun
+tide_fang → Hydro Blast
+tidal_shell → Coral
+bulwark_stance → Reinforce
+alloy_fang → Steel Jaw
+
+Keys unchanged. Only display names updated.

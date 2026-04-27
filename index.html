@@ -773,8 +773,8 @@ function markTutorialSeen(){
 }
 
 const ITEMS={
-  left_claws:()=>{const item=makeItem('left_claws','Left Claws','🐾','Weapon',100,4000,'4s → 15 dmg · leftmost',(s,a)=>dealDmg(opp(s),a,'Left Claws'),2,null,15,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||15,cls:'dmg'}];return item;},
-  spark_charm:()=>{const item=makeItem('spark_charm','Spark Charm','⚡','Weapon',80,3000,'3s → 13 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Spark Charm'),2,null,13,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||13,cls:'dmg'}];return item;},
+  left_claws:()=>{const item=makeItem('left_claws','Hook','🐾','Weapon',100,4000,'4s → 15 dmg · leftmost enemy',(s,a)=>dealDmg(opp(s),a,'Hook'),2,null,15,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||15,cls:'dmg'}];return item;},
+  spark_charm:()=>{const item=makeItem('spark_charm','Surge','⚡','Weapon',80,3000,'3s → 13 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Surge'),2,null,13,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||13,cls:'dmg'}];return item;},
   bubble_shield:()=>{const item=makeItem('bubble_shield','Bubble Shield','🫧','Armor',200,6000,'6s → Plate random ally +30',(s,a)=>applyShield(s,a,'Bubble Shield'),2,null,30,'armor','beginner');item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||30,cls:'shield'}];return item;},
 };
 const SHOP_POOLS=[
@@ -790,16 +790,16 @@ const TYPED_ITEMS={
   lightning_claw:()=>{const item=makeItem('lightning_claw','Lightning Claw','⚡','Weapon',90,2500,'2.5s → 10 dmg · random + self Jolt 1.5s',(s,a,self)=>{dealDmgRandom(opp(s),a,'Lightning Claw');applyHaste(self,1500,'Lightning Claw');},8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'⚡',value:'1.5s',cls:'haste'}];return item;},
   arc_bolt:()=>{const item=makeItem('arc_bolt','Arc Bolt','🌩️','Weapon',110,5000,'5s → 10 dmg · hits 2 random targets',(s,a)=>dealDmgTwoRandom(s,a,'Arc Bolt'),8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'}];return item;},
   // FIRE 🔥
-  ember_fang:()=>{const item=makeItem('ember_fang','Ember Fang','🔥','Weapon',110,4000,'4s → 10 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,10,'Ember Fang','burn',a),4,null,3,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
-  cinder_claw:()=>{const item=makeItem('cinder_claw','Cinder Claw','🌋','Weapon',90,3000,'3s → 5 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,5,'Cinder Claw','burn',a),2,null,3,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||5,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
+  ember_fang:()=>{const item=makeItem('ember_fang','Inferno','🔥','Weapon',110,4000,'4s → 10 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,10,'Inferno','burn',a),4,null,3,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
+  cinder_claw:()=>{const item=makeItem('cinder_claw','Scorch','🌋','Weapon',90,3000,'3s → 5 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,5,'Scorch','burn',a),2,null,3,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||5,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
   // WATER 💧
-  tide_fang:()=>{const item=makeItem('tide_fang','Tide Fang','🌊','Weapon',105,4000,'4s → 14 dmg + 2s Wet',(s,a)=>dealDmgWithStatus(s,a,'Tide Fang','slow',2000),4,null,14,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||14,cls:'dmg'},{icon:'💧',value:'2s',cls:'slow'}];return item;},
-  tidal_shell:()=>{const item=makeItem('tidal_shell','Tidal Shell','🐌','Armor',180,8000,'8s → Plate random ally +40 + 1.5s Wet to enemy',(s,a)=>{applyShield(s,a,'Tidal Shell');const t=randomEnemyItem(opp(s));if(t)applySlow(t,1500,'Tidal Shell');},4,null,40,'armor','intermediate');item.stats=[{icon:'🛡',value:40,cls:'shield'},{icon:'💧',value:'1.5s',cls:'slow'}];return item;},
+  tide_fang:()=>{const item=makeItem('tide_fang','Hydro Blast','🌊','Weapon',105,4000,'4s → 14 dmg + 2s Wet',(s,a)=>dealDmgWithStatus(s,a,'Hydro Blast','slow',2000),4,null,14,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||14,cls:'dmg'},{icon:'💧',value:'2s',cls:'slow'}];return item;},
+  tidal_shell:()=>{const item=makeItem('tidal_shell','Coral','🐌','Armor',180,8000,'8s → Plate random ally +40 + 1.5s Wet to enemy',(s,a)=>{applyShield(s,a,'Coral');const t=randomEnemyItem(opp(s));if(t)applySlow(t,1500,'Coral');},4,null,40,'armor','intermediate');item.stats=[{icon:'🛡',value:40,cls:'shield'},{icon:'💧',value:'1.5s',cls:'slow'}];return item;},
   riptide:()=>{const item=makeItem('riptide','Riptide','🌀','Weapon',120,5000,'5s → 20 dmg · back row',(s,a)=>dealDmgBackRow(s,a,'Riptide'),8,null,20,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||20,cls:'dmg'}];return item;},
-  current_band:()=>{const item=makeItem('current_band','Current Band','💧','Weapon',80,3000,'3s → 9 dmg + 1s Wet',(s,a)=>dealDmgWithStatus(s,a,'Current Band','slow',1000),2,null,9,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||9,cls:'dmg'},{icon:'💧',value:'1s',cls:'slow'}];return item;},
+  current_band:()=>{const item=makeItem('current_band','Water Gun','💧','Weapon',80,3000,'3s → 9 dmg + 1s Wet',(s,a)=>dealDmgWithStatus(s,a,'Water Gun','slow',1000),2,null,9,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||9,cls:'dmg'},{icon:'💧',value:'1s',cls:'slow'}];return item;},
   // STEEL 🛡️
-  bulwark_stance:()=>{const item=makeItem('bulwark_stance','Bulwark Stance','🛡️','Armor',150,5000,'5s → Plate ALL allies +20',(s,a)=>applyShieldAll(s,a,'Bulwark Stance'),8,null,20,'armor','advanced');item.stats=[{icon:'🛡🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];return item;},
-  alloy_fang:()=>{const item=makeItem('alloy_fang','Alloy Fang','⚔️','Weapon',140,6000,'6s → 22 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Alloy Fang'),8,null,22,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||22,cls:'dmg'}];return item;},
+  bulwark_stance:()=>{const item=makeItem('bulwark_stance','Reinforce','🛡️','Armor',150,5000,'5s → Plate ALL allies +20',(s,a)=>applyShieldAll(s,a,'Reinforce'),8,null,20,'armor','advanced');item.stats=[{icon:'🛡🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];return item;},
+  alloy_fang:()=>{const item=makeItem('alloy_fang','Steel Jaw','⚔️','Weapon',140,6000,'6s → 22 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Steel Jaw'),8,null,22,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||22,cls:'dmg'}];return item;},
   // TOXIC ☠️
   venom_fang:()=>{
     const item=makeItem('venom_fang','Venom Fang','🐍','Weapon',120,4000,
@@ -3840,7 +3840,7 @@ function makeDemoItem(id,name,icon,maxHp,actMs,type){
 
 function initDemoItems(){
   demoItems.shield=makeDemoItem('demo_shield','Bubble Shield','🫧',200,6000,'shield');
-  demoItems.spark=makeDemoItem('demo_spark','Spark Charm','⚡',80,3000,'attack');
+  demoItems.spark=makeDemoItem('demo_spark','Surge','⚡',80,3000,'attack');
   demoMs=0;
   demoFatigueMs=0;
   demoFatigueActive=false;
@@ -3877,7 +3877,7 @@ function tickDemo(){
   demoMs+=TICK;
   const spark=demoItems.spark;
   const shield=demoItems.shield;
-  // Tick Spark Charm
+  // Tick Surge
   if(!spark.broken){
     spark.actElapsed+=TICK;
     spark.actPct=Math.min(100,spark.actElapsed/spark.actMs*100);
@@ -3887,9 +3887,9 @@ function tickDemo(){
       if(shield.shield>0){
         const absorbed=Math.min(shield.shield,dmg);
         shield.shield-=absorbed;dmg-=absorbed;
-        setDemoCommentary('Spark Charm hits — plating absorbs '+absorbed+' damage!');
+        setDemoCommentary('Surge hits — plating absorbs '+absorbed+' damage!');
       }else{
-        setDemoCommentary('Spark Charm hits '+shield.name+' for '+dmg+' damage!');
+        setDemoCommentary('Surge hits '+shield.name+' for '+dmg+' damage!');
       }
       if(dmg>0){
         shield.hp=Math.max(0,shield.hp-dmg);
@@ -3918,7 +3918,7 @@ function tickDemo(){
     const fatigueDmg=Math.min(20,2+Math.floor(demoFatigueMs/2000)*2);
     if(!spark.broken){
       spark.hp=Math.max(0,spark.hp-fatigueDmg);
-      if(spark.hp<=0){spark.broken=true;setDemoCommentary('Spark Charm collapses from fatigue! Bubble Shield wins!');}
+      if(spark.hp<=0){spark.broken=true;setDemoCommentary('Surge collapses from fatigue! Bubble Shield wins!');}
     }
     if(!shield.broken){
       shield.hp=Math.max(0,shield.hp-Math.round(fatigueDmg*0.5));
@@ -3931,7 +3931,7 @@ function tickDemo(){
     renderDemoCards();
     setDemoCommentary(
       spark.broken&&!shield.broken?'Bubble Shield wins! Fatigue rewards endurance.':
-      shield.broken&&!spark.broken?'Spark Charm wins!':
+      shield.broken&&!spark.broken?'Surge wins!':
       'Both broken — a tie! Ties count as wins.'
     );
     clearInterval(demoInterval);
