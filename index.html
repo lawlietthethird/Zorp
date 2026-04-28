@@ -1891,6 +1891,7 @@ function upgradeItem(item){
   return true;
 }
 function mk(key){const t=ITEMS[key]();return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,effectAmt:t.baseEffect};}
+function mkw(key){const f=getItemFactory(key);if(!f){console.warn('mkw: unknown key',key);return null;}const t=f();return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,effectAmt:t.baseEffect};}
 const DAY1_WILD={
   name:'Scruffling',
   icon:'🐀',
@@ -1904,6 +1905,34 @@ const WILD_MONSTERS=[
   {name:'Mudpup',icon:'🐊',tag:'Swamp Crawler',front:[mk('bubble_shield'),mk('left_claws'),null],back:[null,null,null]},
   {name:'Gloomwing',icon:'🦇',tag:'Shadow Flyer',front:[mk('spark_charm'),mk('bubble_shield'),null],back:[null,null,null]},
 ];
+const WILD_MONSTERS_DAY3=[
+  {name:'Grubcap',icon:'🍄',tag:'The cap grew there. It didn\'t notice.',
+   front:[mkw('venom_fang'),mkw('bubble_shield'),null],
+   back:[mkw('caustic_mantle'),mkw('emergency_ration'),null]},
+  {name:'Flicktail',icon:'🦎',tag:'It has been running since it hatched. This is the first time it stopped.',
+   front:[mkw('lightning_claw'),mkw('spark_charm'),null],
+   back:[mkw('bulwark_stance'),mkw('emergency_ration'),null]},
+  {name:'Irongrub',icon:'🪲',tag:'It has never lost. It has also never tried anything.',
+   front:[mkw('alloy_fang'),mkw('bubble_shield'),null],
+   back:[mkw('bulwark_stance'),mkw('hot_springs'),null]},
+];
+const WILD_MONSTERS_DAY4=[
+  {name:'Cindermaw',icon:'🔥',tag:'There used to be more of them.',
+   front:[mkw('cinder_claw'),mkw('bubble_shield'),mkw('bulwark_stance')],
+   back:[mkw('emergency_ration'),mkw('ember_fang'),null]},
+  {name:'Bogwump',icon:'🐸',tag:'Very old. Very soft. Both facts are misleading.',
+   front:[mkw('venom_fang'),mkw('caustic_mantle'),mkw('bubble_shield')],
+   back:[mkw('hot_springs'),mkw('left_claws'),null]},
+  {name:'Cragback',icon:'🪨',tag:'It doesn\'t know you\'re there. That\'s going to be a problem.',
+   front:[mkw('alloy_fang'),mkw('bulwark_stance'),mkw('tide_fang')],
+   back:[mkw('bubble_shield'),mkw('emergency_ration'),null]},
+];
+function getWildPool(){
+  if(G.day===3)return WILD_MONSTERS_DAY3;
+  if(G.day>=4)return WILD_MONSTERS_DAY4;
+  return WILD_MONSTERS; // day 2 default; day 1 uses DAY1_WILD directly
+}
+let currentWildMonster=null;
 
 // ============================================================
 // HELPERS
@@ -2828,31 +2857,33 @@ function generateShopSlots(day,excludeKeys,typeFilter){
   }
   return slots;
 }
+function buildWildEnemyBoard(m){
+  const toSlot=i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses,hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'}:null;
+  enemyBoard.front=m.front.map(toSlot);
+  enemyBoard.back=m.back.map(toSlot);
+  applyDifficultyToBoard([...enemyBoard.front,...enemyBoard.back],G.day);
+}
 function showEncounterWildPick(){
   if(G.day===1){
     // Day 1 — auto-start against weak single monster, no choice
-    G.wildChoice=-1; // special flag for day 1 wild
-    const m=DAY1_WILD;
-    enemyBoard.front=m.front.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,
-      actElapsed:0,actPct:0,broken:false,uses:i.maxUses,
-      hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,
-      poisonStack:0,poisonTickMs:0,_side:'enemy'}:null);
-    enemyBoard.back=m.back.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,
-      actElapsed:0,actPct:0,broken:false,uses:i.maxUses,
-      hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,
-      poisonStack:0,poisonTickMs:0,_side:'enemy'}:null);
-    showEncounterBattle('wild',m);
+    G.wildChoice=-1;
+    currentWildMonster=DAY1_WILD;
+    buildWildEnemyBoard(DAY1_WILD);
+    showEncounterBattle('wild',DAY1_WILD);
     return;
   }
-  // Day 2+ — normal pick screen
+  // Day 2+ — pick screen using day-appropriate pool
+  const pool=getWildPool();
   setEncTitle('WILD ENCOUNTER — Choose Your Prey');
-  const cards=WILD_MONSTERS.map((m,i)=>{const iconHtml=m.img&&m.img.startsWith('https://')?'<img src="'+m.img+'" style="width:48px;height:48px;object-fit:contain;display:block;margin:0 auto 3px"/>':'<div class="wpi">'+m.icon+'</div>';return'<div class="wp" onclick="startWild('+i+')">'+iconHtml+'<div class="wpn">'+m.name+'</div><div class="wpd">'+m.tag+'</div></div>';}).join('');
+  const cards=pool.map((m,i)=>{const iconHtml=m.img&&m.img.startsWith('https://')?'<img src="'+m.img+'" style="width:48px;height:48px;object-fit:contain;display:block;margin:0 auto 3px"/>':'<div class="wpi">'+m.icon+'</div>';return'<div class="wp" onclick="startWild('+i+')">'+iconHtml+'<div class="wpn">'+m.name+'</div><div class="wpd">'+m.tag+'</div></div>';}).join('');
   setEncBody('<div class="dialogue"><div class="dlg-name">TRAVELER\'S NOTE</div>"Three wild monsters spotted on the road. Defeat one to earn gold."</div><div class="wild-pick">'+cards+'</div>');
 }
 function startWild(idx){
-  G.wildChoice=idx;const m=WILD_MONSTERS[idx];
-  enemyBoard.front=m.front.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses,hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'}:null);
-  enemyBoard.back=m.back.map(i=>i?{...i,hp:i.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:i.maxUses,hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'}:null);
+  const pool=getWildPool();
+  G.wildChoice=idx;
+  const m=pool[idx];
+  currentWildMonster=m;
+  buildWildEnemyBoard(m);
   showEncounterBattle('wild',m);
 }
 
@@ -3774,7 +3805,7 @@ function endBattle(result){
     if(currentBattleType==='wild'){
       const roll=Math.random();const reward=roll<0.25?4:roll<0.75?5:6;
       const butcher=reward===4?'"You really beat the meat on this one." Coins in your hand, pity in his eyes.':reward===5?'"Decent enough." Coins on the counter, no further conversation.':'"Near perfect condition. They grade these now, you know. PSA 10, this one." You walk out richer than expected.';
-      const monsterName=G.wildChoice===-1?DAY1_WILD.name:WILD_MONSTERS[G.wildChoice||0].name;
+      const monsterName=currentWildMonster?currentWildMonster.name:'Wild Monster';
       G.gold+=reward;title='MONSTER DEFEATED';
       sub='You haul the '+monsterName+' to the butcher.<br><br><em>'+butcher+'</em><br><br>Earned 🪙'+reward+' gold.';
       logEvent({event:'wild_battle',result:'win',wild_monster:monsterName,gold_reward:reward,board:boardSnapshot(),battle_duration_ms:battleMs});
@@ -3798,7 +3829,7 @@ function endBattle(result){
   }else{
     if(currentBattleType==='wild'){
       title='DEFEATED';
-      const monsterName=G.wildChoice===-1?DAY1_WILD.name:WILD_MONSTERS[G.wildChoice||0].name;
+      const monsterName=currentWildMonster?currentWildMonster.name:'Wild Monster';
       logEvent({event:'wild_battle',result:'lose',wild_monster:monsterName,board:boardSnapshot(),battle_duration_ms:battleMs});
       if(G.day===1){
         sub='You are literally in the tutorial. We\'re going to pretend that didn\'t happen.';btnText='MOVE ON →';
