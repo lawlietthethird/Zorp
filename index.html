@@ -4759,29 +4759,32 @@ function professorShopDecline(){
 
 function showMonsterSelection(){
   setEncTitle('THE PROFESSOR — Choose Your Companion');
-  setEncBody(profLayout(
-    `<div class="dialogue">
-      <div class="dlg-name">THE PROFESSOR</div>
-      "Different companions develop differently. The fox learns steadily — one powerful technique at the end. The hydra starts slow, but give it time and both heads develop fully. Choose carefully."
-    </div>`,
-    `<div class="draft-row" style="gap:8px;justify-content:center;margin-top:6px">
-      <div class="dc ${selectedMonsterType==='fox'?'sel':''}" onclick="selectMonster('fox')" style="max-width:175px;cursor:pointer;padding:6px;">
-        <img src="${FOX_DEFAULT}" style="width:75px;height:75px;object-fit:contain;display:block;margin:0 auto 3px"/>
-        <div class="dn" style="font-size:7px">THE FOX</div>
-        <div class="dd" style="margin:3px 0;font-size:7px">Steady growth. One mastered skill.</div>
-        <div style="font-family:Cinzel,serif;font-size:13px;letter-spacing:.05em;color:var(--dim)">✦→○→◈→◈→◆→★</div>
-      </div>
-      <div class="dc ${selectedMonsterType==='hydra'?'sel':''}" onclick="selectMonster('hydra')" style="max-width:175px;cursor:pointer;padding:6px;">
-        <img src="${HYDRA_DEFAULT_IMG}" style="width:75px;height:75px;object-fit:contain;display:block;margin:0 auto 3px"/>
-        <div class="dn" style="font-size:7px">THE HYDRA</div>
-        <div class="dd" style="margin:3px 0;font-size:7px">Weak early. Two mastered skills.</div>
-        <div style="font-family:Cinzel,serif;font-size:13px;letter-spacing:.05em;color:var(--dim)">✦→○→○→○→★→★</div>
+  setEncBody(`
+    <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0;">
+      <img src="${PROFESSOR_IMG}" style="flex-shrink:0;width:64px;object-fit:contain;object-position:top;align-self:flex-start;"/>
+      <div class="dialogue" style="flex:1;min-width:0;padding:8px 10px;font-size:11px;">
+        <div class="dlg-name">THE PROFESSOR</div>
+        "Different companions develop differently. The fox learns steadily — one powerful technique at the end. The hydra starts slow, but both heads develop fully. Choose carefully."
       </div>
     </div>
-    <div class="btn-row" style="margin-top:6px">
+    <div class="draft-row" style="gap:8px;justify-content:center;margin-top:6px;flex-shrink:0;">
+      <div class="dc ${selectedMonsterType==='fox'?'sel':''}" onclick="selectMonster('fox')" style="flex:1;max-width:175px;cursor:pointer;padding:6px;">
+        <img src="${FOX_DEFAULT}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 3px"/>
+        <div class="dn" style="font-size:7px">THE FOX</div>
+        <div class="dd" style="margin:3px 0;font-size:7px">Steady growth. One mastered skill.</div>
+        <div style="font-family:Cinzel,serif;font-size:11px;letter-spacing:.05em;color:var(--dim)">✦→○→◈→◈→◆→★</div>
+      </div>
+      <div class="dc ${selectedMonsterType==='hydra'?'sel':''}" onclick="selectMonster('hydra')" style="flex:1;max-width:175px;cursor:pointer;padding:6px;">
+        <img src="${HYDRA_DEFAULT_IMG}" style="width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 3px"/>
+        <div class="dn" style="font-size:7px">THE HYDRA</div>
+        <div class="dd" style="margin:3px 0;font-size:7px">Weak early. Two mastered skills.</div>
+        <div style="font-family:Cinzel,serif;font-size:11px;letter-spacing:.05em;color:var(--dim)">✦→○→○→○→★→★</div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:6px;flex-shrink:0;">
       <button class="btn btn-p" onclick="confirmMonsterSelection()">SELECT ${selectedMonsterType.toUpperCase()} →</button>
     </div>`
-  ));
+  );
 }
 
 function selectMonster(type){
@@ -4895,8 +4898,8 @@ function showTitleScreen(){
       ${diffSel}
       <button onclick="startFromTitle()" style="margin-top:${hasBeat?'4vh':'8vh'};font-family:'Cinzel',serif;font-size:14px;font-weight:900;letter-spacing:.25em;padding:12px 44px;border-radius:8px;border:2px solid var(--gold);background:rgba(240,192,64,.12);color:var(--gold);cursor:pointer;text-shadow:0 0 16px rgba(240,192,64,.5);box-shadow:0 0 24px rgba(240,192,64,.15);" onmouseover="this.style.background='rgba(240,192,64,.28)'" onmouseout="this.style.background='rgba(240,192,64,.12)'">START</button>
     </div>
-    <img src="${SCRUFFLING_IMG}" style="position:fixed;left:0;bottom:0;height:35vh;object-fit:contain;object-position:bottom left;pointer-events:none;filter:drop-shadow(4px 0 18px rgba(0,0,0,.65));"/>
-    <img src="${THORNBACK_IMG}" style="position:fixed;right:0;bottom:0;height:35vh;object-fit:contain;object-position:bottom right;pointer-events:none;filter:drop-shadow(-4px 0 18px rgba(0,0,0,.65));transform:scaleX(-1);"/>
+    <img src="${SCRUFFLING_IMG}" style="position:fixed;left:0;bottom:0;height:30vh;max-width:45vw;object-fit:contain;object-position:bottom left;pointer-events:none;filter:drop-shadow(4px 0 18px rgba(0,0,0,.65));"/>
+    <img src="${THORNBACK_IMG}" style="position:fixed;right:0;bottom:0;height:30vh;max-width:45vw;object-fit:contain;object-position:bottom right;pointer-events:none;filter:drop-shadow(-4px 0 18px rgba(0,0,0,.65));transform:scaleX(-1);"/>
   `;
   document.body.appendChild(ts);
 }
