@@ -40,8 +40,8 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 @media(max-width:600px){
   .enemy-area{flex-direction:column;gap:4px;}
   .enemy-info{width:100%;flex-direction:row;justify-content:flex-start;align-items:center;gap:8px;height:auto;flex-shrink:0;padding:0 2px;}
-  .enemy-icon{font-size:44px;line-height:1;}
-  .trainer-avatar{width:44px;height:44px;object-fit:contain;}
+  .enemy-icon{font-size:72px;line-height:1;}
+  .trainer-avatar{width:72px;height:72px;object-fit:contain;transform:scale(1.35);transform-origin:center;}
   .enemy-name{font-size:10px;}.enemy-tag{font-size:8px;}
 }
 .eboard-row{display:flex;flex:1;min-height:0;min-width:0;gap:4px;align-items:stretch;}
@@ -664,6 +664,10 @@ function getNodeById(id){ return getTreeNodes().find(n=>n.id===id); }
 function isNodeUnlockable(id){
   const node=getNodeById(id); if(!node)return false;
   if(!node.parent)return true; // head always unlockable
+  // Typed Fox players skip front_shoulder — treat it as filled (HEAD acts as the parent)
+  if(node.parent==='front_shoulder'&&G.monsterType==='fox'&&G.type!==null){
+    return treeState['head']!==null;
+  }
   return treeState[node.parent]!==null; // parent must be filled
 }
 function getAvailableNodes(){
