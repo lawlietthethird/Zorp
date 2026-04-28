@@ -43,6 +43,8 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
   .enemy-icon{font-size:72px;line-height:1;}
   .trainer-avatar{width:72px;height:72px;object-fit:contain;transform:scale(1.35);transform-origin:center;}
   .enemy-name{font-size:10px;}.enemy-tag{font-size:8px;}
+  /* Pre-battle dialogue hidden on mobile so card layout matches in-battle layout */
+  .dialogue-prebattle{display:none;}
 }
 .eboard-row{display:flex;flex:1;min-height:0;min-width:0;gap:4px;align-items:stretch;}
 .ecard{flex:0 0 auto;width:calc(50% - 4px);max-width:110px;height:100%;border-radius:6px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;}
@@ -3148,8 +3150,8 @@ function showEncounterBattle(type,wildMonster=null){
     `<img src="${trainer.img}" class="trainer-avatar"/>`:
     `<div class="enemy-icon">${enemy.icon||'😤'}</div>`;
   const dlg=isWild
-    ?'<div class="dialogue"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
-    :'<div class="dialogue"><div class="dlg-name">'+trainer.name+'</div>"'+(trainer.getDialogueBefore?trainer.getDialogueBefore():trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'"</div>';
+    ?'<div class="dialogue dialogue-prebattle"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
+    :'<div class="dialogue dialogue-prebattle"><div class="dlg-name">'+trainer.name+'</div>"'+(trainer.getDialogueBefore?trainer.getDialogueBefore():trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'"</div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — '+trainer.name);
   setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info">'+(!isWild?trainerImgHTML:'<div class="enemy-icon">'+enemy.icon+'</div>')+'<div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
   renderEnemyBoard();
