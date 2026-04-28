@@ -815,7 +815,7 @@ function renderSkillTree(){
 // ============================================================
 // STATE
 // ============================================================
-const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',monsterType:'fox',rivalName:'Rival',tutorialSeen:false,secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false};
+const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',monsterType:'fox',rivalName:'Rival',tutorialSeen:false,secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false,difficulty:localStorage.getItem('zorpDifficulty')||'easy'};
 let bannedTypes=[];
 let rivalRecord={wins:parseInt(localStorage.getItem('rivalWins')||'0'),losses:parseInt(localStorage.getItem('rivalLosses')||'0')};
 let lastOfferedTypes=[];
@@ -877,6 +877,9 @@ const HEAVY_WALKING_STICK='https://res.cloudinary.com/dgmzeqmfs/image/upload/v17
 const HEAVY_WALKING_STICK_BROKEN='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Gemini_Generated_Image_qil4q3qil4q3qil4__1_-removebg-preview_2_gemorj.png';
 const SHARPENING_STONE='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Gemini_Generated_Image_pow3rrpow3rrpow3-removebg-preview_xudhmn.png';
 const SHARPENING_STONE_BROKEN='https://res.cloudinary.com/dgmzeqmfs/image/upload/v1777130640/Gemini_Generated_Image_izbksizbksizbksi-removebg-preview_hgod7k.png';
+const ZORP_LOGO_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/q_auto/f_auto/v1777406893/ChatGPT_Image_Apr_28__2026__04_05_19_PM-removebg-preview_nzitaj.png';
+const SCRUFFLING_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/q_auto/f_auto/v1777401904/ChatGPT_Image_Apr_28__2026__01_58_32_PM-removebg-preview_babt1t.png';
+const THORNBACK_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/q_auto/f_auto/v1777401904/ChatGPT_Image_Apr_28__2026__02_43_41_PM-removebg-preview_kfkikh.png';
 
 function getFoxImage(){
   const foxMap={
@@ -2875,6 +2878,7 @@ const TRAINER_DATA=[
         enemyBoard.front=[mi('arc_bolt'),mi('bubble_shield'),null];
         enemyBoard.back=[mi('emergency_ration'),null,null];
       }
+      applyDifficultyToBoard([...enemyBoard.front,...enemyBoard.back],1);
     }
   },
   {
@@ -2898,6 +2902,7 @@ const TRAINER_DATA=[
       };
       enemyBoard.front=[mi('ironclad',1),mi('arc_bolt',1),null];
       enemyBoard.back=[mi('emergency_ration'),null,null];
+      applyDifficultyToBoard([...enemyBoard.front,...enemyBoard.back],2);
     }
   },
   {
@@ -2924,6 +2929,7 @@ const TRAINER_DATA=[
       enemyBoard.back[1]=mi('cauterize');
       enemyBoard.back[2]=null;
       // SKILL NOTE: Would have Ember Coat typed skill if trainer skills implemented
+      applyDifficultyToBoard([...enemyBoard.front,...enemyBoard.back],3);
     }
   },
   {
@@ -2950,6 +2956,7 @@ const TRAINER_DATA=[
       enemyBoard.back[1]=mi('patience');
       enemyBoard.back[2]=null;
       // SKILL NOTE: Would have Dense Coat if trainer skills implemented
+      applyDifficultyToBoard([...enemyBoard.front,...enemyBoard.back],4);
     }
   },
   {
@@ -3118,9 +3125,40 @@ const TRAINER_DATA=[
         enemyBoard.back[2]=mi('spark_charm',2);
         // SKILL NOTE: Typeless rival runs best generic board
       }
+      applyDifficultyToBoard([...enemyBoard.front,...enemyBoard.back],6);
     },
   },
 ];
+
+// ============================================================
+// DIFFICULTY SCALING
+// ============================================================
+function upgradeTrainerItem(item,times){
+  for(let i=0;i<times;i++)upgradeItem(item);
+  return item;
+}
+function applyDifficultyToBoard(items,winNumber){
+  const diff=G.difficulty||'easy';
+  if(diff==='easy')return items;
+  const live=items.filter(Boolean);
+  const upAll=()=>live.forEach(it=>upgradeItem(it));
+  const upRandom=n=>{const pool=[...live].sort(()=>Math.random()-.5).slice(0,n);pool.forEach(it=>upgradeItem(it));};
+  if(diff==='normal'){
+    if(winNumber===2){upRandom(1);}
+    else if(winNumber===3){upRandom(2);}
+    else if(winNumber===4){upAll();}
+    else if(winNumber===5){upAll();upRandom(2);}
+    else if(winNumber===6){upAll();upAll();}
+  }else if(diff==='hard'){
+    if(winNumber===1){upAll();}
+    else if(winNumber===2){upAll();upRandom(2);}
+    else if(winNumber===3){upAll();upAll();}
+    else if(winNumber===4){upAll();upAll();upRandom(2);}
+    else if(winNumber===5){upAll();upAll();upAll();}
+    else if(winNumber===6){upAll();upAll();upAll();upRandom(2);}
+  }
+  return items;
+}
 
 function showEncounterBattle(type,wildMonster=null){
   // Reset player board items so they show fresh before battle starts
@@ -3740,6 +3778,7 @@ function endBattle(result){
       G.wins++;G.rivalDefeated=true;title='VICTORY';
       if(G.wins>=6){
         rivalRecord.wins++;localStorage.setItem('rivalWins',rivalRecord.wins);
+        localStorage.setItem('zorpBeatGame','1');
         const isPerfect=G.honor===13;
         if(isPerfect){title='FLAWLESS';sub='Six wins. Zero losses. '+G.monsterName+' knew all along.';}
         else{sub='Six wins. The run is complete.';}
@@ -4827,6 +4866,55 @@ function beginRun(){
 }
 
 // ============================================================
+// TITLE SCREEN
+// ============================================================
+function showTitleScreen(){
+  const existing=document.getElementById('title-screen');
+  if(existing)existing.remove();
+  const hasBeat=!!localStorage.getItem('zorpBeatGame');
+  const curDiff=localStorage.getItem('zorpDifficulty')||'easy';
+  const diffPills=['easy','normal','hard'].map(d=>`
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <button id="diff-btn-${d}" onclick="selectDifficulty('${d}')" style="font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:.1em;padding:6px 16px;border-radius:20px;border:1px solid ${d===curDiff?'var(--gold)':'var(--border)'};background:${d===curDiff?'rgba(240,192,64,.18)':'rgba(0,0,0,.35)'};color:${d===curDiff?'var(--gold)':'var(--dim)'};cursor:pointer;transition:all .18s;">${d.toUpperCase()}</button>
+      <div style="font-size:7px;color:var(--dim);font-family:'Crimson Pro',serif;font-style:italic;text-align:center;max-width:74px;">${d==='easy'?'Base game':d==='normal'?'Opponents scale with wins':'Upgraded from the start'}</div>
+    </div>`).join('');
+  const diffSel=hasBeat?`
+    <div style="margin-top:5vh;display:flex;flex-direction:column;align-items:center;gap:8px;">
+      <div style="font-family:'Cinzel',serif;font-size:7px;letter-spacing:.2em;color:var(--dim);margin-bottom:2px;">DIFFICULTY</div>
+      <div style="display:flex;gap:12px;">${diffPills}</div>
+    </div>`:'';
+  const ts=document.createElement('div');
+  ts.id='title-screen';
+  ts.style.cssText='position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;padding-top:8vh;pointer-events:none;';
+  ts.innerHTML=`
+    <div style="pointer-events:all;display:flex;flex-direction:column;align-items:center;">
+      <img src="${ZORP_LOGO_IMG}" style="width:70vw;max-width:340px;object-fit:contain;display:block;filter:drop-shadow(0 0 28px rgba(240,192,64,.45));"/>
+      ${diffSel}
+      <button onclick="startFromTitle()" style="margin-top:${hasBeat?'4vh':'8vh'};font-family:'Cinzel',serif;font-size:14px;font-weight:900;letter-spacing:.25em;padding:12px 44px;border-radius:8px;border:2px solid var(--gold);background:rgba(240,192,64,.12);color:var(--gold);cursor:pointer;text-shadow:0 0 16px rgba(240,192,64,.5);box-shadow:0 0 24px rgba(240,192,64,.15);" onmouseover="this.style.background='rgba(240,192,64,.28)'" onmouseout="this.style.background='rgba(240,192,64,.12)'">START</button>
+    </div>
+    <img src="${SCRUFFLING_IMG}" style="position:fixed;left:0;bottom:0;height:35vh;object-fit:contain;object-position:bottom left;pointer-events:none;filter:drop-shadow(4px 0 18px rgba(0,0,0,.65));"/>
+    <img src="${THORNBACK_IMG}" style="position:fixed;right:0;bottom:0;height:35vh;object-fit:contain;object-position:bottom right;pointer-events:none;filter:drop-shadow(-4px 0 18px rgba(0,0,0,.65));transform:scaleX(-1);"/>
+  `;
+  document.body.appendChild(ts);
+}
+function selectDifficulty(d){
+  localStorage.setItem('zorpDifficulty',d);
+  ['easy','normal','hard'].forEach(x=>{
+    const btn=document.getElementById('diff-btn-'+x);
+    if(!btn)return;
+    btn.style.borderColor=x===d?'var(--gold)':'var(--border)';
+    btn.style.background=x===d?'rgba(240,192,64,.18)':'rgba(0,0,0,.35)';
+    btn.style.color=x===d?'var(--gold)':'var(--dim)';
+  });
+}
+function startFromTitle(){
+  G.difficulty=localStorage.getItem('zorpDifficulty')||'easy';
+  const ts=document.getElementById('title-screen');
+  if(ts)ts.remove();
+  showProfessorFlow();
+}
+
+// ============================================================
 // RESET
 // ============================================================
 function resetRun(){
@@ -4846,7 +4934,7 @@ function resetRun(){
   updateFoxImage();
   sessionId=Math.random().toString(36).slice(2,10);
   logEvent({event:'run_start'});
-  showProfessorFlow();
+  showTitleScreen();
 }
 
 // ============================================================
@@ -4888,7 +4976,7 @@ activeSkills=[SKILLS.prestige[0]];
 updateUI();renderBoard();renderSkillTree();renderTrack();
 updateFoxImage();
 logEvent({event:'run_start'});
-showProfessorFlow();
+showTitleScreen();
 window.addEventListener('beforeunload',()=>{
   logEvent({event:'session_end',board:boardSnapshot(),skills:activeSkills.map(s=>s.id),gold:G.gold});
 });
