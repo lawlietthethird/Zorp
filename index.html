@@ -610,6 +610,18 @@ function initBattleState(){
     flowStateActive:false,
     predatorActive:false,
     warChestBonus:activeSkills.some(s=>s.id==='war_chest')?Math.max(0,Math.floor((G.gold||0)/2)):0,
+    // Electric typed skills
+    electricActivationCount:0,
+    capacitorFired:false,
+    thunderclapFired:false,
+    dischargeCount:0,
+    dischargeFired:false,
+    overchargeCount:0,
+    conductorBonuses:{},
+    // Fire typed skills
+    emberStormFired:false,
+    hearthMs:0,
+    activatingItem:null,
   };
 }
 
@@ -1864,6 +1876,23 @@ function potMult(){
 function maxFrontSlots(){if(G.day<=1)return 1;if(G.day<=3)return 2;return 3;}
 function maxBackSlots(){if(G.day<=2)return 1;if(G.day<=4)return 2;return 3;}
 function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
+function isJolted(item){return item&&item.hasteMs>0;}
+function countJoltedAllies(){return[...board.front,...board.back].filter(i=>i&&!i.broken&&isJolted(i)).length;}
+function countJoltedEnemies(){return[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&!i.broken&&isJolted(i)).length;}
+function countBurnStacksOnBoard(b){return[...b.front,...b.back].reduce((sum,i)=>sum+(i&&!i.broken?(i.burnStack||0):0),0);}
+function getItemColumn(item,b){
+  const fi=b.front.indexOf(item);
+  const bi=b.back.indexOf(item);
+  if(fi>=0)return{row:'front',col:fi};
+  if(bi>=0)return{row:'back',col:bi};
+  return null;
+}
+function getItemBehind(item,b){
+  const pos=getItemColumn(item,b);
+  if(!pos||pos.row!=='front')return null;
+  const behind=b.back[pos.col];
+  return(behind&&!behind.broken)?behind:null;
+}
 
 // ============================================================
 // DAMAGE / HEAL / SHIELD
@@ -1914,6 +1943,31 @@ function checkAndBreak(item,side){
         fireEvent({type:'ITEM_ACTIVATED',item:n.behind,side:'player',value:n.behind.effectAmt||0,source:null});
       }
     }
+    // Flash Point — enemy breaks with 3+ burn stacks → 20 dmg to random enemy
+    if(side==='enemy'&&activeSkills.some(s=>s.id==='flash_point')&&(item.burnStack||0)>=3){
+      dealDmgRandom('enemy',20,'Flash Point');
+      log('a','💥 FLASH POINT — '+item.name+' ignites! 20 dmg!');
+    }
+    // Conflagration — enemy breaks while burning → spread half stacks (rounded up) to all other enemies
+    if(side==='enemy'&&activeSkills.some(s=>s.id==='conflagration')&&(item.burnStack||0)>0){
+      const spread=Math.ceil((item.burnStack||0)/2);
+      [...enemyBoard.front,...enemyBoard.back].forEach(i=>{if(i&&!i.broken&&i!==item)applyBurn(i,spread,'Conflagration','player');});
+      log('a','🔥 CONFLAGRATION — '+spread+' burn spreads!');
+    }
+    // Backdraft — player breaks → dmg to random enemy = total enemy burn stacks
+    if(side==='player'&&activeSkills.some(s=>s.id==='backdraft')){
+      const totalBurn=countBurnStacksOnBoard(enemyBoard);
+      if(totalBurn>0){dealDmgRandom('enemy',totalBurn,'Backdraft');log('a','💨 BACKDRAFT — '+totalBurn+' dmg!');}
+    }
+    // Discharge — 2nd player break → all remaining allies Jolt 2s (once per battle)
+    if(side==='player'&&activeSkills.some(s=>s.id==='discharge')){
+      battleState.dischargeCount=(battleState.dischargeCount||0)+1;
+      if(battleState.dischargeCount>=2&&!battleState.dischargeFired){
+        battleState.dischargeFired=true;
+        [...board.front,...board.back].forEach(i=>{if(i&&!i.broken)applyHaste(i,2000,'Discharge');});
+        log('a','💫 DISCHARGE — all remaining items Jolted!');
+      }
+    }
   }
 }
 function applyDmgTo(target,dmg,src,side){
@@ -1957,14 +2011,31 @@ function dealDmg(side,base,src){
   if(attackerMods){dmg=Math.round(dmg*attackerMods.globalMult+attackerMods.dmgBonus+battleState.momentumBonus);battleState.momentumBonus=0;}
   const b=getBoard(side);const fh=b.front.some(targetable);const pool=fh?b.front:b.back;
   let t=null;for(let i=0;i<pool.length;i++){if(targetable(pool[i])){t=pool[i];break;}}
-  if(!t)return;applyDmgTo(t,dmg,src,side);
+  if(!t)return;
+  // Electric typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='charged')){const j=countJoltedEnemies();if(j>0)dmg+=j*2;}
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='arc')&&isJolted(t))dmg+=8;
+  // Fire typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='stoked')){const bStacks=countBurnStacksOnBoard(enemyBoard);if(bStacks>0)dmg+=bStacks;}
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='searing')&&(t.burnStack||0)>0&&battleState.activatingItem&&battleState.activatingItem.itemType==='weapon')dmg+=8;
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='meltdown')&&(t.burnStack||0)>=5)dmg=Math.round(dmg*2);
+  applyDmgTo(t,dmg,src,side);
 }
 function dealDmgRandom(side,base,src){
   const attackerMods=side==='player'?null:getSkillMods();
   let dmg=Math.round(base);
   if(attackerMods){dmg=Math.round(dmg*attackerMods.globalMult+attackerMods.dmgBonus+battleState.momentumBonus);battleState.momentumBonus=0;}
   const b=getBoard(side);const ft=b.front.filter(targetable);const pool=ft.length>0?ft:b.back.filter(targetable);
-  if(!pool.length)return;const t=pool[Math.floor(Math.random()*pool.length)];applyDmgTo(t,dmg,src,side);
+  if(!pool.length)return;
+  const t=pool[Math.floor(Math.random()*pool.length)];
+  // Electric typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='charged')){const j=countJoltedEnemies();if(j>0)dmg+=j*2;}
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='arc')&&isJolted(t))dmg+=8;
+  // Fire typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='stoked')){const bStacks=countBurnStacksOnBoard(enemyBoard);if(bStacks>0)dmg+=bStacks;}
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='searing')&&(t.burnStack||0)>0&&battleState.activatingItem&&battleState.activatingItem.itemType==='weapon')dmg+=8;
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='meltdown')&&(t.burnStack||0)>=5)dmg=Math.round(dmg*2);
+  applyDmgTo(t,dmg,src,side);
 }
 function healItem(side,amount,src){
   const alive=aliveItems(side).filter(i=>i&&i.maxHp>0&&i.hp<i.maxHp);
@@ -2003,11 +2074,21 @@ function dealDmgTwoRandom(side,base,src){
   let dmg=Math.round(base);
   if(attackerMods){dmg=Math.round(dmg*attackerMods.globalMult+attackerMods.dmgBonus+battleState.momentumBonus);battleState.momentumBonus=0;}
   const oSide=opp(side);
+  // Electric+Fire board-wide bonuses computed once (target-independent)
+  let chargedBonus=0;
+  if(oSide==='player'&&side==='player'){/* enemy attacking — no player bonuses */}
+  if(side==='player'&&activeSkills.some(s=>s.id==='charged')){const j=countJoltedEnemies();chargedBonus=j*2;}
+  let stokedBonus=0;
+  if(side==='player'&&activeSkills.some(s=>s.id==='stoked')){stokedBonus=countBurnStacksOnBoard(enemyBoard);}
   for(let i=0;i<2;i++){
     const targets=aliveItems(oSide).filter(t=>t.maxHp>0);
     if(!targets.length)break;
     const t=targets[Math.floor(Math.random()*targets.length)];
-    applyDmgTo(t,dmg,src,oSide);
+    let hitDmg=dmg+chargedBonus+stokedBonus;
+    if(side==='player'&&activeSkills.some(s=>s.id==='arc')&&isJolted(t))hitDmg+=8;
+    if(side==='player'&&activeSkills.some(s=>s.id==='searing')&&(t.burnStack||0)>0&&battleState.activatingItem&&battleState.activatingItem.itemType==='weapon')hitDmg+=8;
+    if(side==='player'&&activeSkills.some(s=>s.id==='meltdown')&&(t.burnStack||0)>=5)hitDmg=Math.round(hitDmg*2);
+    applyDmgTo(t,hitDmg,src,oSide);
   }
 }
 function dealDmgBackRow(side,base,src){
@@ -2029,6 +2110,13 @@ function dealDmgWithStatus(side,base,src,statusType,statusVal){
   const targets=aliveItems(oSide).filter(t=>t.maxHp>0);
   if(!targets.length)return;
   const t=targets[Math.floor(Math.random()*targets.length)];
+  // Electric typed skill bonuses (player attacking enemy)
+  if(side==='player'&&activeSkills.some(s=>s.id==='charged')){const j=countJoltedEnemies();if(j>0)dmg+=j*2;}
+  if(side==='player'&&activeSkills.some(s=>s.id==='arc')&&isJolted(t))dmg+=8;
+  // Fire typed skill bonuses (player attacking enemy)
+  if(side==='player'&&activeSkills.some(s=>s.id==='stoked')){const bStacks=countBurnStacksOnBoard(enemyBoard);if(bStacks>0)dmg+=bStacks;}
+  if(side==='player'&&activeSkills.some(s=>s.id==='searing')&&(t.burnStack||0)>0&&battleState.activatingItem&&battleState.activatingItem.itemType==='weapon')dmg+=8;
+  if(side==='player'&&activeSkills.some(s=>s.id==='meltdown')&&(t.burnStack||0)>=5)dmg=Math.round(dmg*2);
   if(dmg>0)applyDmgTo(t,dmg,src,oSide);
   if(statusType==='burn')applyBurn(t,statusVal,src);
   else if(statusType==='poison')applyPoison(t,statusVal,src);
@@ -2041,13 +2129,37 @@ function applyShieldAll(side,amount,src){
   log('s',src+' plates ALL +'+actual);
 }
 // Status effect applicators
-function applyHaste(item,durationMs,src){
+function applyHaste(item,durationMs,src,sourceIsEnemy=false){
   if(!item||item.broken)return;
+  // Grounding Wire — enemy-sourced Jolt to back row items is blocked; instead deal 2 dmg to random enemy
+  if(sourceIsEnemy&&activeSkills.some(s=>s.id==='grounding_wire')){
+    if(board.back.includes(item)){
+      dealDmgRandom('enemy',2,'Grounding Wire');
+      log('a','🛡️ Grounding Wire blocks Jolt — 2 dmg!');
+      return;
+    }
+  }
   // Grounded — enemy items cannot be Jolted
   if(item._side==='enemy'&&activeSkills.some(s=>s.id==='grounded'))return;
+  // Resonance — increase Jolt duration by 25% for player items
+  if(activeSkills.some(s=>s.id==='resonance')&&item._side==='player')durationMs=Math.round(durationMs*1.25);
   item.hasteMs=Math.max(item.hasteMs,durationMs);
   log('a','⚡ '+src+' HASTE '+item.name+' '+(durationMs/1000).toFixed(1)+'s');
   fireEvent({type:'HASTE_APPLIED',item:item,side:item._side||null,value:durationMs,source:null});
+  // Node — slots 1 and 4 share Jolt
+  if(activeSkills.some(s=>s.id==='node')&&!sourceIsEnemy&&item._side==='player'){
+    const slot1=board.front[0];const slot4=board.back[0];
+    if(item===slot1&&slot4&&!slot4.broken&&slot4!==item)applyHaste(slot4,durationMs,'Node');
+    else if(item===slot4&&slot1&&!slot1.broken&&slot1!==item)applyHaste(slot1,durationMs,'Node');
+  }
+  // Thunderclap — 3+ simultaneous Jolted allies → 25 dmg all enemies once per battle
+  if(!sourceIsEnemy&&item._side==='player'&&activeSkills.some(s=>s.id==='thunderclap')&&battleState&&!battleState.thunderclapFired){
+    if(countJoltedAllies()>=3){
+      battleState.thunderclapFired=true;
+      [...enemyBoard.front,...enemyBoard.back].forEach(i=>{if(i&&!i.broken&&i.maxHp>0)applyDmgTo(i,25,'Thunderclap','enemy');});
+      log('a','⚡ THUNDERCLAP — 25 dmg to all enemies!');
+    }
+  }
 }
 function applySlow(item,durationMs,src){
   if(!item||item.broken)return;
@@ -2068,8 +2180,9 @@ function applySlow(item,durationMs,src){
     });
   }
 }
-function applyBurn(item,stacks,src){
+function applyBurn(item,stacks,src,attackerSide='player'){
   if(!item||item.broken)return;
+  if(attackerSide==='player'&&activeSkills.some(s=>s.id==='kindle'))stacks+=1;
   item.burnStack=(item.burnStack||0)+stacks;
   log('d','🔥 '+src+' BURN '+item.name+' +'+stacks);
   fireEvent({type:'BURN_APPLIED',item:item,side:item._side||null,value:stacks,source:null});
@@ -3011,6 +3124,26 @@ function runBattle(type){
         });
       }
     }
+    // Ember Storm — at 20s apply 3 burn to all enemies (once per battle)
+    if(activeSkills.some(s=>s.id==='ember_storm')&&!battleState.emberStormFired&&battleMs>=20000){
+      battleState.emberStormFired=true;
+      [...enemyBoard.front,...enemyBoard.back].forEach(i=>{if(i&&!i.broken)applyBurn(i,3,'Ember Storm','player');});
+      log('a','🌋 EMBER STORM — 3 burn to all enemies!');
+    }
+    // Hearth — every 8s back row passively applies 1 burn to random enemy
+    if(activeSkills.some(s=>s.id==='hearth')){
+      battleState.hearthMs=(battleState.hearthMs||0)+step;
+      if(battleState.hearthMs>=8000){
+        battleState.hearthMs=0;
+        const backAlive=[...board.back].filter(i=>i&&!i.broken);
+        const enemyAlive=[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&!i.broken);
+        if(backAlive.length&&enemyAlive.length){
+          const t=enemyAlive[Math.floor(Math.random()*enemyAlive.length)];
+          applyBurn(t,1,'Hearth','player');
+          log('a','🏠 Hearth — back row smolders!');
+        }
+      }
+    }
     updateBattleBars();updateEnemyBars();
     const pKO=checkKO('player'),eKO=checkKO('enemy');
     if(pKO&&eKO){endBattle('win');return;}
@@ -3118,11 +3251,52 @@ function tickSide(b,side,tickMs){
       }
       const crescendoMult=(side==='player'&&battleState.crescendoReady)?2:1;
       battleState.crescendoReady=false;
+      battleState.activatingItem=item;
       item.effectFn(side,Math.round((item.effectAmt||item.baseEffect||0)*crescendoMult),item);
+      battleState.activatingItem=null;
       fireEvent({type:'ITEM_ACTIVATED',item:item,side:side,value:item.effectAmt||item.baseEffect||0,source:null});
       // Momentum — +4 damage to next attack
       if(side==='player'&&activeSkills.some(s=>s.id==='momentum')){
         battleState.momentumBonus+=4;
+      }
+      // Electric typed skill activation effects
+      if(side==='player'){
+        // Capacitor — count activations; at 8, Jolt entire board 2s (once per battle)
+        battleState.electricActivationCount=(battleState.electricActivationCount||0)+1;
+        if(activeSkills.some(s=>s.id==='capacitor')&&!battleState.capacitorFired&&battleState.electricActivationCount>=8){
+          battleState.capacitorFired=true;
+          [...board.front,...board.back].forEach(i=>{if(i&&!i.broken)applyHaste(i,2000,'Capacitor');});
+          log('a','⚙️ Capacitor — full board Jolted 2s!');
+        }
+        // Feedback Loop — Jolted activating item deals 3 dmg to random enemy
+        if(activeSkills.some(s=>s.id==='feedback_loop')&&isJolted(item)){
+          dealDmgRandom('enemy',3,'Feedback Loop');
+          log('a','⚡ Feedback Loop — '+item.name+' crackles for 3 dmg!');
+        }
+        // Conductor — item behind gets -0.3s activation permanently (once per item per battle)
+        if(activeSkills.some(s=>s.id==='conductor')){
+          const behind=getItemBehind(item,board);
+          if(behind&&!battleState.conductorBonuses[behind.id]){
+            battleState.conductorBonuses[behind.id]=true;
+            behind.baseActMs=Math.max(500,behind.baseActMs-300);
+            log('a','🔌 Conductor — '+behind.name+' charges up! -0.3s');
+          }
+        }
+        // Overcharge — every 5th activation while Jolted fires twice
+        if(activeSkills.some(s=>s.id==='overcharge')&&isJolted(item)){
+          battleState.overchargeCount=(battleState.overchargeCount||0)+1;
+          if(battleState.overchargeCount%5===0){
+            log('a','💥 Overcharge — '+item.name+' fires twice!');
+            battleState.activatingItem=item;
+            item.effectFn(side,item.effectAmt||item.baseEffect||0,item);
+            battleState.activatingItem=null;
+          }
+        }
+        // Infinite Loop — 15% chance to self-Jolt for 1s on any activation
+        if(activeSkills.some(s=>s.id==='infinite_loop')&&Math.random()<0.15){
+          applyHaste(item,1000,'Infinite Loop');
+          log('a','♾️ Infinite Loop — '+item.name+' self-Jolts!');
+        }
       }
       // Kickstart and Friction — slot 6 triggers
       if(side==='player'&&slotNum===6){
@@ -3172,6 +3346,16 @@ function tickSide(b,side,tickMs){
         // Asbestos — extra -2 burn stacks per tick on player items
         if(side==='player'&&activeSkills.some(s=>s.id==='asbestos')){
           item.burnStack=Math.max(0,item.burnStack-2);
+        }
+        // Backfire — each burn tick on enemy deals 1 dmg to random enemy
+        if(side==='enemy'&&activeSkills.some(s=>s.id==='backfire')){
+          dealDmgRandom('enemy',1,'Backfire');
+        }
+        // Wildfire — 20% chance to spread 1 burn to another enemy on each burn tick
+        if(side==='enemy'&&activeSkills.some(s=>s.id==='wildfire')&&Math.random()<0.20){
+          const others=[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&!i.broken&&i!==item);
+          if(others.length){const wt=others[Math.floor(Math.random()*others.length)];applyBurn(wt,1,'Wildfire','player');}
+          log('a','🌪️ Wildfire spreads!');
         }
         if(item.hp<=0&&!item.broken){checkAndBreak(item,side);}
       }

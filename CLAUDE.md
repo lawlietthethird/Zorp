@@ -563,4 +563,69 @@ Typed skill objects have extra fields: type (string), shown as [TYPE] label in o
 activeSkills array contains both generic and typed skills.
 pickSkill handles both generic and typed skill IDs.
 
-Typed skill effects NOT YET IMPLEMENTED — Prompt 2 adds battle effects.
+Electric and Fire typed skill effects are IMPLEMENTED (Prompt 2). Water, Steel, and Toxic typed skill effects are NOT YET IMPLEMENTED.
+
+---
+
+## Electric Typed Skills — Battle Effects
+
+**New battleState fields:** `electricActivationCount:0`, `capacitorFired:false`, `thunderclapFired:false`, `dischargeCount:0`, `dischargeFired:false`, `overchargeCount:0`, `conductorBonuses:{}`.
+
+**New helper functions** (added after HELPERS section):
+- `isJolted(item)` — true if item.hasteMs > 0
+- `countJoltedAllies()` — count non-broken jolted player items
+- `countJoltedEnemies()` — count non-broken jolted enemy items
+- `countBurnStacksOnBoard(b)` — sum burnStack across all non-broken items on board b
+- `getItemColumn(item,b)` — returns `{row,col}` for item on board b
+- `getItemBehind(item,b)` — returns non-broken back item in same column, or null
+
+**applyBurn updated:** Signature is now `applyBurn(item, stacks, src, attackerSide='player')`. If `attackerSide==='player'` and `kindle` skill is active, `stacks+=1` before any other logic.
+
+**applyHaste updated:** Signature is now `applyHaste(item, durationMs, src, sourceIsEnemy=false)`.
+- Grounding Wire: if `sourceIsEnemy` and item is in `board.back`, block Jolt and deal 2 dmg to random enemy instead.
+- Grounded check unchanged.
+- Resonance: if `resonance` skill active and `item._side==='player'`, multiply `durationMs` by 1.25 before setting hasteMs.
+- Node: after setting hasteMs, if `node` skill active and `!sourceIsEnemy` and player item, mirror Jolt to slot 1 ↔ slot 4 partner.
+- Thunderclap: after setting hasteMs, if `thunderclap` skill active and `!sourceIsEnemy` and player item and not yet fired, check if `countJoltedAllies()>=3` → set `thunderclapFired=true`, deal 25 to all non-broken enemies with maxHp>0.
+
+**dealDmg / dealDmgRandom / dealDmgTwoRandom / dealDmgWithStatus:** After target selection, before `applyDmgTo`, apply:
+- `charged`: +2 dmg per Jolted enemy (when side==='enemy')
+- `arc`: +8 dmg if target is Jolted (when side==='enemy')
+
+**tickSide (activation block):** `battleState.activatingItem=item` is set before `item.effectFn(...)` and cleared to `null` immediately after. After effectFn and ITEM_ACTIVATED event, for `side==='player'`:
+- `capacitor`: increment `electricActivationCount`; at 8 activations (once) Jolt all player items 2s.
+- `feedback_loop`: if activating item is Jolted, deal 3 dmg to random enemy.
+- `conductor`: if front-row item activates, the item directly behind (same column) permanently gets `baseActMs -= 300` (min 500ms); tracked per item via `conductorBonuses[behind.id]`.
+- `overcharge`: increment `overchargeCount` for each Jolted activation; every 5th fires `effectFn` again.
+- `infinite_loop`: 15% chance to Jolt activating item for 1s.
+
+**checkAndBreak (after break effects):**
+- `discharge`: increment `dischargeCount` on each player break; at count>=2 and `!dischargeFired`, Jolt all remaining player items 2s.
+
+---
+
+## Fire Typed Skills — Battle Effects
+
+**New battleState fields:** `emberStormFired:false`, `hearthMs:0`, `activatingItem:null`.
+
+**applyBurn Kindle:** See above — `attackerSide='player'` parameter adds +1 stack when kindle active.
+
+**dealDmg / dealDmgRandom / dealDmgTwoRandom / dealDmgWithStatus:** After target selection, before `applyDmgTo`:
+- `stoked`: +1 dmg per burn stack currently on the entire enemy board (when side==='enemy')
+- `searing`: +8 dmg if target has burnStack>0 AND activatingItem.itemType==='weapon' (when side==='enemy')
+- `meltdown`: ×2 dmg if target has 5+ burn stacks (when side==='enemy')
+
+**tickSide burn tick (after burnStack--, Asbestos):**
+- `backfire`: each enemy burn tick → `dealDmgRandom('enemy',1,'Backfire')`.
+- `wildfire`: 20% chance per enemy burn tick → spread 1 burn to a random other non-broken enemy via `applyBurn(wt,1,'Wildfire','player')`.
+
+**checkAndBreak (after break effects):**
+- `flash_point`: enemy breaks with >=3 burnStack → `dealDmgRandom('enemy',20,'Flash Point')`.
+- `conflagration`: enemy breaks while burning → `Math.ceil(burnStack/2)` stacks spread to all other non-broken enemies via `applyBurn(...,'player')`.
+- `backdraft`: player breaks → deal `countBurnStacksOnBoard(enemyBoard)` dmg to random enemy.
+
+**runBattle interval:**
+- `ember_storm`: at battleMs>=20000 (once per battle), apply 3 burn to all non-broken enemies via `applyBurn(...,'player')`.
+- `hearth`: accumulate `hearthMs`; every 8s, if any back row player items and any enemies alive, apply 1 burn to random enemy via `applyBurn(...,'player')`.
+
+**Log function:** The battle log function is `log(type, msg)` where type is `'a'` for action, `'d'` for damage, `'h'` for heal, `'s'` for status, `'b'` for break, `'x'` for system. Use `log('a', ...)` for most typed skill notifications.
