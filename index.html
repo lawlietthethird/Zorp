@@ -1892,12 +1892,13 @@ function mk(key){const t=ITEMS[key]();return{...t,hp:t.maxHp,shield:0,maxShield:
 const DAY1_WILD={
   name:'Scruffling',
   icon:'🐀',
+  img:SCRUFFLING_IMG,
   tag:'Lost and confused',
   front:[mk('spark_charm'),null,null],
   back:[null,null,null]
 };
 const WILD_MONSTERS=[
-  {name:'Thornback',icon:'🦔',tag:'Prickly Fighter',front:[mk('left_claws'),mk('spark_charm'),null],back:[null,null,null]},
+  {name:'Thornback',icon:'🦔',img:THORNBACK_IMG,tag:'Prickly Fighter',front:[mk('left_claws'),mk('spark_charm'),null],back:[null,null,null]},
   {name:'Mudpup',icon:'🐊',tag:'Swamp Crawler',front:[mk('bubble_shield'),mk('left_claws'),null],back:[null,null,null]},
   {name:'Gloomwing',icon:'🦇',tag:'Shadow Flyer',front:[mk('spark_charm'),mk('bubble_shield'),null],back:[null,null,null]},
 ];
@@ -2843,7 +2844,7 @@ function showEncounterWildPick(){
   }
   // Day 2+ — normal pick screen
   setEncTitle('WILD ENCOUNTER — Choose Your Prey');
-  const cards=WILD_MONSTERS.map((m,i)=>'<div class="wp" onclick="startWild('+i+')"><div class="wpi">'+m.icon+'</div><div class="wpn">'+m.name+'</div><div class="wpd">'+m.tag+'</div></div>').join('');
+  const cards=WILD_MONSTERS.map((m,i)=>{const iconHtml=m.img&&m.img.startsWith('https://')?'<img src="'+m.img+'" style="width:48px;height:48px;object-fit:contain;display:block;margin:0 auto 3px"/>':'<div class="wpi">'+m.icon+'</div>';return'<div class="wp" onclick="startWild('+i+')">'+iconHtml+'<div class="wpn">'+m.name+'</div><div class="wpd">'+m.tag+'</div></div>';}).join('');
   setEncBody('<div class="dialogue"><div class="dlg-name">TRAVELER\'S NOTE</div>"Three wild monsters spotted on the road. Defeat one to earn gold."</div><div class="wild-pick">'+cards+'</div>');
 }
 function startWild(idx){
@@ -3191,7 +3192,8 @@ function showEncounterBattle(type,wildMonster=null){
     ?'<div class="dialogue dialogue-prebattle"><div class="dlg-name">'+enemy.name.toUpperCase()+'</div>"GRAAHHH!"</div>'
     :'<div class="dialogue dialogue-prebattle"><div class="dlg-name">'+trainer.name+'</div>"'+(trainer.getDialogueBefore?trainer.getDialogueBefore():trainer.dialogueBefore||'').replace(/\n/g,'<br>')+'"</div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — '+trainer.name);
-  setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info">'+(!isWild?trainerImgHTML:'<div class="enemy-icon">'+enemy.icon+'</div>')+'<div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
+  const wildImgHTML=enemy.img&&enemy.img.startsWith('https://')?'<img src="'+enemy.img+'" class="trainer-avatar"/>':'<div class="enemy-icon">'+enemy.icon+'</div>';
+  setEncBody(dlg+'<div class="enemy-area"><div class="enemy-info">'+(!isWild?trainerImgHTML:wildImgHTML)+'<div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board"><div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
   renderEnemyBoard();
 }
 function toggleSpeed(){
@@ -4871,6 +4873,8 @@ function beginRun(){
 function showTitleScreen(){
   const existing=document.getElementById('title-screen');
   if(existing)existing.remove();
+  const wm=document.getElementById('logo-watermark');
+  if(wm)wm.style.display='none';
   const hasBeat=!!localStorage.getItem('zorpBeatGame');
   const curDiff=localStorage.getItem('zorpDifficulty')||'easy';
   const diffPills=['easy','normal','hard'].map(d=>`
@@ -4911,6 +4915,14 @@ function startFromTitle(){
   G.difficulty=localStorage.getItem('zorpDifficulty')||'easy';
   const ts=document.getElementById('title-screen');
   if(ts)ts.remove();
+  let wm=document.getElementById('logo-watermark');
+  if(!wm){
+    wm=document.createElement('div');
+    wm.id='logo-watermark';
+    wm.style.cssText='position:fixed;bottom:8px;right:8px;z-index:999;pointer-events:none;';
+    wm.innerHTML='<img src="'+ZORP_LOGO_IMG+'" style="width:64px;opacity:0.18;display:block;"/>';
+    document.body.appendChild(wm);
+  }else{wm.style.display='';}
   showProfessorFlow();
 }
 
