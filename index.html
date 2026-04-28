@@ -437,6 +437,116 @@ const SKILLS={
   ],
 };
 
+const TYPED_SKILLS={
+  electric:{
+    beginner:[
+      {id:'feedback_loop',name:'Feedback Loop',icon:'⚡',desc:'When any of your items is Jolted, it deals 3 damage to a random enemy.',rarity:'beginner',type:'electric'},
+      {id:'conductor',name:'Conductor',icon:'🔌',desc:'When any of your items activates, the item directly behind it in the same column gets -0.3s activation timer permanently this battle.',rarity:'beginner',type:'electric'},
+      {id:'charged',name:'Charged',icon:'🔋',desc:'Your attacks deal +2 damage for each enemy item currently Jolted.',rarity:'beginner',type:'electric'},
+    ],
+    intermediate:[
+      {id:'resonance',name:'Resonance',icon:'📡',desc:'Jolt duration on all targets increased by 25%.',rarity:'intermediate',type:'electric'},
+      {id:'capacitor',name:'Capacitor',icon:'⚙️',desc:'After 8 total activations on your board, all your items Jolt for 2 seconds simultaneously. Once per battle.',rarity:'intermediate',type:'electric'},
+      {id:'arc',name:'Arc',icon:'🌩️',desc:'Your attacks deal +8 damage to Jolted targets.',rarity:'intermediate',type:'electric'},
+    ],
+    advanced:[
+      {id:'overcharge',name:'Overcharge',icon:'💥',desc:'Every 5th time any of your items activates while Jolted, that activation fires twice.',rarity:'advanced',type:'electric'},
+      {id:'thunderclap',name:'Thunderclap',icon:'⚡',desc:'When 3 or more of your items are Jolted simultaneously, all enemies take 25 damage instantly. Once per battle.',rarity:'advanced',type:'electric'},
+      {id:'node',name:'Node',icon:'🔗',desc:'Items in slots 1 and 4 share Jolt status — if one is Jolted the other is also Jolted.',rarity:'advanced',type:'electric'},
+      {id:'grounding_wire',name:'Grounding Wire',icon:'🛡️',desc:'Your back row items cannot be Jolted by enemies. Each time they would be Jolted they deal 2 damage to a random enemy instead.',rarity:'advanced',type:'electric'},
+    ],
+    mastered:[
+      {id:'infinite_loop',name:'Infinite Loop',icon:'♾️',desc:'Whenever any of your items activates, it has a 15% chance to Jolt itself for 1 second.',rarity:'mastered',type:'electric'},
+      {id:'discharge',name:'Discharge',icon:'💫',desc:'After your second item breaks, all remaining items Jolt for 2 seconds simultaneously.',rarity:'mastered',type:'electric'},
+    ],
+  },
+  fire:{
+    beginner:[
+      {id:'kindle',name:'Kindle',icon:'🔥',desc:'All your burn applications apply 1 extra burn stack.',rarity:'beginner',type:'fire'},
+      {id:'stoked',name:'Stoked',icon:'🪵',desc:'Your items deal +1 damage for each burn stack currently on the enemy board.',rarity:'beginner',type:'fire'},
+      {id:'backfire',name:'Backfire',icon:'💢',desc:'Each time burn ticks on any enemy item, deal 1 damage to a random enemy.',rarity:'beginner',type:'fire'},
+    ],
+    intermediate:[
+      {id:'searing',name:'Searing',icon:'🌡️',desc:'Your attack items deal +8 damage to burning targets. Does not apply to burn or poison ticks.',rarity:'intermediate',type:'fire'},
+      {id:'flash_point',name:'Flash Point',icon:'💥',desc:'When any enemy item breaks while it has 3 or more burn stacks, deal 20 damage to a random enemy.',rarity:'intermediate',type:'fire'},
+      {id:'ember_storm',name:'Ember Storm',icon:'🌋',desc:'After 20 seconds all enemy items receive 3 burn stacks simultaneously.',rarity:'intermediate',type:'fire'},
+    ],
+    advanced:[
+      {id:'conflagration',name:'Conflagration',icon:'🔥',desc:'When any enemy item breaks while burning, half its burn stacks (rounded up) spread to all other enemy items.',rarity:'advanced',type:'fire'},
+      {id:'meltdown',name:'Meltdown',icon:'⚗️',desc:'Your attack items deal double damage to enemies with 5 or more burn stacks.',rarity:'advanced',type:'fire'},
+      {id:'hearth',name:'Hearth',icon:'🏠',desc:'Your back row items apply 1 burn stack to a random enemy every 8 seconds passively.',rarity:'advanced',type:'fire'},
+    ],
+    mastered:[
+      {id:'wildfire',name:'Wildfire',icon:'🌪️',desc:'Every burn tick on any enemy has a 20% chance to apply 1 burn to a random other enemy.',rarity:'mastered',type:'fire'},
+      {id:'backdraft',name:'Backdraft',icon:'💨',desc:'When any of your items breaks, deal damage to a random enemy equal to the total burn stacks on the entire enemy board.',rarity:'mastered',type:'fire'},
+    ],
+  },
+  water:{
+    beginner:[
+      {id:'current',name:'Current',icon:'💧',desc:'Your items activate 2% faster for each enemy item currently Wet.',rarity:'beginner',type:'water'},
+      {id:'pressure',name:'Pressure',icon:'🌊',desc:'Your attacks deal +3 damage to Wet targets.',rarity:'beginner',type:'water'},
+      {id:'drag',name:'Drag',icon:'🐌',desc:'When any Wet enemy item activates it takes 3 damage.',rarity:'beginner',type:'water'},
+    ],
+    intermediate:[
+      {id:'undertow',name:'Undertow',icon:'🌀',desc:'When any Wet enemy item activates the item beside it in the same row receives 0.5s Wet.',rarity:'intermediate',type:'water'},
+      {id:'saturation',name:'Saturation',icon:'💦',desc:'Wet duration on all targets increased by 50%.',rarity:'intermediate',type:'water'},
+      {id:'ebb',name:'Ebb',icon:'🌙',desc:'When any of your items breaks all enemy items currently Wet have their Wet duration reset to full.',rarity:'intermediate',type:'water'},
+    ],
+    advanced:[
+      {id:'maelstrom',name:'Maelstrom',icon:'🌪️',desc:'Every 3 seconds all Wet enemy items take 4 damage and lose 0.5s of their remaining Wet duration.',rarity:'advanced',type:'water'},
+      {id:'deep_current',name:'Deep Current',icon:'🔱',desc:'Your items gain +1% activation speed permanently for each second any enemy item has been Wet this battle.',rarity:'advanced',type:'water'},
+      {id:'tidal_force',name:'Tidal Force',icon:'🌊',desc:'When you have 3 or more Wet enemy items simultaneously your items activate 15% faster.',rarity:'advanced',type:'water'},
+    ],
+    mastered:[
+      {id:'tsunami',name:'Tsunami',icon:'🏄',desc:'Once per battle after 25 seconds apply 5s Wet to all enemies and Jolt all your items for 3 seconds simultaneously.',rarity:'mastered',type:'water'},
+      {id:'flood_gate',name:'Flood Gate',icon:'🚪',desc:'The first time any of your items breaks apply 3s Wet to all enemies simultaneously.',rarity:'mastered',type:'water'},
+    ],
+  },
+  steel:{
+    beginner:[
+      {id:'temper',name:'Temper',icon:'⚒️',desc:'When any of your items absorbs damage through plating deal 2 damage to the attacker.',rarity:'beginner',type:'steel'},
+      {id:'alloy',name:'Alloy',icon:'🔩',desc:'Your items that currently have any plating deal +4 damage.',rarity:'beginner',type:'steel'},
+      {id:'forge',name:'Forge',icon:'🔨',desc:'Every 10 seconds your most damaged item gains 25 plating.',rarity:'beginner',type:'steel'},
+    ],
+    intermediate:[
+      {id:'cold_iron',name:'Cold Iron',icon:'❄️',desc:'When any enemy item hits your plating that attacker permanently gains +0.1s activation timer this battle.',rarity:'intermediate',type:'steel'},
+      {id:'iron_will',name:'Iron Will',icon:'💪',desc:'+1 damage to all your items for every 20 plating absorbed this battle.',rarity:'intermediate',type:'steel'},
+      {id:'pressure_plate',name:'Pressure Plate',icon:'🛡️',desc:'The first time any of your items drops below 50% HP it instantly gains 40 plating.',rarity:'intermediate',type:'steel'},
+    ],
+    advanced:[
+      {id:'bulwark',name:'Bulwark',icon:'🏰',desc:'When any of your items would break if it has 30 or more plating it instead survives at 1 HP.',rarity:'advanced',type:'steel'},
+      {id:'rampart',name:'Rampart',icon:'🧱',desc:'Your items generate 5 plating for every activation anywhere on your board.',rarity:'advanced',type:'steel'},
+      {id:'vanguard',name:'Vanguard',icon:'🛡️',desc:'Your front row items gain 10 plating each time any back row item activates.',rarity:'advanced',type:'steel'},
+      {id:'iron_formation',name:'Iron Formation',icon:'⚔️',desc:'When all three front row slots are occupied your items take 20% less damage.',rarity:'advanced',type:'steel'},
+    ],
+    mastered:[
+      {id:'impenetrable',name:'Impenetrable',icon:'💎',desc:'Each of your items survives its first break at 1 HP.',rarity:'mastered',type:'steel'},
+      {id:'plate_mail',name:'Plate Mail',icon:'🛡️',desc:'Every time any of your items activates all your other items gain 3 plating.',rarity:'mastered',type:'steel'},
+    ],
+  },
+  toxic:{
+    beginner:[
+      {id:'virulence',name:'Virulence',icon:'☠️',desc:'Every 3rd poison application you make applies 1 extra stack.',rarity:'beginner',type:'toxic'},
+      {id:'festering',name:'Festering',icon:'🤢',desc:'Poison on enemy items ticks every 0.9 seconds instead of 1 second.',rarity:'beginner',type:'toxic'},
+      {id:'toxin',name:'Toxin',icon:'🧪',desc:'Your items deal +1 damage for every 3 poison stacks currently on the enemy board.',rarity:'beginner',type:'toxic'},
+    ],
+    intermediate:[
+      {id:'seeping',name:'Seeping',icon:'💉',desc:'Each time poison ticks on any enemy item heal your most wounded ally for 1 HP.',rarity:'intermediate',type:'toxic'},
+      {id:'carrier',name:'Carrier',icon:'🦠',desc:'When any enemy item breaks 2 of its poison stacks transfer to a random surviving enemy item.',rarity:'intermediate',type:'toxic'},
+      {id:'infected',name:'Infected',icon:'🩸',desc:'Your attacks deal +1 damage per poison stack currently on the target being attacked.',rarity:'intermediate',type:'toxic'},
+    ],
+    advanced:[
+      {id:'sepsis',name:'Sepsis',icon:'💀',desc:'When any enemy item breaks while it has 5 or more poison stacks deal 10 damage to all other enemy items.',rarity:'advanced',type:'toxic'},
+      {id:'tipping_point',name:'Tipping Point',icon:'⚗️',desc:'The first time poison kills an enemy item apply 3 poison to all surviving enemy items.',rarity:'advanced',type:'toxic'},
+      {id:'colony',name:'Colony',icon:'🐛',desc:'Your back row items apply 1 poison to a random enemy each time any front row item activates.',rarity:'advanced',type:'toxic'},
+    ],
+    mastered:[
+      {id:'pandemic',name:'Pandemic',icon:'🌍',desc:'All your poison applications apply double stacks.',rarity:'mastered',type:'toxic'},
+      {id:'necrosis',name:'Necrosis',icon:'💀',desc:'Enemy items with 5 or more poison stacks permanently lose 3 max HP per second.',rarity:'mastered',type:'toxic'},
+    ],
+  },
+};
+
 // Active skills applied to player
 let activeSkills=[];
 
@@ -3463,23 +3573,70 @@ function showSkillPick(){
 
 function rarityIcon(r){return{prestige:'✦',beginner:'◎',intermediate:'◈',advanced:'◆',mastered:'★'}[r]||'○';}
 
+function getSkillOffers(nodeRarity){
+  const genericPool=[...(SKILLS[nodeRarity]||[])];
+  const typedPool=G.type?[...(TYPED_SKILLS[G.type]?.[nodeRarity]||[])]:[];
+
+  const pickGeneric=()=>{
+    if(!genericPool.length)return null;
+    const idx=Math.floor(Math.random()*genericPool.length);
+    return genericPool.splice(idx,1)[0];
+  };
+  const pickTyped=()=>{
+    if(!typedPool.length)return pickGeneric();
+    const idx=Math.floor(Math.random()*typedPool.length);
+    return typedPool.splice(idx,1)[0];
+  };
+  const maybeTyped=(chance)=>{
+    if(typedPool.length&&Math.random()<chance)return pickTyped();
+    return pickGeneric();
+  };
+
+  const offers=[];
+  if(G.type&&typedPool.length){
+    offers.push(pickTyped());
+    offers.push(maybeTyped(0.25));
+    offers.push(maybeTyped(0.25));
+  }else{
+    offers.push(pickGeneric());
+    offers.push(pickGeneric());
+    offers.push(pickGeneric());
+  }
+  return offers.filter(Boolean);
+}
+
 function selectNode(nodeId){
   G.pendingSkillNode=nodeId;
   const node=getNodeById(nodeId);
-  const pool=SKILLS[node.rarity]||[];
-  const shuffled=[...pool].sort(()=>Math.random()-.5).slice(0,2);
+  const offers=getSkillOffers(node.rarity);
   setEncTitle('CHOOSE A SKILL — '+node.rarity.toUpperCase());
-  const cards=shuffled.map(sk=>'<div class="sk-card" onclick="pickSkill(\''+nodeId+'\',\''+sk.id+'\')"><div class="sk-icon">'+sk.icon+'</div><div class="sk-name">'+sk.name+'</div><div class="sk-desc">'+sk.desc+'</div><div class="sk-rarity rarity-'+node.rarity+'">'+node.rarity+'</div></div>').join('');
-  setEncBody('<div class="skill-opts">'+cards+'</div>');
+  const cards=offers.map(sk=>`
+    <div class="sk-card" onclick="pickSkill('${nodeId}','${sk.id}','${sk.type||'generic'}')">
+      <div class="sk-icon">${sk.icon}</div>
+      <div class="sk-name">${sk.name}</div>
+      ${sk.type?`<div style="font-family:Cinzel,serif;font-size:7px;color:var(--dim);margin-bottom:2px">[${sk.type.toUpperCase()}]</div>`:''}
+      <div class="sk-desc">${sk.desc}</div>
+      <div class="sk-rarity rarity-${node.rarity}">${node.rarity}</div>
+    </div>
+  `).join('');
+  setEncBody(`<div class="skill-opts">${cards}</div>`);
 }
 
-function pickSkill(nodeId,skillId){
-  const node=getNodeById(nodeId);
-  const skill=[...SKILLS.prestige,...SKILLS.beginner,...SKILLS.intermediate,...SKILLS.advanced,...SKILLS.mastered].find(s=>s.id===skillId);
+function pickSkill(nodeId,skillId,skillType){
+  const allSkills=[
+    ...SKILLS.prestige,...SKILLS.beginner,...SKILLS.intermediate,...SKILLS.advanced,...SKILLS.mastered,
+    ...(G.type?[
+      ...(TYPED_SKILLS[G.type]?.beginner||[]),
+      ...(TYPED_SKILLS[G.type]?.intermediate||[]),
+      ...(TYPED_SKILLS[G.type]?.advanced||[]),
+      ...(TYPED_SKILLS[G.type]?.mastered||[]),
+    ]:[]),
+  ];
+  const skill=allSkills.find(s=>s.id===skillId);
   if(!skill)return;
   treeState[nodeId]=skill;
   activeSkills.push(skill);
-  logEvent({event:'skill_pick',skill_id:skillId,skill_rarity:node.rarity,node_id:nodeId,win_number:G.wins});
+  logEvent({event:'skill_pick',skill_id:skillId,skill_rarity:skill.rarity,node_id:nodeId,win_number:G.wins});
   renderSkillTree();
   showNotif(skill.name+' learned!');
   advanceDay();

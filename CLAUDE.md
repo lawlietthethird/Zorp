@@ -547,3 +547,20 @@ bulwark_stance → Reinforce
 alloy_fang → Steel Jaw
 
 Keys unchanged. Only display names updated.
+
+## Typed Skills System
+
+TYPED_SKILLS object structure: TYPED_SKILLS[type][rarity] = array of skill objects.
+Types: electric, fire, water, steel, toxic.
+Each type has: beginner (3), intermediate (3), advanced (3-4), mastered (2).
+
+Skill offer logic — getSkillOffers(nodeRarity):
+- Typed player: slot 1 always typed, slots 2 and 3 each 25% chance typed, 3 total offered
+- Typeless player: 3 generic skills offered
+- Falls back to generic if typed pool exhausted
+
+Typed skill objects have extra fields: type (string), shown as [TYPE] label in offer card.
+activeSkills array contains both generic and typed skills.
+pickSkill handles both generic and typed skill IDs.
+
+Typed skill effects NOT YET IMPLEMENTED — Prompt 2 adds battle effects.
