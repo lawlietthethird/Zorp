@@ -21,7 +21,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .page{display:flex;flex-direction:column;flex:1;min-height:0;width:100%;max-width:960px;margin:0 auto;padding:0;overflow:hidden;}
 /* ENCOUNTER */
 .encounter{flex:1;min-height:0;overflow:hidden;background:rgba(8,6,18,0.55);border:1px solid var(--border);border-radius:10px 10px 0 0;display:flex;flex-direction:column;padding:8px 12px;gap:6px;}
-.enc-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.15em;color:var(--dim);margin-bottom:2px;}
+.enc-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.15em;color:var(--text);text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.7);margin-bottom:2px;}
 .enc-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;}
 .draft-row{display:flex;gap:8px;justify-content:center;}
 .dc{flex:1;max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .18s;}
@@ -75,7 +75,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .result-enc{text-align:center;padding:20px;}
 .re-title{font-family:'Cinzel',serif;font-size:26px;font-weight:900;letter-spacing:.15em;margin-bottom:6px;}
 .re-win{color:#50e080;}.re-lose{color:#e84040;}.re-flawless{color:var(--gold);text-shadow:0 0 20px rgba(240,192,64,.8),0 0 40px rgba(240,192,64,.4);}
-.re-sub{color:var(--dim);font-size:12px;margin-bottom:16px;line-height:1.6;}
+.re-sub{color:var(--text);font-size:12px;margin-bottom:16px;line-height:1.6;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.7);}
 .track-node{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;transition:all .2s;position:relative;z-index:1;flex-shrink:0;}
 .track-node.done .node-stamp{opacity:.5;border-color:var(--border);}
 .track-node.done .node-stamp::after{content:'✓';position:absolute;top:-4px;right:-4px;font-size:9px;color:#50e080;background:var(--bg);border-radius:50%;padding:1px;}
