@@ -2845,7 +2845,8 @@ const TRAINER_DATA=[
     dialogueAfterLoss:'Knew it. Run on home. Your mother\'s waiting and you\'re not ready for the tall grass.',
     buildTeam:()=>{
       const mi=key=>{
-        const t=ITEMS[key]();
+        const f=getItemFactory(key);if(!f)return null;
+        const t=f();
         return{...t,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
           broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,
           burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
