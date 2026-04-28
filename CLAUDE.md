@@ -327,7 +327,7 @@ Also runs second passes for `apotheosis`, `refrigeration`, `duality` (with `dual
 | Status | Field | Tick interval | Damage rule |
 |---|---|---|---|
 | Burn | `burnStack`, `burnTickMs` | 500ms | `shield × 2` absorbs, remainder hits HP. `burnStack--` per tick. |
-| Poison | `poisonStack`, `poisonTickMs` | 1000ms (2000 with Immunity, 900 enemy w/ Festering) | Bypasses shield. `poisonStack--` only inside the tick loop after dealing dmg. Stacks otherwise persist (no decay outside tick). |
+| Poison | `poisonStack`, `poisonTickMs` | 1000ms (2000 with Immunity, 900 enemy w/ Festering) | Bypasses shield. Poison stacks are permanently permanent. `poisonStack` is never decremented anywhere in the codebase. The only writes to `poisonStack` are: `applyPoison` (adds stacks) and `resetItemBattleState` (zeroes at battle start). The tick loop deals `item.poisonStack` damage each tick but never reduces the stack. Stacks accumulate indefinitely until battle ends. |
 | Haste | `hasteMs` | Countdown | Speed multiplier 2.0 (faster activation). |
 | Slow | `slowMs` | Countdown | Speed multiplier 0.5 (slower activation). |
 
@@ -358,7 +358,7 @@ Haste and slow cancel when both active (net 1.0×). `applyHaste` uses `Math.max`
 
 ### Poison mechanic — important
 
-`poisonStack` is **only decremented inside the tick loop in `tickSide`** (one stack per tick after damage is dealt). It is not decremented anywhere else. Outside ticking, poison stays. Stack only resets to 0 in `resetItemBattleState` at battle start.
+Poison stacks are permanently permanent. `poisonStack` is never decremented anywhere in the codebase. The only writes to `poisonStack` are: `applyPoison` (adds stacks) and `resetItemBattleState` (zeroes at battle start). The tick loop deals `item.poisonStack` damage each tick but never reduces the stack. Stacks accumulate indefinitely until battle ends.
 
 `applyPoison` order: Pandemic (`stacks *= 2`) → apply → Virulence (every 3rd application, +1 extra) → `poisonApplicationsToEnemy++` (enemy targets) → `checkOutbreak()` → Outbreak extra +1 (if triggered) → fireEvent → log.
 
@@ -604,4 +604,4 @@ Keys unchanged, only `name` field updated:
 - HEAD node pre-fill in init and `resetRun`.
 - Post-win flow sequence — intentionally structured and fragile to reordering.
 - `dealDmgWithStatus` applies status to the same target that was damaged (not a separate random target).
-- Poison stack permanence (only ticks decrement, only `resetItemBattleState` zeroes).
+- Poison stack permanence — stacks are permanently permanent. `poisonStack` is never decremented anywhere; only `applyPoison` adds and `resetItemBattleState` zeroes. The tick loop deals `item.poisonStack` damage each tick but never reduces the stack.
