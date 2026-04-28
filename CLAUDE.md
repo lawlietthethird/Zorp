@@ -563,7 +563,7 @@ Typed skill objects have extra fields: type (string), shown as [TYPE] label in o
 activeSkills array contains both generic and typed skills.
 pickSkill handles both generic and typed skill IDs.
 
-Electric and Fire typed skill effects are IMPLEMENTED (Prompt 2). Water, Steel, and Toxic typed skill effects are NOT YET IMPLEMENTED.
+Electric and Fire typed skill effects are IMPLEMENTED (Prompt 2). Water and Steel typed skill effects are IMPLEMENTED (Prompt 3). Toxic typed skill effects are NOT YET IMPLEMENTED.
 
 ---
 
@@ -629,3 +629,75 @@ Electric and Fire typed skill effects are IMPLEMENTED (Prompt 2). Water, Steel, 
 - `hearth`: accumulate `hearthMs`; every 8s, if any back row player items and any enemies alive, apply 1 burn to random enemy via `applyBurn(...,'player')`.
 
 **Log function:** The battle log function is `log(type, msg)` where type is `'a'` for action, `'d'` for damage, `'h'` for heal, `'s'` for status, `'b'` for break, `'x'` for system. Use `log('a', ...)` for most typed skill notifications.
+
+---
+
+## Water Typed Skills — Battle Effects (IMPLEMENTED Prompt 3)
+
+**New battleState fields:** `wetSecondsAccumulated:0`, `deepCurrentBonus:0`, `tidalForceActive:false`, `maelstromMs:0`, `tsunamiFired:false`, `floodGateFired:false`.
+
+**New helper functions** (added after existing helpers):
+- `countWetEnemies()` — count non-broken enemy items with `slowMs > 0`
+- `isWet(item)` — true if `item.slowMs > 0`
+- `getAdjacentInRow(item,b)` — returns non-broken items immediately left/right of item within its row on board b
+
+**applySlow updated:** Signature is now `applySlow(item, durationMs, src, side='enemy')`.
+- `saturation`: if `side==='enemy'` and saturation skill active, multiply `durationMs` by 1.5 before applying.
+- After setting `slowMs`, also track `item._slowMaxMs = Math.max(item._slowMaxMs||0, item.slowMs)` for Ebb.
+
+**getSkillMods additions (Water):**
+- `current`: speedMult *= (1 - countWetEnemies() * 0.02) when any enemies are Wet.
+- `deep_current`: speedMult *= (1 - battleState.deepCurrentBonus) when deepCurrentBonus > 0.
+- `tidal_force`: speedMult *= 0.85 when `battleState.tidalForceActive`.
+
+**dealDmg / dealDmgRandom:** After target selection, before `applyDmgTo`:
+- `pressure`: +3 dmg if target `isWet(t)` (when side==='enemy').
+
+**applyDmgTo:** Now accepts optional 5th parameter `attackerItem=null`. Pass `battleState.activatingItem` from `dealDmg` and `dealDmgRandom` calls.
+
+**tickSide enemy activation block (after effectFn fires):**
+- `drag`: if `isWet(item)`, `applyDmgTo(item, 3, 'Drag', 'enemy')`.
+- `undertow`: if `isWet(item)`, spread 0.5s Wet to adjacent non-Wet enemies in same row via `getAdjacentInRow`.
+
+**checkAndBreak (after existing break effects):**
+- `ebb`: on player break, reset all Wet enemy `slowMs` to their `_slowMaxMs`.
+- `flood_gate`: first player break (once per battle via `floodGateFired`), apply 3s Wet to all non-broken enemies.
+
+**runBattle interval:**
+- `maelstrom`: accumulate `maelstromMs`; every 3s, all Wet non-broken enemies take 4 dmg and lose 500ms slowMs.
+- `deep_current`: each tick, if any enemies are Wet, accumulate `wetSecondsAccumulated += step/1000`. Set `deepCurrentBonus = Math.min(0.5, Math.floor(wetSecondsAccumulated) * 0.01)`.
+- `tidal_force`: each tick, `battleState.tidalForceActive = countWetEnemies() >= 3`.
+- `tsunami`: at `battleMs >= 25000` (once per battle via `tsunamiFired`), apply 5s Wet to all non-broken enemies and 3s Jolt to all non-broken allies.
+
+---
+
+## Steel Typed Skills — Battle Effects (IMPLEMENTED Prompt 3)
+
+**New battleState fields:** `forgeTick:0`, `pressurePlateFired:false`, `platingAbsorbedTotal:0`, `ironFormationActive:false`, `impenetrableUsed:{}`, `bulwarkUsed:{}`.
+
+**applyDmgTo updated (Steel):** After shield absorption, when `side==='player'` and absorbed > 0:
+- Increment `battleState.platingAbsorbedTotal += absorbed`.
+- `temper`: call `dealDmgRandom('enemy', 2, 'Temper')`.
+- `cold_iron`: if `attackerItem` is set, permanently add 100ms to `attackerItem.baseActMs`.
+
+`pressure_plate`: first time a player item drops to/below 50% HP (hp > 0), set `pressurePlateFired=true` and add +40 shield to that item.
+
+`impenetrable`: when player item reaches 0 HP, check `battleState.impenetrableUsed[target.id]`; if not used, set to true, set `target.hp=1`, return (survives).
+
+`bulwark`: when player item reaches 0 HP, check if `target.maxShield >= 30` and not yet used; if so, set `target.hp=1`, return (survives).
+
+`iron_formation`: at start of battle (in `resetItemBattleState` after forEach), if all 3 front row slots are filled, set `battleState.ironFormationActive=true`. In `applyDmgTo` when `side==='player'`, apply `dmg = Math.round(dmg * 0.8)` reduction first.
+
+**getSkillMods additions (Steel):**
+- `iron_will`: `dmgBonus += Math.floor(platingAbsorbedTotal / 20)`.
+
+**dealDmg / dealDmgRandom:** After target selection, before `applyDmgTo`:
+- `alloy`: +4 dmg if `battleState.activatingItem` has `shield > 0` (when side==='enemy').
+
+**tickSide player activation block (inside `if(side==='player')`):**
+- `rampart`: every player activation, all other non-broken player items with `maxHp>0` gain +5 shield.
+- `vanguard`: if activating item is in back row, all non-broken front row items with `maxHp>0` gain +10 shield.
+- `plate_mail`: every player activation, all other non-broken player items with `maxHp>0` gain +3 shield.
+
+**runBattle interval:**
+- `forge`: accumulate `forgeTick`; every 10s, find the most wounded (lowest hp/maxHp ratio) non-broken player item with `maxHp>0` and add +25 shield.

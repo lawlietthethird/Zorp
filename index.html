@@ -577,6 +577,12 @@ function getSkillMods(){
     if(sk.id==='flow_state'&&battleState.flowStateActive) m.globalMult*=1.15;
     if(sk.id==='predator'&&battleState.predatorActive)    m.globalMult*=1.5;
     if(sk.id==='war_chest')      m.dmgBonus+=(battleState.warChestBonus||0);
+    // Water typed skills
+    if(sk.id==='current'){const w=countWetEnemies();if(w>0)m.speedMult*=(1-w*0.02);}
+    if(sk.id==='deep_current'&&(battleState.deepCurrentBonus||0)>0)m.speedMult*=(1-battleState.deepCurrentBonus);
+    if(sk.id==='tidal_force'&&battleState.tidalForceActive)m.speedMult*=0.85;
+    // Steel typed skills
+    if(sk.id==='iron_will')m.dmgBonus+=Math.floor((battleState.platingAbsorbedTotal||0)/20);
   });
   return m;
 }
@@ -622,6 +628,20 @@ function initBattleState(){
     emberStormFired:false,
     hearthMs:0,
     activatingItem:null,
+    // Water typed skills
+    wetSecondsAccumulated:0,
+    deepCurrentBonus:0,
+    tidalForceActive:false,
+    maelstromMs:0,
+    tsunamiFired:false,
+    floodGateFired:false,
+    // Steel typed skills
+    forgeTick:0,
+    pressurePlateFired:false,
+    platingAbsorbedTotal:0,
+    ironFormationActive:false,
+    impenetrableUsed:{},
+    bulwarkUsed:{},
   };
 }
 
@@ -1880,6 +1900,15 @@ function isJolted(item){return item&&item.hasteMs>0;}
 function countJoltedAllies(){return[...board.front,...board.back].filter(i=>i&&!i.broken&&isJolted(i)).length;}
 function countJoltedEnemies(){return[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&!i.broken&&isJolted(i)).length;}
 function countBurnStacksOnBoard(b){return[...b.front,...b.back].reduce((sum,i)=>sum+(i&&!i.broken?(i.burnStack||0):0),0);}
+function countWetEnemies(){return[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&!i.broken&&(i.slowMs||0)>0).length;}
+function isWet(item){return item&&(item.slowMs||0)>0;}
+function getAdjacentInRow(item,b){
+  const results=[];
+  const fi=b.front.indexOf(item);const bi=b.back.indexOf(item);
+  if(fi>=0){if(fi>0&&b.front[fi-1]&&!b.front[fi-1].broken)results.push(b.front[fi-1]);if(fi<2&&b.front[fi+1]&&!b.front[fi+1].broken)results.push(b.front[fi+1]);}
+  if(bi>=0){if(bi>0&&b.back[bi-1]&&!b.back[bi-1].broken)results.push(b.back[bi-1]);if(bi<2&&b.back[bi+1]&&!b.back[bi+1].broken)results.push(b.back[bi+1]);}
+  return results;
+}
 function getItemColumn(item,b){
   const fi=b.front.indexOf(item);
   const bi=b.back.indexOf(item);
@@ -1968,9 +1997,20 @@ function checkAndBreak(item,side){
         log('a','💫 DISCHARGE — all remaining items Jolted!');
       }
     }
+    // Ebb (Water) — player breaks → refresh all Wet enemies to their max duration
+    if(side==='player'&&activeSkills.some(s=>s.id==='ebb')){
+      [...enemyBoard.front,...enemyBoard.back].forEach(i=>{if(i&&!i.broken&&isWet(i)&&i._slowMaxMs)i.slowMs=i._slowMaxMs;});
+      log('a','🌊 Ebb — all Wet enemies refreshed!');
+    }
+    // Flood Gate (Water) — first player break → 3s Wet all enemies
+    if(side==='player'&&!battleState.floodGateFired&&activeSkills.some(s=>s.id==='flood_gate')){
+      battleState.floodGateFired=true;
+      [...enemyBoard.front,...enemyBoard.back].forEach(i=>{if(i&&!i.broken)applySlow(i,3000,'Flood Gate','enemy');});
+      log('a','🚧 Flood Gate — all enemies Wetted 3s!');
+    }
   }
 }
-function applyDmgTo(target,dmg,src,side){
+function applyDmgTo(target,dmg,src,side,attackerItem=null){
   // Training Dummy — hitCount item, absorbs damage
   if(target.hitCount!==undefined&&target.hitCount!==null){
     target.hitCount--;
@@ -1984,6 +2024,8 @@ function applyDmgTo(target,dmg,src,side){
     return; // damage absorbed, nothing passes through
   }
   const isPlayer=side==='player';
+  // Iron Formation — 20% damage reduction when front row is full (player side)
+  if(isPlayer&&battleState.ironFormationActive)dmg=Math.round(dmg*0.8);
   // Resilience — first item hit each battle gains +70 plating
   if(isPlayer&&!battleState.resilienceUsed&&activeSkills.some(s=>s.id==='resilience')){
     target.shield=(target.shield||0)+70;
@@ -1992,14 +2034,55 @@ function applyDmgTo(target,dmg,src,side){
     log('s','Resilience! '+target.name+' gains +70 plating');
   }
   let r=dmg;
-  if(target.shield>0){const a=Math.min(target.shield,r);target.shield-=a;r-=a;if(a>0)log('s',src+'→'+target.name+' plating -'+a);}
+  if(target.shield>0){
+    const a=Math.min(target.shield,r);target.shield-=a;r-=a;
+    if(a>0){
+      log('s',src+'→'+target.name+' plating -'+a);
+      // Track plating absorption for Iron Will and Steel skills
+      if(isPlayer&&a>0){
+        battleState.platingAbsorbedTotal=(battleState.platingAbsorbedTotal||0)+a;
+        // Temper — retaliate 2 dmg to random enemy on plating absorption
+        if(activeSkills.some(s=>s.id==='temper'))dealDmgRandom('enemy',2,'Temper');
+        // Cold Iron — attacker permanently gains +0.1s activation
+        if(activeSkills.some(s=>s.id==='cold_iron')&&attackerItem){
+          attackerItem.baseActMs=(attackerItem.baseActMs||1000)+100;
+          log('s','❄️ Cold Iron — '+attackerItem.name+' slowed!');
+        }
+      }
+    }
+  }
   if(r>0){
     target.hp=Math.max(0,target.hp-r);
+    // Pressure Plate — first player item to drop to/below 50% HP gains 40 plating
+    if(isPlayer&&!battleState.pressurePlateFired&&(target.hp/target.maxHp)<=0.5&&target.hp>0&&activeSkills.some(s=>s.id==='pressure_plate')){
+      battleState.pressurePlateFired=true;
+      target.shield=(target.shield||0)+40;
+      target.maxShield=Math.max(target.maxShield||0,target.shield);
+      log('s','🔩 Pressure Plate — '+target.name+' gains +40 plating!');
+    }
     log('d',src+'→'+target.name+' -'+r+' ('+target.hp+'/'+target.maxHp+')');
     flashCard(target.id,side,'d');
     fireEvent({type:'DAMAGE_DEALT',item:target,side:side,value:r,source:null});
     fireEvent({type:'DAMAGE_RECEIVED',item:target,side:side,value:r,rawValue:dmg,source:null});
     if(target.hp<=0){
+      // Impenetrable — each player item survives first break at 1 HP
+      if(isPlayer&&activeSkills.some(s=>s.id==='impenetrable')){
+        if(!battleState.impenetrableUsed[target.id]){
+          battleState.impenetrableUsed[target.id]=true;
+          target.hp=1;
+          log('s','🛡️ Impenetrable — '+target.name+' holds at 1 HP!');
+          return;
+        }
+      }
+      // Bulwark — if item had 30+ plating, survive at 1 HP (once per item)
+      if(isPlayer&&activeSkills.some(s=>s.id==='bulwark')){
+        if((target.maxShield||0)>=30&&!battleState.bulwarkUsed[target.id]){
+          battleState.bulwarkUsed[target.id]=true;
+          target.hp=1;
+          log('s','🏰 Bulwark — '+target.name+' holds at 1 HP!');
+          return;
+        }
+      }
       checkAndBreak(target,side);
     }
   }
@@ -2019,7 +2102,11 @@ function dealDmg(side,base,src){
   if(side==='enemy'&&activeSkills.some(s=>s.id==='stoked')){const bStacks=countBurnStacksOnBoard(enemyBoard);if(bStacks>0)dmg+=bStacks;}
   if(side==='enemy'&&activeSkills.some(s=>s.id==='searing')&&(t.burnStack||0)>0&&battleState.activatingItem&&battleState.activatingItem.itemType==='weapon')dmg+=8;
   if(side==='enemy'&&activeSkills.some(s=>s.id==='meltdown')&&(t.burnStack||0)>=5)dmg=Math.round(dmg*2);
-  applyDmgTo(t,dmg,src,side);
+  // Water typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='pressure')&&isWet(t))dmg+=3;
+  // Steel typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='alloy')&&battleState.activatingItem&&(battleState.activatingItem.shield||0)>0)dmg+=4;
+  applyDmgTo(t,dmg,src,side,battleState.activatingItem);
 }
 function dealDmgRandom(side,base,src){
   const attackerMods=side==='player'?null:getSkillMods();
@@ -2035,7 +2122,11 @@ function dealDmgRandom(side,base,src){
   if(side==='enemy'&&activeSkills.some(s=>s.id==='stoked')){const bStacks=countBurnStacksOnBoard(enemyBoard);if(bStacks>0)dmg+=bStacks;}
   if(side==='enemy'&&activeSkills.some(s=>s.id==='searing')&&(t.burnStack||0)>0&&battleState.activatingItem&&battleState.activatingItem.itemType==='weapon')dmg+=8;
   if(side==='enemy'&&activeSkills.some(s=>s.id==='meltdown')&&(t.burnStack||0)>=5)dmg=Math.round(dmg*2);
-  applyDmgTo(t,dmg,src,side);
+  // Water typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='pressure')&&isWet(t))dmg+=3;
+  // Steel typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='alloy')&&battleState.activatingItem&&(battleState.activatingItem.shield||0)>0)dmg+=4;
+  applyDmgTo(t,dmg,src,side,battleState.activatingItem);
 }
 function healItem(side,amount,src){
   const alive=aliveItems(side).filter(i=>i&&i.maxHp>0&&i.hp<i.maxHp);
@@ -2161,12 +2252,16 @@ function applyHaste(item,durationMs,src,sourceIsEnemy=false){
     }
   }
 }
-function applySlow(item,durationMs,src){
+function applySlow(item,durationMs,src,side='enemy'){
   if(!item||item.broken)return;
   // Waterproof — player items cannot be Slowed (Wet)
   if(item._side==='player'&&activeSkills.some(s=>s.id==='waterproof'))return;
+  // Saturation — Wet applied to enemies lasts 50% longer
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='saturation'))durationMs=Math.round(durationMs*1.5);
   const actual=Math.round(durationMs*(battleState&&battleState.wetDurationMult||1));
   item.slowMs=(item.slowMs||0)+actual;
+  // Track max slow duration for Ebb skill
+  item._slowMaxMs=Math.max(item._slowMaxMs||0,item.slowMs);
   log('s','💧 '+src+' SLOW '+item.name+' '+(actual/1000).toFixed(1)+'s');
   fireEvent({type:'SLOW_APPLIED',item:item,side:item._side||null,value:actual,source:null});
   if(battleState){
@@ -3144,6 +3239,43 @@ function runBattle(type){
         }
       }
     }
+    // Maelstrom (Water) — every 3s Wet enemies take 4 dmg and lose 500ms Wet
+    if(activeSkills.some(s=>s.id==='maelstrom')){
+      battleState.maelstromMs=(battleState.maelstromMs||0)+step;
+      if(battleState.maelstromMs>=3000){
+        battleState.maelstromMs=0;
+        [...enemyBoard.front,...enemyBoard.back].forEach(i=>{
+          if(i&&!i.broken&&isWet(i)){applyDmgTo(i,4,'Maelstrom','enemy');i.slowMs=Math.max(0,(i.slowMs||0)-500);}
+        });
+      }
+    }
+    // Deep Current (Water) — accumulate wet-seconds for speed bonus
+    if(activeSkills.some(s=>s.id==='deep_current')){
+      if(countWetEnemies()>0)battleState.wetSecondsAccumulated=(battleState.wetSecondsAccumulated||0)+(step/1000);
+      battleState.deepCurrentBonus=Math.min(0.5,Math.floor(battleState.wetSecondsAccumulated||0)*0.01);
+    }
+    // Tidal Force (Water) — update active flag: faster when 3+ Wet enemies
+    if(activeSkills.some(s=>s.id==='tidal_force'))battleState.tidalForceActive=countWetEnemies()>=3;
+    // Tsunami (Water) — at 25s apply 5s Wet all enemies and 3s Jolt all allies (once per battle)
+    if(activeSkills.some(s=>s.id==='tsunami')&&!battleState.tsunamiFired&&battleMs>=25000){
+      battleState.tsunamiFired=true;
+      [...enemyBoard.front,...enemyBoard.back].forEach(i=>{if(i&&!i.broken)applySlow(i,5000,'Tsunami','enemy');});
+      [...board.front,...board.back].forEach(i=>{if(i&&!i.broken)applyHaste(i,3000,'Tsunami');});
+      log('a','🌊 TSUNAMI — all enemies Wetted, all allies Jolted!');
+    }
+    // Forge (Steel) — every 10s most wounded player item gains 25 plating
+    if(activeSkills.some(s=>s.id==='forge')){
+      battleState.forgeTick=(battleState.forgeTick||0)+step;
+      if(battleState.forgeTick>=10000){
+        battleState.forgeTick=0;
+        const alive=[...board.front,...board.back].filter(i=>i&&!i.broken&&i.maxHp>0);
+        if(alive.length){
+          const w=alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
+          w.shield=(w.shield||0)+25;w.maxShield=Math.max(w.maxShield||0,w.shield);
+          log('s','⚒️ Forge — '+w.name+' fortified +25 plating!');
+        }
+      }
+    }
     updateBattleBars();updateEnemyBars();
     const pKO=checkKO('player'),eKO=checkKO('enemy');
     if(pKO&&eKO){endBattle('win');return;}
@@ -3164,7 +3296,7 @@ function resetItemBattleState(b){
     }
     item.actMs=item.baseActMs||item.actMs; // always reset to base speed
     item.hp=item.maxHp;item.shield=0;item.maxShield=0;item.actElapsed=0;item.actPct=0;item.broken=false;item.uses=item.maxUses;
-    item.hasteMs=0;item.slowMs=0;item.burnStack=0;item.burnTickMs=0;item.poisonStack=0;item.poisonTickMs=0;
+    item.hasteMs=0;item.slowMs=0;item._slowMaxMs=0;item.burnStack=0;item.burnTickMs=0;item.poisonStack=0;item.poisonTickMs=0;
     item._side=b===board?'player':'enemy';
     if(item.baseHitCount!==null&&item.baseHitCount!==undefined){
       item.hitCount=Math.round(item.baseHitCount*(UPGRADE_MULTS[item.upgradeLevel||0]||1));
@@ -3205,6 +3337,10 @@ function resetItemBattleState(b){
   if(isPlayer){
     const allFilled=[...board.front,...board.back].every(i=>i!==null);
     battleState.assembledActive=allFilled&&activeSkills.some(s=>s.id==='assembled');
+  }
+  // Iron Formation (Steel) — active if front row is full (3 items)
+  if(isPlayer&&activeSkills.some(s=>s.id==='iron_formation')){
+    battleState.ironFormationActive=board.front.filter(i=>i!==null).length>=3;
   }
   firingEvent=false;
 }
@@ -3296,6 +3432,28 @@ function tickSide(b,side,tickMs){
         if(activeSkills.some(s=>s.id==='infinite_loop')&&Math.random()<0.15){
           applyHaste(item,1000,'Infinite Loop');
           log('a','♾️ Infinite Loop — '+item.name+' self-Jolts!');
+        }
+        // Water typed skill player activation effects
+        // Rampart — every player activation gives all other items 5 plating
+        if(activeSkills.some(s=>s.id==='rampart')){
+          [...board.front,...board.back].forEach(i=>{if(i&&!i.broken&&i!==item&&i.maxHp>0){i.shield=(i.shield||0)+5;i.maxShield=Math.max(i.maxShield||0,i.shield);}});
+        }
+        // Vanguard — back row activation gives front row 10 plating
+        if(activeSkills.some(s=>s.id==='vanguard')&&board.back.includes(item)){
+          board.front.forEach(i=>{if(i&&!i.broken&&i.maxHp>0){i.shield=(i.shield||0)+10;i.maxShield=Math.max(i.maxShield||0,i.shield);}});
+        }
+        // Plate Mail — every player activation gives all other items 3 plating
+        if(activeSkills.some(s=>s.id==='plate_mail')){
+          [...board.front,...board.back].forEach(i=>{if(i&&!i.broken&&i!==item&&i.maxHp>0){i.shield=(i.shield||0)+3;i.maxShield=Math.max(i.maxShield||0,i.shield);}});
+        }
+      }
+      // Water typed skill enemy activation effects
+      if(side==='enemy'){
+        // Drag — Wet enemy takes 3 dmg on activation
+        if(isWet(item)&&activeSkills.some(s=>s.id==='drag'))applyDmgTo(item,3,'Drag','enemy');
+        // Undertow — Wet enemy spreads 0.5s Wet to adjacent in same row (non-Wet only)
+        if(isWet(item)&&activeSkills.some(s=>s.id==='undertow')){
+          getAdjacentInRow(item,enemyBoard).forEach(adj=>{if(!isWet(adj))applySlow(adj,500,'Undertow','enemy');});
         }
       }
       // Kickstart and Friction — slot 6 triggers
