@@ -642,6 +642,15 @@ function initBattleState(){
     ironFormationActive:false,
     impenetrableUsed:{},
     bulwarkUsed:{},
+    // Toxic typed skills
+    virulenceCount:0,
+    seepingHealMs:0,
+    tippingPointFired:false,
+    criticalMassFired:false,
+    necrosisMs:0,
+    pandemicActive:false,
+    colonySide:false,
+    lastKillWasPoison:false,
   };
 }
 
@@ -1922,6 +1931,20 @@ function getItemBehind(item,b){
   const behind=b.back[pos.col];
   return(behind&&!behind.broken)?behind:null;
 }
+function countTotalPoisonStacks(b){
+  return[...b.front,...b.back]
+    .reduce((sum,i)=>sum+(i&&!i.broken?(i.poisonStack||0):0),0);
+}
+function getHeavilyPoisonedEnemies(threshold){
+  return[...enemyBoard.front,...enemyBoard.back]
+    .filter(i=>i&&!i.broken&&(i.poisonStack||0)>=threshold);
+}
+function getMostPoisonedEnemy(){
+  const alive=[...enemyBoard.front,...enemyBoard.back]
+    .filter(i=>i&&!i.broken&&(i.poisonStack||0)>0);
+  if(!alive.length)return null;
+  return alive.reduce((a,b)=>(a.poisonStack||0)>(b.poisonStack||0)?a:b);
+}
 
 // ============================================================
 // DAMAGE / HEAL / SHIELD
@@ -2007,6 +2030,41 @@ function checkAndBreak(item,side){
       battleState.floodGateFired=true;
       [...enemyBoard.front,...enemyBoard.back].forEach(i=>{if(i&&!i.broken)applySlow(i,3000,'Flood Gate','enemy');});
       log('a','🚧 Flood Gate — all enemies Wetted 3s!');
+    }
+    // Toxic break effects — enemy side
+    if(side==='enemy'){
+      const poisonOnDead=item.poisonStack||0;
+      // Carrier — transfer up to 2 stacks to random surviving enemy
+      if(activeSkills.some(s=>s.id==='carrier')&&poisonOnDead>0){
+        const transfer=Math.min(2,poisonOnDead);
+        const survivors=[...enemyBoard.front,...enemyBoard.back]
+          .filter(i=>i&&!i.broken&&i!==item);
+        if(survivors.length){
+          const t=survivors[Math.floor(Math.random()*survivors.length)];
+          applyPoison(t,transfer,'Carrier');
+          log('a','🦠 Carrier — '+transfer+' stacks transfer to '+t.name);
+        }
+      }
+      // Sepsis — enemy breaks with 5+ stacks → 10 dmg to all other enemies
+      if(activeSkills.some(s=>s.id==='sepsis')&&poisonOnDead>=5){
+        [...enemyBoard.front,...enemyBoard.back].forEach(i=>{
+          if(i&&!i.broken&&i!==item){
+            applyDmgTo(i,10,'Sepsis','enemy');
+          }
+        });
+        log('a','💀 Sepsis — '+item.name+' bursts! 10 dmg to all other enemies!');
+      }
+      // Tipping Point — first poison kill → 3 poison to all surviving enemies
+      if(activeSkills.some(s=>s.id==='tipping_point')&&!battleState.tippingPointFired&&battleState.lastKillWasPoison){
+        battleState.tippingPointFired=true;
+        [...enemyBoard.front,...enemyBoard.back].forEach(i=>{
+          if(i&&!i.broken&&i!==item){
+            applyPoison(i,3,'Tipping Point');
+          }
+        });
+        log('a','⚗️ Tipping Point — first poison kill spreads 3 stacks to all!');
+      }
+      battleState.lastKillWasPoison=false;
     }
   }
 }
@@ -2106,6 +2164,9 @@ function dealDmg(side,base,src){
   if(side==='enemy'&&activeSkills.some(s=>s.id==='pressure')&&isWet(t))dmg+=3;
   // Steel typed skill bonuses (player attacking enemy)
   if(side==='enemy'&&activeSkills.some(s=>s.id==='alloy')&&battleState.activatingItem&&(battleState.activatingItem.shield||0)>0)dmg+=4;
+  // Toxic typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='toxin')){const totalStacks=countTotalPoisonStacks(enemyBoard);const bonus=Math.floor(totalStacks/3);if(bonus>0){dmg+=bonus;}}
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='infected')){const stacks=t.poisonStack||0;if(stacks>0){dmg+=stacks;}}
   applyDmgTo(t,dmg,src,side,battleState.activatingItem);
 }
 function dealDmgRandom(side,base,src){
@@ -2126,6 +2187,9 @@ function dealDmgRandom(side,base,src){
   if(side==='enemy'&&activeSkills.some(s=>s.id==='pressure')&&isWet(t))dmg+=3;
   // Steel typed skill bonuses (player attacking enemy)
   if(side==='enemy'&&activeSkills.some(s=>s.id==='alloy')&&battleState.activatingItem&&(battleState.activatingItem.shield||0)>0)dmg+=4;
+  // Toxic typed skill bonuses (player attacking enemy)
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='toxin')){const totalStacks=countTotalPoisonStacks(enemyBoard);const bonus=Math.floor(totalStacks/3);if(bonus>0){dmg+=bonus;}}
+  if(side==='enemy'&&activeSkills.some(s=>s.id==='infected')){const stacks=t.poisonStack||0;if(stacks>0){dmg+=stacks;}}
   applyDmgTo(t,dmg,src,side,battleState.activatingItem);
 }
 function healItem(side,amount,src){
@@ -2349,19 +2413,34 @@ function flashFireworks(){
   document.body.appendChild(el);
   requestAnimationFrame(()=>{setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),600);},60);});
 }
-function applyPoison(item,stacks,src){
-  if(!item||item.broken)return;
-  item.poisonStack=(item.poisonStack||0)+stacks;
-  log('d','☠️ '+src+' POISON '+item.name+' +'+stacks);
-  fireEvent({type:'POISON_APPLIED',item:item,side:item._side||null,value:stacks,source:null});
-  if(item._side==='enemy'&&battleState){
-    battleState.poisonApplicationsToEnemy++;
-    checkOutbreak();
-    if(battleState.outbreakTriggered){
-      item.poisonStack=(item.poisonStack||0)+1;
-      log('d','☠️ Outbreak +1 extra poison on '+item.name);
+function applyPoison(target,stacks,src){
+  if(!target||target.broken)return;
+  // Pandemic doubles all poison applications
+  if(activeSkills.some(s=>s.id==='pandemic')){
+    stacks=stacks*2;
+  }
+  // Apply base stacks
+  target.poisonStack=(target.poisonStack||0)+stacks;
+  // Virulence — every 3rd application adds 1 extra stack
+  if(activeSkills.some(s=>s.id==='virulence')){
+    battleState.virulenceCount=(battleState.virulenceCount||0)+1;
+    if(battleState.virulenceCount%3===0){
+      target.poisonStack+=1;
+      log('a','☠️ Virulence — extra stack! (application '+battleState.virulenceCount+')');
     }
   }
+  // Track applications for Outbreak
+  if(target._side==='enemy'&&battleState){
+    battleState.poisonApplicationsToEnemy=(battleState.poisonApplicationsToEnemy||0)+1;
+    checkOutbreak();
+    // Outbreak extra stack when triggered
+    if(battleState.outbreakTriggered){
+      target.poisonStack+=1;
+      log('d','☠️ Outbreak +1 extra poison on '+target.name);
+    }
+  }
+  fireEvent({type:'POISON_APPLIED',item:target,side:target._side||null,value:stacks,source:src});
+  log('d',src+' poisons '+target.name+' ('+target.poisonStack+' stacks)');
 }
 // Pick a random living enemy item to target for debuffs
 function randomEnemyItem(side){
@@ -3276,6 +3355,18 @@ function runBattle(type){
         }
       }
     }
+    // Necrosis (Toxic) — enemies with 5+ poison stacks lose 3 max HP per second
+    if(activeSkills.some(s=>s.id==='necrosis')){
+      battleState.necrosisMs=(battleState.necrosisMs||0)+step;
+      if(battleState.necrosisMs>=1000){
+        battleState.necrosisMs=0;
+        getHeavilyPoisonedEnemies(5).forEach(i=>{
+          i.maxHp=Math.max(1,i.maxHp-3);
+          if(i.hp>i.maxHp)i.hp=i.maxHp;
+          log('a','💀 Necrosis — '+i.name+' max HP reduced to '+i.maxHp);
+        });
+      }
+    }
     updateBattleBars();updateEnemyBars();
     const pKO=checkKO('player'),eKO=checkKO('enemy');
     if(pKO&&eKO){endBattle('win');return;}
@@ -3446,6 +3537,22 @@ function tickSide(b,side,tickMs){
         if(activeSkills.some(s=>s.id==='plate_mail')){
           [...board.front,...board.back].forEach(i=>{if(i&&!i.broken&&i!==item&&i.maxHp>0){i.shield=(i.shield||0)+3;i.maxShield=Math.max(i.maxShield||0,i.shield);}});
         }
+        // Colony — front row activation triggers 1 poison on random enemy (if back row has alive items)
+        if(activeSkills.some(s=>s.id==='colony')){
+          const isFrontRow=board.front.includes(item);
+          if(isFrontRow){
+            const backAlive=board.back.filter(i=>i&&!i.broken);
+            if(backAlive.length){
+              const enemies=[...enemyBoard.front,...enemyBoard.back]
+                .filter(i=>i&&!i.broken);
+              if(enemies.length){
+                const t=enemies[Math.floor(Math.random()*enemies.length)];
+                applyPoison(t,1,'Colony');
+                log('a','🐛 Colony — front row breeds poison!');
+              }
+            }
+          }
+        }
       }
       // Water typed skill enemy activation effects
       if(side==='enemy'){
@@ -3518,10 +3625,17 @@ function tickSide(b,side,tickMs){
         if(item.hp<=0&&!item.broken){checkAndBreak(item,side);}
       }
     }
-    // Poison tick — every 1000ms (2000ms if Immunity active on player side). bypasses shield
+    // Poison tick — every 1000ms (2000ms if Immunity active on player side, 900ms if Festering active for enemy). bypasses shield
     if(item.poisonStack>0){
       item.poisonTickMs+=tickMs;
-      const poisonInterval=(side==='player'&&activeSkills.some(s=>s.id==='immunity'))?2000:1000;
+      let poisonInterval;
+      if(side==='player'&&activeSkills.some(s=>s.id==='immunity')){
+        poisonInterval=2000;
+      } else if(side==='enemy'&&activeSkills.some(s=>s.id==='festering')){
+        poisonInterval=900;
+      } else {
+        poisonInterval=1000;
+      }
       while(item.poisonTickMs>=poisonInterval&&item.poisonStack>0){
         item.poisonTickMs-=poisonInterval;
         if(item.hitCount!==undefined&&item.hitCount!==null){
@@ -3538,6 +3652,20 @@ function tickSide(b,side,tickMs){
         const pdmg=item.poisonStack;
         item.hp=Math.max(0,item.hp-pdmg);
         log('d','☠️ Poison '+item.name+' -'+pdmg+' HP');
+        // Seeping — heal most wounded player ally 1 HP per enemy poison tick
+        if(side==='enemy'&&activeSkills.some(s=>s.id==='seeping')){
+          const alive=[...board.front,...board.back]
+            .filter(i=>i&&!i.broken&&i.maxHp>0&&i.hp<i.maxHp);
+          if(alive.length){
+            const weakest=alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
+            weakest.hp=Math.min(weakest.maxHp,weakest.hp+1);
+            log('h','💉 Seeping — '+weakest.name+' heals 1 HP');
+          }
+        }
+        // Track if this tick kills for Tipping Point
+        if(item.hp<=0){
+          battleState.lastKillWasPoison=true;
+        }
         if(item.hp<=0&&!item.broken){checkAndBreak(item,side);}
       }
     }

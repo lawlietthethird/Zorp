@@ -701,3 +701,36 @@ Electric and Fire typed skill effects are IMPLEMENTED (Prompt 2). Water and Stee
 
 **runBattle interval:**
 - `forge`: accumulate `forgeTick`; every 10s, find the most wounded (lowest hp/maxHp ratio) non-broken player item with `maxHp>0` and add +25 shield.
+
+---
+
+## Toxic Typed Skills — Battle Effects (IMPLEMENTED Prompt 4)
+
+**New battleState fields:** `virulenceCount:0`, `seepingHealMs:0`, `tippingPointFired:false`, `criticalMassFired:false`, `necrosisMs:0`, `pandemicActive:false`, `colonySide:false`, `lastKillWasPoison:false`.
+
+**New helper functions:**
+- `countTotalPoisonStacks(b)` — sum poisonStack across all non-broken items on board b
+- `getHeavilyPoisonedEnemies(threshold)` — array of non-broken enemy items with poisonStack >= threshold
+- `getMostPoisonedEnemy()` — non-broken enemy item with highest poisonStack, or null
+
+**applyPoison updated (unified):** Handles Pandemic (double stacks before applying), Virulence (every 3rd application +1 extra stack), Outbreak (extra stack when triggered), poisonApplicationsToEnemy tracking. Order: Pandemic → apply → Virulence → Outbreak tracking → checkOutbreak → Outbreak extra stack → fireEvent → log.
+
+**Festering:** In tickSide poison tick loop, `poisonInterval = 900` when festering active and `side==='enemy'`. Immunity (2000ms for player) takes priority over Festering. Applied to enemy-side poison ticking only.
+
+**Seeping:** In tickSide poison tick loop for enemy items, after `applyDmgTo`, heal most wounded alive player ally 1 HP.
+
+**Toxin:** In dealDmg/dealDmgRandom, `dmg += floor(countTotalPoisonStacks(enemyBoard) / 3)` when side==='enemy'.
+
+**Infected:** In dealDmg/dealDmgRandom after target selected, `dmg += target.poisonStack` when side==='enemy'.
+
+**Carrier:** In checkAndBreak enemy break block, transfer `min(2, poisonStack)` to random surviving enemy via applyPoison.
+
+**Sepsis:** In checkAndBreak enemy break block, if `poisonStack >= 5`, deal 10 dmg to all other non-broken enemies via applyDmgTo.
+
+**Tipping Point:** In checkAndBreak enemy break block, if `lastKillWasPoison && !tippingPointFired`, set tippingPointFired=true and apply 3 poison to all surviving enemies. `lastKillWasPoison` set in poison tick loop when `item.hp<=0`, reset after Tipping Point check.
+
+**Colony:** In tickSide player activation block, if front row item activates and back row has alive items, apply 1 poison to random enemy via applyPoison.
+
+**Pandemic:** In applyPoison, `stacks *= 2` before application when active.
+
+**Necrosis:** In runBattle interval, accumulate `necrosisMs += step` (TICK * battleSpeed). At 1000ms, all enemies with 5+ poisonStack lose 3 maxHp (min 1). Reset necrosisMs to 0.
