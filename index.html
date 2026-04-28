@@ -36,7 +36,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .enemy-info{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:120px;flex-shrink:0;}
 .enemy-icon{font-size:72px;}.enemy-name{font-family:'Cinzel',serif;font-size:9px;font-weight:700;letter-spacing:.1em;}
 .enemy-tag{font-size:8px;color:var(--text);}.enemy-board{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;min-height:0;}
-.trainer-avatar{width:120px;height:auto;object-fit:contain;display:block;}
+.trainer-avatar{width:120px;height:auto;object-fit:contain;display:block;position:relative;z-index:2;}
 @media(max-width:600px){
   .enemy-area{flex-direction:column;gap:4px;}
   .enemy-info{width:100%;flex-direction:row;justify-content:flex-start;align-items:center;gap:8px;height:auto;flex-shrink:0;padding:0 2px;}
@@ -48,7 +48,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 }
 .eboard-row{display:flex;flex:1;min-height:0;min-width:0;gap:4px;align-items:stretch;}
 .ecard{flex:0 0 auto;width:calc(50% - 4px);max-width:110px;height:100%;border-radius:6px;border:1px solid var(--border);background:var(--card);position:relative;overflow:hidden;}
-.enc-row-label{font-family:'Cinzel',serif;font-size:7px;writing-mode:vertical-rl;transform:rotate(180deg);width:10px;flex-shrink:0;color:var(--dim);}
+.enc-row-label{font-family:'Cinzel',serif;font-size:7px;writing-mode:vertical-rl;transform:rotate(180deg);width:10px;flex-shrink:0;color:var(--text);}
 /* BATTLE */
 .battle-status{display:flex;align-items:center;gap:10px;}
 .timer-box{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold);min-width:60px;}
@@ -85,7 +85,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .track-node.locked .node-stamp{opacity:.25;cursor:default;}.track-node.locked{cursor:default;}
 @keyframes nodepulse{0%,100%{box-shadow:0 0 8px rgba(240,192,64,.3)}50%{box-shadow:0 0 18px rgba(240,192,64,.6)}}
 .node-stamp{width:32px;height:32px;border-radius:50%;background:var(--panel);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;position:relative;transition:all .2s;}
-.node-label{font-family:'Cinzel',serif;font-size:5.5px;letter-spacing:.06em;color:var(--dim);white-space:nowrap;}
+.node-label{font-family:'Cinzel',serif;font-size:5.5px;letter-spacing:.06em;color:var(--text);white-space:nowrap;}
 .track-node.current .node-label{color:var(--gold);}
 .track-connector{flex:1;height:2px;background:var(--border);min-width:16px;max-width:40px;margin-top:-22px;position:relative;z-index:0;}
 .track-connector.done-conn{background:rgba(80,224,128,.3);}
@@ -109,7 +109,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .board-area{flex:1;min-height:0;display:flex;flex-direction:column;gap:3px;padding:3px 6px;}
 .board-row{flex:1;min-height:0;display:flex;align-items:center;gap:4px;}
 .rl{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.07em;writing-mode:vertical-rl;transform:rotate(180deg);width:11px;flex-shrink:0;}
-.rl.f{color:var(--front);}.rl.b{color:var(--back);}
+.rl.f{color:var(--text);}.rl.b{color:var(--text);}
 .slots{flex:1;min-width:0;height:100%;display:flex;gap:4px;}
 .swap-hint{font-size:9px;color:var(--dim);font-style:italic;text-align:right;}
 /* ITEM CARD */
@@ -3194,7 +3194,7 @@ function showEncounterBattle(type,wildMonster=null){
   const dlgOverlay='<div id="prebattle-overlay" onclick="var o=document.getElementById(\'prebattle-overlay\');if(o)o.style.display=\'none\'" style="position:absolute;inset:0;z-index:10;border-radius:6px;background:rgba(8,6,18,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;cursor:pointer;"><div style="font-family:\'Cinzel\',serif;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--gold);">'+dlgName+'</div><div style="font-size:12px;color:var(--text);font-style:italic;line-height:1.65;max-width:320px;">'+dlgText+'</div><div style="font-family:\'Cinzel\',serif;font-size:10px;letter-spacing:.15em;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 14px;margin-top:4px;">TAP TO DISMISS</div></div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — '+trainer.name);
   const wildImgHTML=enemy.img&&enemy.img.startsWith('https://')?'<img src="'+enemy.img+'" class="trainer-avatar"/>':'<div class="enemy-icon">'+enemy.icon+'</div>';
-  setEncBody('<div class="enemy-area"><div class="enemy-info">'+(!isWild?trainerImgHTML:wildImgHTML)+'<div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div><div class="enemy-board" style="position:relative;">'+dlgOverlay+'<div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
+  setEncBody('<div class="enemy-area"><div class="enemy-info">'+(!isWild?trainerImgHTML:wildImgHTML)+'<div style="display:flex;flex-direction:column;gap:2px;"><div class="enemy-name">'+enemy.name+'</div><div class="enemy-tag">'+enemy.tag+'</div></div></div><div class="enemy-board" style="position:relative;">'+dlgOverlay+'<div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
   renderEnemyBoard();
 }
 function toggleSpeed(){
