@@ -2509,8 +2509,17 @@ function renderRow(cid,slots,rowType,maxSlots){
   slots.forEach((item,idx)=>{
     const card=document.createElement('div');card.className='ic';
     card.dataset.row=rowType;card.dataset.idx=idx;
-    if(idx>=max){card.classList.add('locked');card.innerHTML='<div class="clock">🔒</div>';}
-    else if(!item){card.classList.add('empty-s');card.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--border);font-family:Cinzel,serif;font-size:7px;letter-spacing:.1em">EMPTY</div>';card.onclick=()=>{if(G.battleRunning)return;if(G.selectedSlot!==null){handleSlotClick(rowType,idx,null);hideItemInfo();}};}
+    if(idx>=max){
+      card.classList.add('locked');
+      const slotNum=rowType==='front'?idx+1:idx+4;
+      card.innerHTML='<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><div class="clock">🔒</div><div style="font-family:Cinzel,serif;font-size:6px;letter-spacing:.1em;color:var(--border);opacity:0.25">'+slotNum+'</div></div>';
+    }
+    else if(!item){
+      const slotNum=rowType==='front'?idx+1:idx+4;
+      card.classList.add('empty-s');
+      card.innerHTML='<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><div style="font-family:Cinzel,serif;font-size:11px;font-weight:700;color:var(--border);opacity:0.4">'+slotNum+'</div><div style="font-family:Cinzel,serif;font-size:6px;letter-spacing:.1em;color:var(--border);opacity:0.25">SLOT</div></div>';
+      card.onclick=()=>{if(G.battleRunning)return;if(G.selectedSlot!==null){handleSlotClick(rowType,idx,null);hideItemInfo();}};
+    }
     else if(item.broken){card.classList.add('broken-c');card.dataset.itemId=item.id;card.innerHTML='<div class="cbo">✕</div><div class="ci" style="opacity:.25"><div class="cicon" id="cicon-'+item.id+'">'+getItemIcon(item)+'</div><div class="cname">'+item.name+'</div></div><div class="card-df"></div>';card.onclick=(e)=>{e.stopPropagation();showItemInfo(item,false,null,null);};}
     else{
       const rarityClass=item.itemRarity?'rarity-'+item.itemRarity:'';
