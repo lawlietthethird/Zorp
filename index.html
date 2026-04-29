@@ -830,7 +830,7 @@ let pendingSecondWindIdx=null;
 let secondWindClarityPending=false;
 
 const DAY1_NODES=[{id:'mom',icon:'🎁',label:"MOM'S GIFT"},{id:'shop1',icon:'🏪',label:'MARKET'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'shop2',icon:'🏪',label:'ROAD STALL'},{id:'rival',icon:'🏆',label:'RIVAL'}];
-const DAY2_NODES=[{id:'shop1',icon:'🏪',label:'MARKET'},{id:'event',icon:'📜',label:'EVENT'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'event',icon:'📜',label:'EVENT'},{id:'rival',icon:'🏆',label:'TRAINER'}];
+const DAY2_NODES=[{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'event',icon:'📜',label:'EVENT'},{id:'rival',icon:'🏆',label:'TRAINER'}];
 function getDayNodes(){return(G.rivalDefeated&&G.day>1)?DAY2_NODES:DAY1_NODES;}
 
 // ============================================================
@@ -2778,7 +2778,7 @@ function loadCurrentNode(){
   else if(node.id==='event'){
     const egg=checkEasterEggs(G.day,G.dayStep);
     if(egg)showEvent(egg);
-    else showEvent(pickEvent(G.day));
+    else showEventPicker(pickEvents(G.day));
   }
   else if(node.id==='rival')showEncounterBattle('rival');
 }
@@ -2801,7 +2801,8 @@ function fireBurdenHandler(burden,onDone){
   switch(burden.onResolve){
     case 'butcher_collect':{
       if(G.metrics)G.metrics.loanActive=false;
-      const taken=Math.min(2,G.gold);
+      const repay=burden.payload&&burden.payload.repayAmount!=null?burden.payload.repayAmount:2;
+      const taken=Math.min(repay,G.gold);
       G.gold=Math.max(0,G.gold-taken);
       updateUI();
       const msg=taken>0?`He smiles, counts your coins, and leaves. He took ${taken} 🪙.`:"He looks in your purse — empty. He shrugs and leaves.";
@@ -5428,37 +5429,25 @@ const EVENTS=[
     ],
     resolution:'immediate',tags:['free','fork'],easter_egg:false,
   },
-  // ── THE BUTCHER (SMALL) ───────────────────────────────────
+  // ── THE BUTCHER ───────────────────────────────────────────
   {
-    id:'butcher_small',name:'The Butcher',tier:'intermediate',image:null,
-    unlock:{minDay:2,maxDay:7,minWins:1,maxWins:5,excludeFlags:{loanActive:true}},
-    prompt:{title:'The Butcher',flavor:"He says he can make your team hit harder. Payment can wait, he says. It always can."},
+    id:'butcher',name:'The Butcher',tier:'intermediate',image:null,
+    unlock:{minDay:2,maxDay:null,minWins:1,maxWins:5,excludeFlags:{loanActive:true}},
+    prompt:{
+      title:'The Butcher',
+      flavor:'A large man with clean hands and a friendly smile says he can help you out.',
+      dialogue:'"I can lend you 6 gold. You know what happens if you don\'t pay."',
+    },
     choices:[
-      {id:'deal',label:'Take the deal — +5 damage to one item, pay 2 gold in 3 stops',cost:null,requiresCost:false,
-       effect:{type:'imbue_pick',imbueType:'damage',amount:5},
-       burden:{id:'butcher_loan',icon:'🔪',countdown:3,unit:'',colorAmber:2,colorRed:1,onResolve:'butcher_collect',active:true},
+      {id:'accept',label:'Accept',cost:null,requiresCost:false,
+       effect:{type:'gold',amount:6},
+       burden:{id:'butcher_loan',icon:'🔪',countdown:15,unit:'',colorAmber:5,colorRed:2,onResolve:'butcher_collect',active:true,payload:{repayAmount:7}},
        outcomeText:null},
       {id:'decline',label:'Decline',cost:null,requiresCost:false,
        effect:{type:'butcher_decline'},
-       outcomeText:'He shrugs and walks on.'},
+       outcomeText:'He nods. The smile stays.'},
     ],
-    resolution:'immediate',tags:['burden','imbue'],easter_egg:false,
-  },
-  // ── THE BUTCHER (LARGE) ───────────────────────────────────
-  {
-    id:'butcher_large',name:'The Butcher — Bigger Offer',tier:'advanced',image:null,
-    unlock:{minDay:4,maxDay:null,minWins:2,maxWins:5,excludeFlags:{loanActive:true}},
-    prompt:{title:'The Butcher',flavor:"He's back. Bigger offer this time. Bigger debt."},
-    choices:[
-      {id:'deal',label:'Take the deal — +8 damage to all items, pay 2 gold in 3 stops',cost:null,requiresCost:false,
-       effect:{type:'imbue_all',imbueType:'damage',amount:8},
-       burden:{id:'butcher_loan',icon:'🔪',countdown:3,unit:'',colorAmber:2,colorRed:1,onResolve:'butcher_collect',active:true},
-       outcomeText:null},
-      {id:'decline',label:'Decline',cost:null,requiresCost:false,
-       effect:{type:'butcher_decline'},
-       outcomeText:'He shrugs and walks on.'},
-    ],
-    resolution:'immediate',tags:['burden','imbue'],easter_egg:false,
+    resolution:'immediate',tags:['burden','gold'],easter_egg:false,
   },
   // ── THE BET ───────────────────────────────────────────────
   {
@@ -5501,24 +5490,62 @@ function getEventPool(day){
 function pickEvent(day){
   const pool=getEventPool(day);
   if(!pool.length)return null;
-  // Weight by tier: beginner=3, intermediate=2, advanced=1
   const weights={beginner:3,intermediate:2,advanced:1,common:3,uncommon:2,rare:1};
   const weighted=[];
   pool.forEach(e=>{const w=weights[e.tier]||2;for(let i=0;i<w;i++)weighted.push(e);});
   return weighted[Math.floor(Math.random()*weighted.length)];
 }
 
+function pickEvents(day,count=3){
+  const pool=getEventPool(day);
+  if(!pool.length)return[];
+  const weights={beginner:3,intermediate:2,advanced:1,common:3,uncommon:2,rare:1};
+  const weighted=[];
+  pool.forEach(e=>{const w=weights[e.tier]||2;for(let i=0;i<w;i++)weighted.push(e);});
+  // Fisher-Yates shuffle
+  for(let i=weighted.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[weighted[i],weighted[j]]=[weighted[j],weighted[i]];}
+  const seen=new Set();const picked=[];
+  for(const e of weighted){if(!seen.has(e.id)){seen.add(e.id);picked.push(e);}if(picked.length>=count)break;}
+  return picked;
+}
+
+function showEventPicker(events){
+  if(!events.length){
+    G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+    return;
+  }
+  window._eventPickerCards=events;
+  setEncTitle('EVENT');
+  const cards=events.map((e,i)=>{
+    const title=(e.prompt&&e.prompt.title)||e.name;
+    const flavor=(e.prompt&&e.prompt.flavor)||e.desc||'';
+    const choiceLabels=e.choices.map(c=>`<div style="font-size:9px;color:var(--dim);margin-top:3px;line-height:1.3;">· ${c.label}</div>`).join('');
+    return `<div class="dc" onclick="selectEventCard(${i})" style="text-align:left;padding:12px 10px;display:flex;flex-direction:column;">
+      <div class="dn" style="font-size:10px;margin-bottom:5px;">${title}</div>
+      <div class="dd" style="line-height:1.4;flex:1;">${flavor}</div>
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">${choiceLabels}</div>
+    </div>`;
+  }).join('');
+  setEncBody(`<div class="draft-row" style="align-items:stretch;gap:8px;">${cards}</div>`);
+}
+
+function selectEventCard(idx){
+  const events=window._eventPickerCards;
+  window._eventPickerCards=null;
+  if(!events||!events[idx])return;
+  showEvent(events[idx]);
+}
+
 function showEvent(event){
   if(!event){
-    // No eligible events — skip to next node
     G.dayStep++;updateUI();renderTrack();activateCurrentNode();
     return;
   }
   currentEvent=event;
   setEncTitle('EVENT');
-  // Support both old structure (desc/icon) and new structure (prompt.flavor/image)
   const title=(event.prompt&&event.prompt.title)||event.name;
   const flavor=(event.prompt&&event.prompt.flavor)||event.desc||'';
+  const dialogue=(event.prompt&&event.prompt.dialogue)||'';
   const icon=event.image||event.icon||'📜';
   const choicesHtml=event.choices.map((c,i)=>{
     const hasCost=c.cost&&c.cost.type==='gold';
@@ -5527,10 +5554,10 @@ function showEvent(event){
     const style=cantAfford?'opacity:.4;pointer-events:none;':'';
     return `<button class="btn btn-p" style="margin:4px 0;width:100%;text-align:left;padding:10px 14px;${style}" onclick="${cantAfford?'':('resolveEventChoice('+i+')')}">${c.label}${costLabel}</button>`;
   }).join('');
-  setEncBody(`<div style="display:flex;flex-direction:column;gap:14px;max-width:380px;margin:0 auto;padding:8px 0;">
-    <div style="font-size:26px;text-align:center;">${icon}</div>
+  setEncBody(`<div style="display:flex;flex-direction:column;gap:12px;max-width:380px;margin:0 auto;padding:8px 0;">
     <div style="font-weight:700;font-size:15px;text-align:center;letter-spacing:.04em;">${title}</div>
-    <div style="font-size:13px;color:var(--muted);line-height:1.65;">${flavor}</div>
+    <div style="font-size:13px;color:var(--dim);line-height:1.65;">${flavor}</div>
+    ${dialogue?`<div class="dialogue" style="margin:0;font-size:12px;">${dialogue}</div>`:''}
     <div style="display:flex;flex-direction:column;gap:2px;">${choicesHtml}</div>
   </div>`);
 }
@@ -5604,8 +5631,7 @@ function resolveEventChoice(choiceIdx){
       return;
 
     case 'fork_right':
-      // Set dayStep to point at wild node (index 2) so skipShop() increments to 3 (second event)
-      G.dayStep=2;
+      // dayStep stays where it is — skipShop() natural increment advances past the wild node
       showTypedShopPicker();
       return;
 
