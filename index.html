@@ -2777,9 +2777,12 @@ function loadCurrentNode(){
   else if(node.id==='wild')showEncounterWildPick();
   else if(node.id==='shop2')showEncounterShop(2);
   else if(node.id==='event'){
+    const nodes=getDayNodes();
+    const wildIdx=nodes.findIndex(n=>n.id==='wild');
+    const slotCtx=wildIdx<0?'any':G.dayStep<wildIdx?'pre_wild':'post_wild';
     const egg=checkEasterEggs(G.day,G.dayStep);
     if(egg)showEvent(egg);
-    else showEventPicker(pickEvents(G.day));
+    else showEventPicker(pickEvents(G.day,slotCtx));
   }
   else if(node.id==='rival')showEncounterBattle('rival');
 }
@@ -5450,6 +5453,7 @@ const EVENTS=[
   // ── THE FORK IN THE ROAD ──────────────────────────────────
   {
     id:'fork_in_the_road',name:'The Fork In The Road',tier:'beginner',image:null,
+    validSlots:['pre_wild'],
     unlock:{minDay:1,maxDay:6,minWins:0,maxWins:6},
     prompt:{title:'The Fork In The Road',flavor:'Left looks harder. Right looks expensive.'},
     choices:[
@@ -5505,9 +5509,11 @@ const EVENTS=[
 
 let currentEvent=null;
 
-function getEventPool(day){
+function getEventPool(day,slotCtx='any'){
   return EVENTS.filter(e=>{
     if(!e)return false;
+    // Slot-context filter: events with validSlots only appear in their allowed slots
+    if(e.validSlots&&slotCtx!=='any'&&!e.validSlots.includes(slotCtx))return false;
     const u=e.unlock;
     if(!u)return true;
     if(u.minDay!=null&&day<u.minDay)return false;
@@ -5533,8 +5539,9 @@ function pickEvent(day){
   return weighted[Math.floor(Math.random()*weighted.length)];
 }
 
-function pickEvents(day,count=3){
-  const pool=getEventPool(day);
+function pickEvents(day,slotCtx='any',count=3){
+  const pool=getEventPool(day,slotCtx);
+  const allowWild=slotCtx!=='post_wild'; // bonus wild fight only before the wild node
   const tw=TIER_WEIGHTS[Math.min(Math.max(day,1),10)]||TIER_WEIGHTS[10];
 
   // Weighted pick from a subpool, respecting tier weights and used-ID deduplication.
@@ -5565,13 +5572,14 @@ function pickEvents(day,count=3){
   const slotB=pick(paidPool,used)||pick(pool,used);
   if(slotB){used.add(slotB.id);result.push(slotB);}
 
-  // Slot C — 10% bonus wild fight, 90% any eligible (fallback: WILD_FIGHT_OPTION)
-  if(!used.has(WILD_FIGHT_OPTION.id)&&Math.random()<0.1){
+  // Slot C — 10% bonus wild fight (pre_wild only), 90% any eligible
+  const canWild=allowWild&&!used.has(WILD_FIGHT_OPTION.id);
+  if(canWild&&Math.random()<0.1){
     used.add(WILD_FIGHT_OPTION.id);result.push(WILD_FIGHT_OPTION);
   }else{
     const slotC=pick(pool,used);
     if(slotC){used.add(slotC.id);result.push(slotC);}
-    else if(!used.has(WILD_FIGHT_OPTION.id)){used.add(WILD_FIGHT_OPTION.id);result.push(WILD_FIGHT_OPTION);}
+    else if(canWild){used.add(WILD_FIGHT_OPTION.id);result.push(WILD_FIGHT_OPTION);}
   }
 
   // Pad to count from full pool
@@ -5581,8 +5589,10 @@ function pickEvents(day,count=3){
     used.add(extra.id);result.push(extra);
   }
 
-  // Never show 0 — WILD_FIGHT_OPTION as last resort
-  if(!result.length){used.add(WILD_FIGHT_OPTION.id);result.push(WILD_FIGHT_OPTION);}
+  // Never show 0 — WILD_FIGHT_OPTION as last resort (pre_wild only; post_wild gets no fallback beyond pool)
+  if(!result.length){
+    if(allowWild){used.add(WILD_FIGHT_OPTION.id);result.push(WILD_FIGHT_OPTION);}
+  }
 
   return result;
 }
