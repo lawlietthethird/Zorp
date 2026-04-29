@@ -1949,11 +1949,35 @@ const WILD_MONSTERS_DAY6=[
    front:[mkw('ember_fang'),mkw('cinder_claw'),mkw('hot_springs')],
    back:[mkw('bubble_shield'),mkw('left_claws'),mkw('alloy_fang')]},
 ];
+const WILD_MONSTERS_DAY7=[
+  {name:'Sporemantle',icon:'🌵',tag:'It didn\'t evolve thorns for defense. That\'s just what people tell themselves.',
+   front:[mkw('caustic_mantle'),mkw('venom_fang'),mkw('outbreak')],
+   back:[mkw('miasma'),mkw('mithridate'),mkw('bubble_shield')]},
+  {name:'Whelkin',icon:'🦐',tag:'The spines were there first. The shrimp came later.',
+   front:[mkw('lightning_claw'),mkw('arc_bolt'),mkw('current_band')],
+   back:[mkw('spark_charm'),mkw('bulwark_stance'),mkw('bubble_shield')]},
+  {name:'Slaghorn',icon:'🦬',tag:'It has been to three towns. Two of them are fine.',
+   front:[mkw('ember_fang'),mkw('cinder_claw'),mkw('alloy_fang')],
+   back:[mkw('bulwark_stance'),mkw('hot_springs'),mkw('tidal_shell')]},
+];
+const WILD_MONSTERS_DAY8=[
+  {name:'Dreadshell',icon:'🐢',tag:'Scientists classified it as slow. It classified them as lunch.',
+   front:[mkw('tide_fang'),mkw('tidal_shell'),mkw('riptide')],
+   back:[mkw('current_band'),mkw('bubble_shield'),mkw('alloy_fang')]},
+  {name:'Nullshell',icon:'🐌',tag:'Nothing has ever gotten through the shell. Including ambition.',
+   front:[mkw('bulwark_stance'),mkw('alloy_fang'),mkw('bubble_shield')],
+   back:[mkw('bulwark_stance'),mkw('tidal_shell'),mkw('hot_springs')]},
+  {name:'Ashencoil',icon:'🐍',tag:'It sheds every month. Nobody has found one yet.',
+   front:[mkw('ember_fang'),mkw('cinder_claw'),mkw('venom_fang')],
+   back:[mkw('caustic_mantle'),mkw('hot_springs'),mkw('bubble_shield')]},
+];
 function getWildPool(){
   if(G.day===3)return WILD_MONSTERS_DAY3;
   if(G.day===4)return WILD_MONSTERS_DAY4;
   if(G.day===5)return WILD_MONSTERS_DAY5;
-  if(G.day>=6)return WILD_MONSTERS_DAY6;
+  if(G.day===6)return WILD_MONSTERS_DAY6;
+  if(G.day===7)return WILD_MONSTERS_DAY7;
+  if(G.day>=8)return WILD_MONSTERS_DAY8;
   return WILD_MONSTERS; // day 2 default; day 1 uses DAY1_WILD directly
 }
 let currentWildMonster=null;
