@@ -830,7 +830,7 @@ let pendingSecondWindIdx=null;
 let secondWindClarityPending=false;
 
 const DAY1_NODES=[{id:'mom',icon:'🎁',label:"MOM'S GIFT"},{id:'shop1',icon:'🏪',label:'MARKET'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'shop2',icon:'🏪',label:'ROAD STALL'},{id:'rival',icon:'🏆',label:'RIVAL'}];
-const DAY2_NODES=[{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'event',icon:'📜',label:'EVENT'},{id:'rival',icon:'🏆',label:'TRAINER'}];
+const DAY2_NODES=[{id:'shop1',icon:'🏪',label:'MARKET'},{id:'event',icon:'📜',label:'EVENT'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'event',icon:'📜',label:'EVENT'},{id:'rival',icon:'🏆',label:'TRAINER'}];
 function getDayNodes(){return(G.rivalDefeated&&G.day>1)?DAY2_NODES:DAY1_NODES;}
 
 // ============================================================
@@ -5369,6 +5369,38 @@ function pickTypedShop(typeId){
 }
 
 // ============================================================
+// EVENT SYSTEM CONSTANTS
+// ============================================================
+
+// Day-based tier weighting table. Weights are relative (not %).
+// Days beyond 10 use day-10 weights.
+const TIER_WEIGHTS={
+  1: {beginner:100,intermediate:0,  advanced:0,  mastered:0 },
+  2: {beginner:90, intermediate:10, advanced:0,  mastered:0 },
+  3: {beginner:70, intermediate:30, advanced:0,  mastered:0 },
+  4: {beginner:40, intermediate:50, advanced:10, mastered:0 },
+  5: {beginner:0,  intermediate:60, advanced:40, mastered:0 },
+  6: {beginner:0,  intermediate:30, advanced:60, mastered:10},
+  7: {beginner:0,  intermediate:10, advanced:60, mastered:30},
+  8: {beginner:0,  intermediate:5,  advanced:45, mastered:50},
+  9: {beginner:0,  intermediate:0,  advanced:50, mastered:50},
+  10:{beginner:0,  intermediate:0,  advanced:50, mastered:50},
+};
+
+// Appears as Slot C wildcard at 10% chance.
+const WILD_FIGHT_OPTION={
+  id:'bonus_wild_fight',
+  name:'Something Stirs',
+  prompt:{title:'Something Stirs',flavor:'You sense movement in the grass. You could ignore it.'},
+  tags:['wild'],
+  easter_egg:false,
+  choices:[
+    {id:'investigate',label:'Investigate',requiresCost:false,cost:null,effect:{type:'trigger_wild_fight'}},
+    {id:'keep_moving',label:'Keep moving',requiresCost:false,cost:null,effect:null},
+  ],
+};
+
+// ============================================================
 
 const EVENTS=[
   // ── THE ROCK ──────────────────────────────────────────────
@@ -5503,15 +5535,56 @@ function pickEvent(day){
 
 function pickEvents(day,count=3){
   const pool=getEventPool(day);
-  if(!pool.length)return[];
-  const weights={beginner:3,intermediate:2,advanced:1,common:3,uncommon:2,rare:1};
-  const weighted=[];
-  pool.forEach(e=>{const w=weights[e.tier]||2;for(let i=0;i<w;i++)weighted.push(e);});
-  // Fisher-Yates shuffle
-  for(let i=weighted.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[weighted[i],weighted[j]]=[weighted[j],weighted[i]];}
-  const seen=new Set();const picked=[];
-  for(const e of weighted){if(!seen.has(e.id)){seen.add(e.id);picked.push(e);}if(picked.length>=count)break;}
-  return picked;
+  const tw=TIER_WEIGHTS[Math.min(Math.max(day,1),10)]||TIER_WEIGHTS[10];
+
+  // Weighted pick from a subpool, respecting tier weights and used-ID deduplication.
+  // Falls back to equal weighting only if every eligible event has weight 0.
+  function pick(subpool,used){
+    const eligible=subpool.filter(e=>!used.has(e.id));
+    if(!eligible.length)return null;
+    const withW=eligible.filter(e=>(tw[e.tier]||0)>0);
+    const src=withW.length?withW:eligible; // equal-weight fallback if all tiers are 0
+    const wFn=e=>withW.length?(tw[e.tier]||0):1;
+    const total=src.reduce((s,e)=>s+wFn(e),0);
+    if(!total)return src[Math.floor(Math.random()*src.length)];
+    let r=Math.random()*total;
+    for(const e of src){r-=wFn(e);if(r<=0)return e;}
+    return src[src.length-1];
+  }
+
+  const freePool=pool.filter(e=>e.tags&&e.tags.includes('free'));
+  const paidPool=pool.filter(e=>e.tags&&(e.tags.includes('paid')||e.tags.includes('burden')||e.tags.includes('forced')));
+  const used=new Set();
+  const result=[];
+
+  // Slot A — guaranteed free event (fallback: any eligible)
+  const slotA=pick(freePool,used)||pick(pool,used);
+  if(slotA){used.add(slotA.id);result.push(slotA);}
+
+  // Slot B — guaranteed paid/burden event (fallback: any eligible)
+  const slotB=pick(paidPool,used)||pick(pool,used);
+  if(slotB){used.add(slotB.id);result.push(slotB);}
+
+  // Slot C — 10% bonus wild fight, 90% any eligible (fallback: WILD_FIGHT_OPTION)
+  if(!used.has(WILD_FIGHT_OPTION.id)&&Math.random()<0.1){
+    used.add(WILD_FIGHT_OPTION.id);result.push(WILD_FIGHT_OPTION);
+  }else{
+    const slotC=pick(pool,used);
+    if(slotC){used.add(slotC.id);result.push(slotC);}
+    else if(!used.has(WILD_FIGHT_OPTION.id)){used.add(WILD_FIGHT_OPTION.id);result.push(WILD_FIGHT_OPTION);}
+  }
+
+  // Pad to count from full pool
+  while(result.length<count){
+    const extra=pick(pool,used);
+    if(!extra)break;
+    used.add(extra.id);result.push(extra);
+  }
+
+  // Never show 0 — WILD_FIGHT_OPTION as last resort
+  if(!result.length){used.add(WILD_FIGHT_OPTION.id);result.push(WILD_FIGHT_OPTION);}
+
+  return result;
 }
 
 function showEventPicker(events){
@@ -5636,7 +5709,8 @@ function resolveEventChoice(choiceIdx){
       return;
 
     case 'fork_right':
-      // dayStep stays where it is — skipShop() natural increment advances past the wild node
+      // Position at wild node (index 2) so skipShop() increments to second event (index 3)
+      G.dayStep=Math.max(G.dayStep,2);
       showTypedShopPicker();
       return;
 
@@ -5661,6 +5735,15 @@ function resolveEventChoice(choiceIdx){
       G.dayStep++;updateUI();renderTrack();activateCurrentNode();
       return;
     }
+
+    case 'trigger_wild_fight':
+      // Bonus wild fight — position dayStep at wild node so endBattle's ++ skips it
+      // and lands at next event slot (or trainer). Both event slot positions handled:
+      //   dayStep 1 → set to 2 → endBattle ++ → 3 (second event)
+      //   dayStep 3 → max(3,2)=3 → endBattle ++ → 4 (trainer)
+      G.dayStep=Math.max(G.dayStep,2);
+      showEncounterWildPick();
+      return;
 
     case 'upgrade_pick':
       showAnyNodeSkillPicker();
