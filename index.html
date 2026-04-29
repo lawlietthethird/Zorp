@@ -1966,10 +1966,32 @@ const WILD_MONSTERS_DAY8=[
    back:[mkw('current_band'),mkw('bubble_shield'),mkw('alloy_fang')]},
   {name:'Nullshell',icon:'🐌',tag:'Nothing has ever gotten through the shell. Including ambition.',
    front:[mkw('bulwark_stance'),mkw('alloy_fang'),mkw('bubble_shield')],
-   back:[mkw('bulwark_stance'),mkw('tidal_shell'),mkw('hot_springs')]},
+   back:[mkw('ironclad'),mkw('tidal_shell'),mkw('hot_springs')]},
   {name:'Ashencoil',icon:'🐍',tag:'It sheds every month. Nobody has found one yet.',
    front:[mkw('ember_fang'),mkw('cinder_claw'),mkw('venom_fang')],
    back:[mkw('caustic_mantle'),mkw('hot_springs'),mkw('bubble_shield')]},
+];
+const WILD_MONSTERS_DAY9=[
+  {name:'Veinrot',icon:'🪸',tag:'The coral was always alive. That was always the problem.',
+   front:[mkw('venom_fang'),mkw('caustic_mantle'),mkw('outbreak')],
+   back:[mkw('miasma'),mkw('mithridate'),mkw('bubble_shield')]},
+  {name:'Stormclad',icon:'🦁',tag:'Four lightning strikes. It started walking toward the clouds after the second.',
+   front:[mkw('lightning_claw'),mkw('arc_bolt'),mkw('current_band')],
+   back:[mkw('spark_charm'),mkw('bulwark_stance'),mkw('alloy_fang')]},
+  {name:'Cinderwall',icon:'🦏',tag:'It has never needed to retreat.',
+   front:[mkw('ember_fang'),mkw('cinder_claw'),mkw('alloy_fang')],
+   back:[mkw('tidal_shell'),mkw('bulwark_stance'),mkw('hot_springs')]},
+];
+const WILD_MONSTERS_DAY10=[
+  {name:'Abyssalback',icon:'🦑',tag:'The water left. It stayed.',
+   front:[mkw('tide_fang'),mkw('tidal_shell'),mkw('riptide')],
+   back:[mkw('current_band'),mkw('bubble_shield'),mkw('alloy_fang')]},
+  {name:'Ironveil',icon:'🦋',tag:'Razorblades for wings. Ouch.',
+   front:[mkw('bulwark_stance'),mkw('alloy_fang'),mkw('tidal_shell')],
+   back:[mkw('ironclad'),mkw('arc_bolt'),mkw('bubble_shield')]},
+  {name:'Plagueborn',icon:'🐀',tag:'The virus had a host until the rat made it a partnership.',
+   front:[mkw('venom_fang'),mkw('caustic_mantle'),mkw('outbreak')],
+   back:[mkw('miasma'),mkw('mithridate'),mkw('bubble_shield')]},
 ];
 function getWildPool(){
   if(G.day===3)return WILD_MONSTERS_DAY3;
@@ -1977,7 +1999,9 @@ function getWildPool(){
   if(G.day===5)return WILD_MONSTERS_DAY5;
   if(G.day===6)return WILD_MONSTERS_DAY6;
   if(G.day===7)return WILD_MONSTERS_DAY7;
-  if(G.day>=8)return WILD_MONSTERS_DAY8;
+  if(G.day===8)return WILD_MONSTERS_DAY8;
+  if(G.day===9)return WILD_MONSTERS_DAY9;
+  if(G.day>=10)return WILD_MONSTERS_DAY10;
   return WILD_MONSTERS; // day 2 default; day 1 uses DAY1_WILD directly
 }
 let currentWildMonster=null;
