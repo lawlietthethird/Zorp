@@ -2753,16 +2753,19 @@ function renderTrack(){
   },50);
 }
 function activateCurrentNode(){
+  // Fire any onLocationEnter burden callbacks (future-proofing)
+  tickBurdens();
   // Tick burden countdowns once per location entry
   if(G.burdens&&G.burdens.length){
     G.burdens.forEach(b=>{if(b&&b.active!==false)b.countdown--;});
     const expired=G.burdens.filter(b=>b&&b.countdown<=0);
     if(expired.length){
+      renderCounterStrip();
       fireBurdenHandler(expired[0],()=>loadCurrentNode());
       return;
     }
-    renderCounterStrip();
   }
+  renderCounterStrip();
   loadCurrentNode();
 }
 
