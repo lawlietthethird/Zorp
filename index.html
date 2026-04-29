@@ -1091,7 +1091,7 @@ const MOM_CONSOLATION_ITEMS={
   river_stone:()=>{
     const item=makeItem('river_stone','River Stone','🪨','Weapon',80,3500,'10 dmg random.',(s,a)=>dealDmgRandom(opp(s),a,'River Stone'),0,null,10);
     item.itemRarity='beginner';item.itemType='weapon';
-    item.flavorText="Your grandfather threw one at a bear once. What happened to him again?...";
+    item.flavorText="She said you could throw it if things got tough.";
     item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'}];
     return item;
   },
@@ -5056,9 +5056,7 @@ function showMonsterNaming(){
       "One more thing. They need a name. Something they'll answer to. Something you won't regret shouting across a battlefield."<br><br>
       "Take your time. Or don't. I have other things to do."
     </div>`,
-    `<div style="text-align:center;margin:12px 0">
-      <img src="${selectedMonsterType==='fox'?FOX_DEFAULT:HYDRA_DEFAULT_IMG}"
-        style="width:60px;height:60px;object-fit:contain;display:block;margin:0 auto 8px"/>
+    `<div style="text-align:center;margin:8px 0">
       <input id="monsterNameInput" type="text" maxlength="12"
         style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:Cinzel,serif;font-size:14px;padding:6px 12px;text-align:center;width:160px;"
         placeholder="${selectedMonsterType==='fox'?'Kip':'Hydrax'}"
@@ -5088,7 +5086,7 @@ function showRivalNaming(){
       "One more thing. Another trainer left yesterday — same journey. You know them. Only two kids in this town. They bought the necklace."<br><br>
       "Took one of my monsters, off they went. No postcard. Anyway. What's the name again?"
     </div>`,
-    `<div style="text-align:center;margin:12px 0">
+    `<div style="text-align:center;margin:8px 0">
       <input id="rivalNameInput" type="text" maxlength="12"
         style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:Cinzel,serif;font-size:14px;padding:6px 12px;text-align:center;width:160px;"
         placeholder="Their name..."
