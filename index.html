@@ -2093,7 +2093,7 @@ function checkAndBreak(item,side){
       [...board.front,...board.back].forEach(i=>{
         if(i&&!i.broken){
           i.effectAmt=Math.round((i.effectAmt||0)*1.5);
-          i.baseEffect=Math.round((i.baseEffect||0)*1.5);
+          // baseEffect intentionally NOT mutated — resetItemBattleState must restore correct baseline
         }
       });
       log('s','😤 Desperation! Surviving items gain +50% effects!');
@@ -2527,14 +2527,14 @@ function flashFireworks(){
 }
 function applyPoison(target,stacks,src){
   if(!target||target.broken)return;
-  // Pandemic doubles all poison applications
-  if(activeSkills.some(s=>s.id==='pandemic')){
+  // Pandemic doubles player-applied poison to enemies only
+  if(target._side==='enemy'&&activeSkills.some(s=>s.id==='pandemic')){
     stacks=stacks*2;
   }
   // Apply base stacks
   target.poisonStack=(target.poisonStack||0)+stacks;
-  // Virulence — every 3rd application adds 1 extra stack
-  if(activeSkills.some(s=>s.id==='virulence')){
+  // Virulence — every 3rd player-applied poison to an enemy adds 1 extra stack
+  if(target._side==='enemy'&&activeSkills.some(s=>s.id==='virulence')){
     battleState.virulenceCount=(battleState.virulenceCount||0)+1;
     if(battleState.virulenceCount%3===0){
       target.poisonStack+=1;
@@ -3578,10 +3578,10 @@ function resetItemBattleState(b){
   if(isPlayer&&activeSkills.some(s=>s.id==='duality')&&!battleState.dualityApplied){
     battleState.dualityApplied=true;
     [board.front[0],board.front[2],board.back[1]].forEach(item=>{
-      if(item){item.effectAmt=(item.effectAmt||0)+10;item.baseEffect=(item.baseEffect||0)+10;}
+      if(item){item.effectAmt=(item.effectAmt||0)+10;} // baseEffect NOT mutated
     });
     [board.front[1],board.back[0],board.back[2]].forEach(item=>{
-      if(item){item.maxHp+=25;item.baseMaxHp+=25;item.hp=item.maxHp;}
+      if(item){item.maxHp+=25;item.hp=item.maxHp;} // baseMaxHp NOT mutated
     });
   }
   // Assembled — check if all 6 slots filled
@@ -3625,7 +3625,7 @@ function tickSide(b,side,tickMs){
       if(slotNum===2)speedMult*=(mods.slot2SpeedMult||1.0);
       if(slotNum===5)speedMult*=(mods.slot5SpeedMult||1.0);
     }
-    const effectiveActMs=(item.baseActMs||item.actMs)*speedMult;
+    const effectiveActMs=(item.actMs||item.baseActMs)*speedMult;
     if(effectiveActMs<=0)return; // technique items — no activation timer, effects via handleEvent only
     item.actElapsed+=tickMs;item.actPct=Math.min(100,item.actElapsed/effectiveActMs*100);
     if(item.actElapsed>=effectiveActMs){
@@ -3665,7 +3665,7 @@ function tickSide(b,side,tickMs){
           const behind=getItemBehind(item,board);
           if(behind&&!battleState.conductorBonuses[behind.id]){
             battleState.conductorBonuses[behind.id]=true;
-            behind.baseActMs=Math.max(500,behind.baseActMs-300);
+            behind.actMs=Math.max(500,(behind.actMs||behind.baseActMs)-300); // baseActMs NOT mutated
             log('a','🔌 Conductor — '+behind.name+' charges up! -0.3s');
           }
         }
