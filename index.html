@@ -2013,10 +2013,7 @@ function opp(s){return s==='player'?'enemy':'player';}
 function getBoard(s){return s==='player'?board:enemyBoard;}
 function allSlots(s){return[...getBoard(s).front,...getBoard(s).back];}
 function aliveItems(s){return allSlots(s).filter(i=>i&&!i.broken);}
-function potMult(){
-  if(activeSkills.find(s=>s.id==='potential'))return 1.25;
-  return 1.0;
-}
+
 function maxFrontSlots(){if(G.day<=1)return 1;if(G.day<=3)return 2;return 3;}
 function maxBackSlots(){if(G.day<=2)return 1;if(G.day<=4)return 2;return 3;}
 function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
@@ -2311,13 +2308,13 @@ function healItem(side,amount,src){
   const alive=aliveItems(side).filter(i=>i&&i.maxHp>0&&i.hp<i.maxHp);
   if(!alive.length)return;
   const t=alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
-  const actual=Math.min(t.maxHp-t.hp,Math.round(amount*(side==='player'?potMult():1)));
+  const actual=Math.min(t.maxHp-t.hp,Math.round(amount*(side==='player'?getSkillMods().globalMult:1)));
   if(actual<=0)return;
   t.hp+=actual;log('h',src+' heals '+t.name+' +'+actual);flashCard(t.id,side,'h');
   fireEvent({type:'ITEM_HEALED',item:t,side:side,value:actual,source:null});
 }
 function healAll(side,amount,src){
-  const mult=side==='player'?potMult():1;
+  const mult=side==='player'?getSkillMods().globalMult:1;
   aliveItems(side).filter(i=>i.maxHp>0).forEach(item=>{const actual=Math.min(item.maxHp-item.hp,Math.round(amount*mult));item.hp+=actual;});
   log('h',src+' heals all +'+amount);
   fireEvent({type:'ITEM_HEALED',item:null,side:side,value:amount,source:null});
@@ -2368,7 +2365,7 @@ function dealDmgBackRow(side,base,src){
   const oSide=opp(side);
   const b=oSide==='player'?board:enemyBoard;
   const back=b.back.filter(i=>i&&!i.broken&&i.maxHp>0);
-  if(!back.length){dealDmgRandom(side,base,src);return;}
+  if(!back.length){dealDmgRandom(side,dmg,src);return;}
   const t=back[Math.floor(Math.random()*back.length)];
   applyDmgTo(t,dmg,src,oSide);
 }
