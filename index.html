@@ -1089,8 +1089,9 @@ const MOM_CONSOLATION_ITEMS={
     return item;
   },
   river_stone:()=>{
-    const item=makeItem('river_stone','River Stone','🪨','Weapon',80,3500,'10 dmg random.',(s,a)=>dealDmgRandom(opp(s),a,'River Stone'),0,null,10);
+    const item=makeItem('river_stone',"Mom's Rock",'🪨','Definitely not Winston.',80,3500,'10 dmg random.',(s,a)=>dealDmgRandom(opp(s),a,"Mom's Rock"),0,null,10);
     item.itemRarity='beginner';item.itemType='weapon';
+    item.isWinston=false;
     item.flavorText="She said you could throw it if things got tough.";
     item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'}];
     return item;
@@ -5453,9 +5454,13 @@ const EVENTS=[
   {
     id:'the_bet',name:'The Bet',tier:'advanced',image:null,
     unlock:{minDay:3,maxDay:null,minWins:2,maxWins:5},
-    prompt:{title:'The Bet',flavor:"A stranger offers you gold, no strings attached — except your team takes the hit. 'Two stops,' he says. 'Then we're square.' You lose your next skill pick when it resolves."},
+    prompt:{
+      title:'The Bet',
+      flavor:'He seems very confident for someone betting against you.',
+      dialogue:'"Ten locations. Your items hit a little softer. Then you get to pick any node you want. Any one."',
+    },
     choices:[
-      {id:'accept',label:'Accept — +5 gold now, items -15% for 2 stops, lose next skill pick',cost:null,requiresCost:false,
+      {id:'accept',label:'Accept',cost:null,requiresCost:false,
        effect:{type:'bet_debuff'},
        outcomeText:null},
       {id:'decline',label:'Decline',cost:null,requiresCost:false,
@@ -5672,14 +5677,6 @@ function tickBurdens(){
   G.burdens.forEach(b=>{if(b&&b.onBattleStart)b.onBattleStart();});
 }
 
-function resolveBurden(burdenId){
-  // Remove burden when its release condition is met.
-  if(!G.burdens)return;
-  const before=G.burdens.length;
-  G.burdens=G.burdens.filter(b=>b.id!==burdenId);
-  const after=G.burdens.length;
-  if(before!==after)renderCounterStrip();
-}
 
 function renderCounterStrip(){
   const el=document.getElementById('counterStrip');
@@ -5704,14 +5701,15 @@ const EASTER_EGGS={
   priest:{
     id:'the_priest',name:'The Priest',tier:'beginner',image:null,
     unlock:null,
-    prompt:{title:'The Priest',flavor:'A wandering priest appears on the road. He says he sees potential in your path — and offers to help realign it.'},
+    prompt:{
+      title:'The Priest',
+      flavor:'A priest passes you on the road. He stops. He looks at you for a long moment.',
+      dialogue:'"Blessed are those who resist temptation. Also your item is sharper now."',
+    },
     choices:[
-      {id:'accept',label:'Accept his blessing — replace a skill',cost:null,requiresCost:false,
+      {id:'accept',label:'Receive his blessing',cost:null,requiresCost:false,
        effect:{type:'upgrade_pick'},
-       outcomeText:'The priest blesses you and vanishes into the morning.'},
-      {id:'decline',label:'Thank him and leave',cost:null,requiresCost:false,
-       effect:{type:'none'},
-       outcomeText:'He nods and walks away.'},
+       outcomeText:'He nods once and continues down the road.'},
     ],
     resolution:'immediate',tags:['free','secret'],easter_egg:true,
   },
