@@ -1102,14 +1102,6 @@ const MOM_CONSOLATION_ITEMS={
     item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];
     return item;
   },
-  moms_rock:()=>{
-    const item=makeItem('moms_rock',"Mom's Rock",'🪨','Weapon',100,3000,'12 dmg. On break: heal all 30.',(s,a)=>dealDmg(opp(s),a,"Mom's Rock"),0,null,12);
-    item.itemRarity='beginner';item.itemType='weapon';
-    item.flavorText="She said you could throw it if things got tough.";
-    item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||12,cls:'dmg'}];
-    item.onBreak=(self)=>{healAll('player',30,"Mom's Rock");};
-    return item;
-  },
 };
 function getTechniqueReading(key){
   const readings={
