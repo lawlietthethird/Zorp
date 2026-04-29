@@ -298,6 +298,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 <div class="page">
   <div class="encounter" id="encounterArea">
     <div class="enc-title" id="encTitle">LOADING...</div>
+    <div id="counterStrip" style="display:none;font-size:10px;color:var(--muted);gap:10px;padding:1px 0;flex-wrap:wrap;"></div>
     <div class="enc-body" id="encBody"></div>
   </div>
   <div class="player-section">
@@ -817,7 +818,7 @@ function renderSkillTree(){
 // ============================================================
 // STATE
 // ============================================================
-const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',monsterType:'fox',rivalName:'Rival',tutorialSeen:false,secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false,difficulty:localStorage.getItem('zorpDifficulty')||'easy'};
+const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',monsterType:'fox',rivalName:'Rival',tutorialSeen:false,secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false,betPending:false,difficulty:localStorage.getItem('zorpDifficulty')||'easy',metrics:{wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false},burdens:[],forkBonusGold:false};
 let bannedTypes=[];
 let rivalRecord={wins:parseInt(localStorage.getItem('rivalWins')||'0'),losses:parseInt(localStorage.getItem('rivalLosses')||'0')};
 let lastOfferedTypes=[];
@@ -829,7 +830,7 @@ let pendingSecondWindIdx=null;
 let secondWindClarityPending=false;
 
 const DAY1_NODES=[{id:'mom',icon:'🎁',label:"MOM'S GIFT"},{id:'shop1',icon:'🏪',label:'MARKET'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'shop2',icon:'🏪',label:'ROAD STALL'},{id:'rival',icon:'🏆',label:'RIVAL'}];
-const DAY2_NODES=[{id:'shop1',icon:'🏪',label:'MARKET'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'shop2',icon:'🏪',label:'ROAD STALL'},{id:'rival',icon:'🏆',label:'TRAINER'}];
+const DAY2_NODES=[{id:'shop1',icon:'🏪',label:'MARKET'},{id:'event',icon:'📜',label:'EVENT'},{id:'wild',icon:'⚔️',label:'WILD FIGHT'},{id:'event',icon:'📜',label:'EVENT'},{id:'rival',icon:'🏆',label:'TRAINER'}];
 function getDayNodes(){return(G.rivalDefeated&&G.day>1)?DAY2_NODES:DAY1_NODES;}
 
 // ============================================================
@@ -843,7 +844,7 @@ function makeItem(key,name,icon,tag,maxHp,actMs,desc,effectFn,cost=0,uses=null,b
     itemType,itemRarity,flavorText:'',sellOverride:null,
     handleEvent:null,baseSlowDuration:0,slowDuration:0,
     hitCount:null,baseHitCount:null,isTargetable:false,isTechnique:false,sellPopup:null,
-    stats:[],
+    stats:[],imbues:[],
     hp:maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,
     hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0};
 }
@@ -1099,6 +1100,14 @@ const MOM_CONSOLATION_ITEMS={
     item.itemRarity='beginner';item.itemType='armor';
     item.flavorText="Don't ask.";
     item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];
+    return item;
+  },
+  moms_rock:()=>{
+    const item=makeItem('moms_rock',"Mom's Rock",'🪨','Weapon',100,3000,'12 dmg. On break: heal all 30.',(s,a)=>dealDmg(opp(s),a,"Mom's Rock"),0,null,12);
+    item.itemRarity='beginner';item.itemType='weapon';
+    item.flavorText="She said you could throw it if things got tough.";
+    item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||12,cls:'dmg'}];
+    item.onBreak=(self)=>{healAll('player',30,"Mom's Rock");};
     return item;
   },
 };
@@ -2086,6 +2095,7 @@ function checkAndBreak(item,side){
     // Fire ITEM_BROKEN before marking broken — handlers fire while item still exists
     fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
     item.broken=true;
+    if(side==='player'&&G.metrics)G.metrics.itemsLostInBattle++;
     if(item.onBreak)item.onBreak(item);
     log('b',item.name+' BROKEN!');
     // Desperation — when player item breaks, boost all remaining player items' effects ×1.5
@@ -2223,6 +2233,7 @@ function applyDmgTo(target,dmg,src,side,attackerItem=null){
   }
   if(r>0){
     target.hp=Math.max(0,target.hp-r);
+    if(side==='enemy'&&G.metrics)G.metrics.totalDamageDealt+=r;
     // Pressure Plate — first player item to drop to/below 50% HP gains 40 plating
     if(isPlayer&&!battleState.pressurePlateFired&&(target.hp/target.maxHp)<=0.5&&target.hp>0&&activeSkills.some(s=>s.id==='pressure_plate')){
       battleState.pressurePlateFired=true;
@@ -2455,6 +2466,7 @@ function applyBurn(item,stacks,src,attackerSide='player'){
   if(!item||item.broken)return;
   if(attackerSide==='player'&&activeSkills.some(s=>s.id==='kindle'))stacks+=1;
   item.burnStack=(item.burnStack||0)+stacks;
+  if(attackerSide==='player'&&item._side==='enemy'&&G.metrics)G.metrics.burnApps++;
   log('d','🔥 '+src+' BURN '+item.name+' +'+stacks);
   fireEvent({type:'BURN_APPLIED',item:item,side:item._side||null,value:stacks,source:null});
   if(item._side==='enemy'&&battleState){
@@ -2533,6 +2545,7 @@ function applyPoison(target,stacks,src){
   }
   // Apply base stacks
   target.poisonStack=(target.poisonStack||0)+stacks;
+  if(target._side==='enemy'&&G.metrics)G.metrics.poisonApps++;
   // Virulence — every 3rd player-applied poison to an enemy adds 1 extra stack
   if(target._side==='enemy'&&activeSkills.some(s=>s.id==='virulence')){
     battleState.virulenceCount=(battleState.virulenceCount||0)+1;
@@ -2748,12 +2761,141 @@ function renderTrack(){
   },50);
 }
 function activateCurrentNode(){
+  // Tick burden countdowns once per location entry
+  if(G.burdens&&G.burdens.length){
+    G.burdens.forEach(b=>{if(b&&b.active!==false)b.countdown--;});
+    const expired=G.burdens.filter(b=>b&&b.countdown<=0);
+    if(expired.length){
+      fireBurdenHandler(expired[0],()=>loadCurrentNode());
+      return;
+    }
+    renderCounterStrip();
+  }
+  loadCurrentNode();
+}
+
+function loadCurrentNode(){
   const node=getDayNodes()[G.dayStep];
   if(node.id==='mom')showEncounterShop(0);
   else if(node.id==='shop1')showEncounterShop(1);
   else if(node.id==='wild')showEncounterWildPick();
   else if(node.id==='shop2')showEncounterShop(2);
+  else if(node.id==='event'){
+    const egg=checkEasterEggs(G.day,G.dayStep);
+    if(egg)showEvent(egg);
+    else showEvent(pickEvent(G.day));
+  }
   else if(node.id==='rival')showEncounterBattle('rival');
+}
+
+// ─── Burden Resolution ───────────────────────────────────────
+let _burdenContinue=null;
+let _burdenAutoTimeout=null;
+function _doBurdenContinue(){
+  if(!_burdenContinue)return;
+  const fn=_burdenContinue;
+  _burdenContinue=null;
+  clearTimeout(_burdenAutoTimeout);
+  fn();
+}
+
+function fireBurdenHandler(burden,onDone){
+  // Remove the expired burden first
+  G.burdens=G.burdens.filter(b=>b!==burden);
+  renderCounterStrip();
+  switch(burden.onResolve){
+    case 'butcher_collect':{
+      if(G.metrics)G.metrics.loanActive=false;
+      const taken=Math.min(2,G.gold);
+      G.gold=Math.max(0,G.gold-taken);
+      updateUI();
+      const msg=taken>0?`He smiles, counts your coins, and leaves. He took ${taken} 🪙.`:"He looks in your purse — empty. He shrugs and leaves.";
+      showBurdenPanel('🔪 THE BUTCHER RETURNS',msg,onDone);
+      break;
+    }
+    case 'bet_resolve':{
+      const pay=burden.payload;
+      if(pay&&pay.originalEffects){
+        [...board.front,...board.back].filter(i=>i).forEach(item=>{
+          if(pay.originalEffects[item.id]!=null)item.effectAmt=pay.originalEffects[item.id];
+        });
+        renderBoard();
+      }
+      G.betPending=true;
+      showBurdenPanel('🎲 THE BET RESOLVES',"Your items return to full strength. The skill pick you would've had? Spent.",onDone);
+      break;
+    }
+    default:
+      onDone();
+  }
+}
+
+function showBurdenPanel(title,bodyText,onDone){
+  _burdenContinue=onDone;
+  setEncTitle(title);
+  setEncBody(`<div style="display:flex;flex-direction:column;gap:14px;max-width:380px;margin:0 auto;padding:8px 0;">
+    <div style="font-size:26px;text-align:center;">⚠️</div>
+    <div style="font-weight:700;font-family:'Cinzel',serif;font-size:13px;text-align:center;letter-spacing:.08em;">${title}</div>
+    <div style="font-size:13px;color:var(--text);line-height:1.65;">${bodyText}</div>
+    <button class="btn btn-p" style="width:100%;margin-top:4px;" onclick="_doBurdenContinue()">Continue</button>
+  </div>`);
+  _burdenAutoTimeout=setTimeout(_doBurdenContinue,2500);
+}
+
+// ─── Upgrade Pick (Priest easter egg) ────────────────────────
+function showAnyNodeSkillPicker(){
+  const presId=getPrestigeNodeId();
+  const filled=getTreeNodes().filter(n=>n.id!==presId&&treeState[n.id]);
+  if(!filled.length){
+    showNotif('No filled nodes to upgrade.');
+    G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+    return;
+  }
+  setEncTitle('CHOOSE A NODE TO UPGRADE');
+  const nodeCards=filled.map(n=>`<div class="dc" onclick="betSelectNode('${n.id}')">
+    <div class="di">${rarityIcon(n.rarity)}</div>
+    <div class="dn">${n.label}</div>
+    <div class="dd">Currently: ${treeState[n.id]?treeState[n.id].name:'Empty'}</div>
+    <div class="dp sk-rarity rarity-${n.rarity}">${n.rarity}</div>
+  </div>`).join('');
+  setEncBody('<div class="dialogue"><div class="dlg-name">THE PRIEST</div>"Change your path. The Spirit has more to offer."</div><div class="draft-row" style="flex-wrap:wrap;">'+nodeCards+'</div>');
+}
+
+function betSelectNode(nodeId){
+  const node=getNodeById(nodeId);
+  const offers=getSkillOffers(node.rarity);
+  setEncTitle('CHOOSE A REPLACEMENT — '+node.rarity.toUpperCase());
+  const cards=offers.map(sk=>`
+    <div class="sk-card" onclick="betPickSkill('${nodeId}','${sk.id}','${sk.type||'generic'}')">
+      <div class="sk-icon">${sk.icon}</div>
+      <div class="sk-name">${sk.name}</div>
+      ${sk.type?`<div style="font-family:Cinzel,serif;font-size:7px;color:var(--dim);margin-bottom:2px">[${sk.type.toUpperCase()}]</div>`:''}
+      <div class="sk-desc">${sk.desc}</div>
+      <div class="sk-rarity rarity-${node.rarity}">${node.rarity}</div>
+    </div>
+  `).join('');
+  setEncBody(`<div class="skill-opts">${cards}</div>`);
+}
+
+function betPickSkill(nodeId,skillId,skillType){
+  const allSkills=[
+    ...SKILLS.prestige,...SKILLS.beginner,...SKILLS.intermediate,...SKILLS.advanced,...SKILLS.mastered,
+    ...(G.type?[
+      ...(TYPED_SKILLS[G.type]?.beginner||[]),
+      ...(TYPED_SKILLS[G.type]?.intermediate||[]),
+      ...(TYPED_SKILLS[G.type]?.advanced||[]),
+      ...(TYPED_SKILLS[G.type]?.mastered||[]),
+    ]:[]),
+  ];
+  const skill=allSkills.find(s=>s.id===skillId);
+  if(!skill)return;
+  const old=treeState[nodeId];
+  if(old)activeSkills=activeSkills.filter(s=>s!==old);
+  treeState[nodeId]=skill;
+  activeSkills.push(skill);
+  renderSkillTree();
+  showNotif(skill.name+' learned!');
+  G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
 }
 
 // ============================================================
@@ -3417,6 +3559,7 @@ function runBattle(type){
     });
   }
   registerSkillHandlers();
+  tickBurdens();
   fireEvent({type:'BATTLE_START',item:null,side:null,value:null,source:null});
   clearLog();hideItemInfo();log('x','Battle starts!');battleMs=0;
   const TICK=100,FATIGUE_START=30000;
@@ -3872,14 +4015,17 @@ function endBattle(result){
   let title,sub,btnText='CONTINUE →',btnOnclick='continueAfterResult()';
   if(result==='win'){
     if(currentBattleType==='wild'){
-      const roll=Math.random();const reward=roll<0.25?4:roll<0.75?5:6;
+      const roll=Math.random();let reward=roll<0.25?4:roll<0.75?5:6;
+      if(G.forkBonusGold){reward+=1;G.forkBonusGold=false;}
       const butcher=reward===4?'"You really beat the meat on this one." Coins in your hand, pity in his eyes.':reward===5?'"Decent enough." Coins on the counter, no further conversation.':'"Near perfect condition. They grade these now, you know. PSA 10, this one." You walk out richer than expected.';
       const monsterName=currentWildMonster?currentWildMonster.name:'Wild Monster';
       G.gold+=reward;title='MONSTER DEFEATED';
+      if(G.metrics){G.metrics.wildWins++;}
       sub='You haul the '+monsterName+' to the butcher.<br><br><em>'+butcher+'</em><br><br>Earned 🪙'+reward+' gold.';
       logEvent({event:'wild_battle',result:'win',wild_monster:monsterName,gold_reward:reward,board:boardSnapshot(),battle_duration_ms:battleMs});
     }else{
       G.wins++;G.rivalDefeated=true;title='VICTORY';
+      if(G.metrics){G.metrics.trainerWins++;G.metrics.winsWithoutHonorLoss=G.honor===G.maxHonor?G.metrics.winsWithoutHonorLoss+1:G.metrics.winsWithoutHonorLoss;}
       if(G.wins>=6){
         rivalRecord.wins++;localStorage.setItem('rivalWins',rivalRecord.wins);
         localStorage.setItem('zorpBeatGame','1');
@@ -3898,6 +4044,7 @@ function endBattle(result){
   }else{
     if(currentBattleType==='wild'){
       title='DEFEATED';
+      if(G.metrics)G.metrics.wildLosses++;
       const monsterName=currentWildMonster?currentWildMonster.name:'Wild Monster';
       logEvent({event:'wild_battle',result:'lose',wild_monster:monsterName,board:boardSnapshot(),battle_duration_ms:battleMs});
       if(G.day===1){
@@ -4191,6 +4338,11 @@ function banType(id){
 // SKILL PICK
 // ============================================================
 function showSkillPick(){
+  if(G.betPending){
+    G.betPending=false;
+    showNotif('The Bet claimed your skill pick.');
+    advanceDay();return;
+  }
   const available=getAvailableNodes();
   if(!available.length){
     // No nodes to unlock — advance day
@@ -4362,6 +4514,7 @@ function showItemInfo(item, isPlayerBoard=false, rowType=null, idx=null){
         const arr=rowType==='front'?board.front:board.back;
         arr[idx]=null;
         G.gold+=sellVal;
+        if(G.metrics)G.metrics.itemsSold++;
         logEvent({event:'item_sold',item_key:item.itemKey||item.id,item_rarity:item.itemRarity||'',gold_received:sellVal,upgrade_level:item.upgradeLevel||0});
         showNotif(item.name+' sold for 🪙'+sellVal+'g');
         hideItemInfo();
@@ -4450,7 +4603,7 @@ function refreshShopAffordability(){
 }
 function log(type,msg){const el=document.getElementById('battleLog');if(!el)return;const div=document.createElement('div');const t=(battleMs/1000).toFixed(1);const cls={d:'ld',h:'lh',s:'ls',a:'la',b:'lb',x:'lx'}[type]||'lx';div.innerHTML='<span class="lt">'+t+'s</span><span class="'+cls+'">'+msg+'</span>';el.appendChild(div);el.scrollTop=el.scrollHeight;}
 function clearLog(){const el=document.getElementById('battleLog');if(el)el.innerHTML='';}
-function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/6';document.getElementById('phaseBadge').textContent='DAY '+G.day;refreshShopAffordability();renderSecondWindNode();updateFoxImage();updateMonsterDisplay();}
+function updateUI(){document.getElementById('goldDisplay').textContent=G.gold;document.getElementById('honorFill').style.width=(G.honor/G.maxHonor*100)+'%';document.getElementById('honorText').textContent=G.honor+'/'+G.maxHonor;document.getElementById('winsDisplay').textContent='WINS: '+G.wins+'/6';document.getElementById('phaseBadge').textContent='DAY '+G.day;refreshShopAffordability();renderSecondWindNode();updateFoxImage();updateMonsterDisplay();renderCounterStrip();}
 function renderSecondWindNode(){
   let el=document.getElementById('secondWindNode');
   if(!G.secondWindBuff){
@@ -5037,6 +5190,8 @@ function startFromTitle(){
 function resetRun(){
   stopBattle();
   G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;G.consolationPending=false;G.monsterType='fox';G.monsterName='Kip';
+  G.metrics={wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false};
+  G.burdens=[];G.forkBonusGold=false;G.betPending=false;
   board={front:[null,null,null],back:[null,null,null]};
   enemyBoard={front:[null,null,null],back:[null,null,null]};
   getTreeNodes().forEach(n=>treeState[n.id]=null);
@@ -5081,6 +5236,474 @@ function logEvent(data){
   }catch(e){
     console.log('analytics error',e);
   }
+}
+
+// ============================================================
+// EVENT SYSTEM
+// ============================================================
+/*
+ * Event structure (new-style):
+ * {
+ *   id, name, tier, image, unlock:{minDay,maxDay,minWins,maxWins,...},
+ *   prompt:{title, flavor},
+ *   choices:[{id, label, cost:{type,amount}|null, requiresCost, effect:{type,...}, outcomeText}],
+ *   tags, easter_egg
+ * }
+ * tier: 'beginner'|'intermediate'|'advanced'  (weights: beginner=3, intermediate=2, advanced=1)
+ * requiresCost: if true, button greys out when player can't afford. If false, cost taken regardless (forced).
+ * effect.type: 'imbue_pick'|'imbue_all'|'fork_left'|'fork_right'
+ */
+
+// imbueItem — permanently modifies an item. Persists across battles.
+// type 'damage': increases effectAmt AND baseEffect by amount (both must move so resetItemBattleState keeps it).
+// type 'hp': increases maxHp AND baseMaxHp by amount, sets hp=maxHp.
+// type 'burn_on_act'|'poison_on_act': wraps handleEvent to fire on ITEM_ACTIVATED — never touches base fields.
+// Pushes {type,amount} to item.imbues[] for tracking.
+function imbueItem(item,type,amount){
+  if(!item)return;
+  if(!item.imbues)item.imbues=[];
+  if(type==='damage'){
+    item.effectAmt=(item.effectAmt||0)+amount;
+    item.baseEffect=(item.baseEffect||0)+amount;
+    item.imbues.push({type,amount});
+  }else if(type==='hp'){
+    item.maxHp=(item.maxHp||0)+amount;
+    item.baseMaxHp=(item.baseMaxHp||0)+amount;
+    item.hp=item.maxHp;
+    item.imbues.push({type,amount});
+  }else if(type==='burn_on_act'||type==='poison_on_act'){
+    const prev=item.handleEvent;
+    item.handleEvent=(event)=>{
+      if(prev)prev(event);
+      if(event.type==='ITEM_ACTIVATED'&&event.item===item){
+        const t=randomEnemyItem('enemy');
+        if(t){
+          if(type==='burn_on_act')applyBurn(t,amount,item.name,'player');
+          else applyPoison(t,amount,item.name);
+        }
+      }
+    };
+    item.imbues.push({type,amount});
+  }
+}
+
+// showBoardPicker — renders all non-null player items as selectable cards.
+// promptText: instruction shown above cards. onPick(item): called with chosen item.
+function showBoardPicker(promptText,onPick){
+  const items=[...board.front,...board.back].filter(i=>i);
+  if(!items.length){showNotif('No items on board.');return;}
+  setEncTitle('CHOOSE AN ITEM');
+  const cards=items.map((item,idx)=>{
+    const icon=getItemIcon(item);
+    const iconHtml=(typeof icon==='string'&&icon.startsWith('http'))
+      ?`<img src="${icon}" style="width:26px;height:26px;object-fit:contain;">`
+      :`${icon}`;
+    return `<div class="dc" onclick="boardPickerSelect(${idx})">
+      <div class="di">${iconHtml}</div>
+      <div class="dn">${item.name}</div>
+      <div class="dd">${item.desc||''}</div>
+    </div>`;
+  }).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">${promptText}</div>
+    <div class="draft-row" style="flex-wrap:wrap;">${cards}</div>`);
+  window._boardPickerItems=items;
+  window._boardPickerOnPick=onPick;
+}
+function boardPickerSelect(idx){
+  const item=window._boardPickerItems&&window._boardPickerItems[idx];
+  const cb=window._boardPickerOnPick;
+  window._boardPickerItems=null;window._boardPickerOnPick=null;
+  if(item&&cb)cb(item);
+}
+
+// getTypedItemKeys — returns all item keys for a given element type id.
+function getTypedItemKeys(typeId){
+  const poolMap={
+    electric:[...Object.keys(ELECTRIC_ITEMS),...(TYPED_ITEM_POOLS.electric||[])],
+    fire:[...Object.keys(BURN_ITEMS),...(TYPED_ITEM_POOLS.fire||[])],
+    water:[...Object.keys(WATER_ITEMS),...(TYPED_ITEM_POOLS.water||[])],
+    steel:[...Object.keys(STEEL_ITEMS),...(TYPED_ITEM_POOLS.steel||[])],
+    toxic:[...Object.keys(POISON_ITEMS),...(TYPED_ITEM_POOLS.toxic||[])],
+  };
+  return poolMap[typeId]||[];
+}
+
+// showTypedShopPicker — shows 3 type cards. Player picks one, then browses that type's items.
+// After buying/leaving, skipShop() advances past the wild node to the second event.
+// Caller must set G.dayStep=2 (wild node index) before calling this so skipShop lands at index 3.
+function showTypedShopPicker(){
+  setEncTitle('CHOOSE A SHOP');
+  const playerType=G.type;
+  const allTypes=[...TYPES];
+  let displayTypes;
+  if(playerType){
+    const pt=allTypes.find(t=>t.id===playerType);
+    const others=allTypes.filter(t=>t.id!==playerType).sort(()=>Math.random()-.5).slice(0,2);
+    displayTypes=[pt,...others].filter(Boolean);
+  }else{
+    displayTypes=allTypes.sort(()=>Math.random()-.5).slice(0,3);
+  }
+  const cards=displayTypes.map(t=>
+    `<div class="dc" onclick="pickTypedShop('${t.id}')">
+      <div class="di" style="font-size:32px;">${t.icon}</div>
+      <div class="dn">${t.name}</div>
+      <div class="dd" style="font-size:8px;">${t.desc}</div>
+    </div>`
+  ).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Choose a typed shop to visit:</div>
+    <div class="draft-row">${cards}</div>`);
+}
+function pickTypedShop(typeId){
+  setEncTitle('TYPED SHOP');
+  shopItemCache={};
+  const allKeys=getTypedItemKeys(typeId);
+  const slots=[...allKeys].sort(()=>Math.random()-.5).slice(0,3);
+  const cards=slots.map(key=>{
+    const f=getItemFactory(key);if(!f)return'';
+    const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
+    return `<div class="dc ${(!can&&t.cost>0)?'cant':''}" data-item-cost="${t.cost}" onclick="buyItem('${key}',false)">
+      <div class="di">${getItemIcon(t)}</div>
+      <div class="dn">${t.name}</div>
+      <div class="dd">${t.desc}</div>
+      <div class="dp">🪙 ${t.cost}</div>
+      <div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div>
+    </div>`;
+  }).join('');
+  setEncBody(`<div class="draft-row">${cards}</div>
+    <div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
+}
+
+// ============================================================
+
+const EVENTS=[
+  // ── THE ROCK ──────────────────────────────────────────────
+  {
+    id:'the_rock',name:'The Rock',tier:'beginner',image:null,
+    unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6},
+    prompt:{title:'The Rock',flavor:'There is a rock. It has something written on it.'},
+    choices:[
+      {id:'damage',label:'+5 Damage to one item',cost:null,requiresCost:false,
+       effect:{type:'imbue_pick',imbueType:'damage',amount:5},
+       outcomeText:'The rock says nothing else.'},
+      {id:'hp',label:'+10 HP to one item',cost:null,requiresCost:false,
+       effect:{type:'imbue_pick',imbueType:'hp',amount:10},
+       outcomeText:'The rock says nothing else.'},
+    ],
+    resolution:'immediate',tags:['free','imbue'],easter_egg:false,
+  },
+  // ── THE SHARPENING STONE ──────────────────────────────────
+  {
+    id:'sharpening_stone',name:'The Sharpening Stone',tier:'beginner',image:null,
+    unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6},
+    prompt:{title:'The Sharpening Stone',flavor:"It's just sitting there."},
+    choices:[
+      {id:'free',label:'+3 Damage to one item',cost:null,requiresCost:false,
+       effect:{type:'imbue_pick',imbueType:'damage',amount:3},
+       outcomeText:'Sharp enough.'},
+      {id:'paid',label:'+7 Damage to one item — 2 gold',cost:{type:'gold',amount:2},requiresCost:true,
+       effect:{type:'imbue_pick',imbueType:'damage',amount:7},
+       outcomeText:'Much sharper.'},
+    ],
+    resolution:'immediate',tags:['free','paid','imbue'],easter_egg:false,
+  },
+  // ── THE TAX COLLECTOR ─────────────────────────────────────
+  {
+    id:'tax_collector',name:'The Tax Collector',tier:'intermediate',image:null,
+    unlock:{minDay:2,maxDay:8,minWins:0,maxWins:6},
+    prompt:{title:'The Tax Collector',flavor:"He's very polite about it."},
+    choices:[
+      // requiresCost:false — gold taken regardless (min of 2, G.gold).
+      // He is not leaving without something.
+      {id:'pay',label:'Pay your taxes',cost:{type:'gold',amount:2},requiresCost:false,
+       effect:{type:'imbue_all',imbueType:'damage',amount:3},
+       outcomeText:null},
+    ],
+    resolution:'immediate',tags:['forced','imbue'],easter_egg:false,
+  },
+  // ── THE FORK IN THE ROAD ──────────────────────────────────
+  {
+    id:'fork_in_the_road',name:'The Fork In The Road',tier:'beginner',image:null,
+    unlock:{minDay:1,maxDay:6,minWins:0,maxWins:6},
+    prompt:{title:'The Fork In The Road',flavor:'Left looks harder. Right looks expensive.'},
+    choices:[
+      {id:'left',label:'Take the fight — +1 gold bonus on win',cost:null,requiresCost:false,
+       effect:{type:'fork_left'},
+       outcomeText:'You take the harder road.'},
+      {id:'right',label:'Skip the fight — choose a typed shop',cost:null,requiresCost:false,
+       effect:{type:'fork_right'},
+       outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free','fork'],easter_egg:false,
+  },
+  // ── THE BUTCHER (SMALL) ───────────────────────────────────
+  {
+    id:'butcher_small',name:'The Butcher',tier:'intermediate',image:null,
+    unlock:{minDay:2,maxDay:7,minWins:1,maxWins:5,excludeFlags:{loanActive:true}},
+    prompt:{title:'The Butcher',flavor:"He says he can make your team hit harder. Payment can wait, he says. It always can."},
+    choices:[
+      {id:'deal',label:'Take the deal — +5 damage to one item, pay 2 gold in 3 stops',cost:null,requiresCost:false,
+       effect:{type:'imbue_pick',imbueType:'damage',amount:5},
+       burden:{id:'butcher_loan',icon:'🔪',countdown:3,unit:'',colorAmber:2,colorRed:1,onResolve:'butcher_collect',active:true},
+       outcomeText:null},
+      {id:'decline',label:'Decline',cost:null,requiresCost:false,
+       effect:{type:'butcher_decline'},
+       outcomeText:'He shrugs and walks on.'},
+    ],
+    resolution:'immediate',tags:['burden','imbue'],easter_egg:false,
+  },
+  // ── THE BUTCHER (LARGE) ───────────────────────────────────
+  {
+    id:'butcher_large',name:'The Butcher — Bigger Offer',tier:'advanced',image:null,
+    unlock:{minDay:4,maxDay:null,minWins:2,maxWins:5,excludeFlags:{loanActive:true}},
+    prompt:{title:'The Butcher',flavor:"He's back. Bigger offer this time. Bigger debt."},
+    choices:[
+      {id:'deal',label:'Take the deal — +8 damage to all items, pay 2 gold in 3 stops',cost:null,requiresCost:false,
+       effect:{type:'imbue_all',imbueType:'damage',amount:8},
+       burden:{id:'butcher_loan',icon:'🔪',countdown:3,unit:'',colorAmber:2,colorRed:1,onResolve:'butcher_collect',active:true},
+       outcomeText:null},
+      {id:'decline',label:'Decline',cost:null,requiresCost:false,
+       effect:{type:'butcher_decline'},
+       outcomeText:'He shrugs and walks on.'},
+    ],
+    resolution:'immediate',tags:['burden','imbue'],easter_egg:false,
+  },
+  // ── THE BET ───────────────────────────────────────────────
+  {
+    id:'the_bet',name:'The Bet',tier:'advanced',image:null,
+    unlock:{minDay:3,maxDay:null,minWins:2,maxWins:5},
+    prompt:{title:'The Bet',flavor:"A stranger offers you gold, no strings attached — except your team takes the hit. 'Two stops,' he says. 'Then we're square.' You lose your next skill pick when it resolves."},
+    choices:[
+      {id:'accept',label:'Accept — +5 gold now, items -15% for 2 stops, lose next skill pick',cost:null,requiresCost:false,
+       effect:{type:'bet_debuff'},
+       outcomeText:null},
+      {id:'decline',label:'Decline',cost:null,requiresCost:false,
+       effect:{type:'none'},
+       outcomeText:'Wise.'},
+    ],
+    resolution:'immediate',tags:['burden','risk'],easter_egg:false,
+  },
+];
+
+let currentEvent=null;
+
+function getEventPool(day){
+  return EVENTS.filter(e=>{
+    if(!e)return false;
+    const u=e.unlock;
+    if(!u)return true;
+    if(u.minDay!=null&&day<u.minDay)return false;
+    if(u.maxDay!=null&&day>u.maxDay)return false;
+    if(u.minWins!=null&&G.wins<u.minWins)return false;
+    if(u.maxWins!=null&&G.wins>u.maxWins)return false;
+    if(u.excludeFlags&&G.metrics){
+      for(const [field,val] of Object.entries(u.excludeFlags)){
+        if(val===true){if(G.metrics[field])return false;}
+        else if(G.metrics[field]===val)return false;
+      }
+    }
+    return true;
+  });
+}
+
+function pickEvent(day){
+  const pool=getEventPool(day);
+  if(!pool.length)return null;
+  // Weight by tier: beginner=3, intermediate=2, advanced=1
+  const weights={beginner:3,intermediate:2,advanced:1,common:3,uncommon:2,rare:1};
+  const weighted=[];
+  pool.forEach(e=>{const w=weights[e.tier]||2;for(let i=0;i<w;i++)weighted.push(e);});
+  return weighted[Math.floor(Math.random()*weighted.length)];
+}
+
+function showEvent(event){
+  if(!event){
+    // No eligible events — skip to next node
+    G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+    return;
+  }
+  currentEvent=event;
+  setEncTitle('EVENT');
+  // Support both old structure (desc/icon) and new structure (prompt.flavor/image)
+  const title=(event.prompt&&event.prompt.title)||event.name;
+  const flavor=(event.prompt&&event.prompt.flavor)||event.desc||'';
+  const icon=event.image||event.icon||'📜';
+  const choicesHtml=event.choices.map((c,i)=>{
+    const hasCost=c.cost&&c.cost.type==='gold';
+    const cantAfford=c.requiresCost&&hasCost&&G.gold<c.cost.amount;
+    const costLabel=hasCost?` (🪙${c.cost.amount})`:'';
+    const style=cantAfford?'opacity:.4;pointer-events:none;':'';
+    return `<button class="btn btn-p" style="margin:4px 0;width:100%;text-align:left;padding:10px 14px;${style}" onclick="${cantAfford?'':('resolveEventChoice('+i+')')}">${c.label}${costLabel}</button>`;
+  }).join('');
+  setEncBody(`<div style="display:flex;flex-direction:column;gap:14px;max-width:380px;margin:0 auto;padding:8px 0;">
+    <div style="font-size:26px;text-align:center;">${icon}</div>
+    <div style="font-weight:700;font-size:15px;text-align:center;letter-spacing:.04em;">${title}</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.65;">${flavor}</div>
+    <div style="display:flex;flex-direction:column;gap:2px;">${choicesHtml}</div>
+  </div>`);
+}
+
+function resolveEventChoice(choiceIdx){
+  const event=currentEvent;
+  if(!event)return;
+  const choice=event.choices[choiceIdx];
+  if(!choice)return;
+  // Track metrics
+  if(choiceIdx===0){if(G.metrics)G.metrics.eventsCompleted.push(event.id);}
+  else{if(G.metrics)G.metrics.eventsDeclined.push(event.id);}
+  currentEvent=null;
+
+  // Legacy: choice has a resolve() function (Phase 1 compatibility)
+  if(choice.resolve){choice.resolve();return;}
+
+  // Apply gold cost (taken regardless of requiresCost — already gated in showEvent)
+  if(choice.cost&&choice.cost.type==='gold'){
+    G.gold=Math.max(0,G.gold-Math.min(choice.cost.amount,G.gold));
+    updateUI();
+  }
+
+  // Effect handler
+  const effect=choice.effect;
+  if(!effect){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+
+  // Add burden if defined on choice (non-bet_debuff — that adds its own inline)
+  if(choice.burden&&effect.type!=='bet_debuff'){
+    const b=Object.assign({},choice.burden);
+    if(!b.payload)b.payload={};
+    G.burdens.push(b);
+    if(G.metrics){G.metrics.burdensTaken++;if(b.onResolve==='butcher_collect')G.metrics.loanActive=true;}
+    renderCounterStrip();
+  }
+
+  switch(effect.type){
+    case 'none':
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      return;
+
+    case 'gold':
+      G.gold=Math.max(0,G.gold+effect.amount);
+      updateUI();
+      showNotif((effect.amount>=0?'+':'')+effect.amount+' gold!');
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      return;
+
+    case 'imbue_pick':
+      showBoardPicker('Choose an item to imbue:',(item)=>{
+        imbueItem(item,effect.imbueType,effect.amount);
+        const gain=effect.imbueType==='damage'?'+'+effect.amount+' Damage':'+'+effect.amount+' HP';
+        showNotif(gain+' applied to '+item.name+'!');
+        G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+      });
+      return;
+
+    case 'imbue_all':{
+      const imbueAllItems=[...board.front,...board.back].filter(i=>i);
+      imbueAllItems.forEach(item=>{imbueItem(item,effect.imbueType,effect.amount);});
+      const imbueLabel=effect.imbueType==='damage'?'Damage':'HP';
+      showNotif('+'+effect.amount+' '+imbueLabel+' to all items!');
+      G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+      return;
+    }
+
+    case 'fork_left':
+      G.forkBonusGold=true;
+      showNotif('+1 gold bonus on wild win!');
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      return;
+
+    case 'fork_right':
+      // Set dayStep to point at wild node (index 2) so skipShop() increments to 3 (second event)
+      G.dayStep=2;
+      showTypedShopPicker();
+      return;
+
+    case 'butcher_decline':
+      if(G.metrics)G.metrics.butcherDeclines++;
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      return;
+
+    case 'bet_debuff':{
+      // Grant upfront gold, capture originals, apply -15% debuff, add burden with payload
+      G.gold+=5;
+      const originals={};
+      [...board.front,...board.back].filter(i=>i).forEach(item=>{
+        originals[item.id]=item.effectAmt;
+        item.effectAmt=Math.max(1,Math.floor((item.effectAmt||0)*0.85));
+      });
+      const betBurden={id:'the_bet',icon:'🎲',countdown:2,unit:'',colorAmber:2,colorRed:1,onResolve:'bet_resolve',active:true,payload:{originalEffects:originals}};
+      G.burdens.push(betBurden);
+      if(G.metrics)G.metrics.burdensTaken++;
+      updateUI();renderBoard();renderCounterStrip();
+      showNotif('+5 gold! Items weakened for 2 stops...');
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      return;
+    }
+
+    case 'upgrade_pick':
+      showAnyNodeSkillPicker();
+      return;
+
+    default:
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+  }
+}
+
+function tickBurdens(){
+  // Called at battle start. Apply active burden effects each battle.
+  if(!G.burdens||!G.burdens.length)return;
+  G.burdens.forEach(b=>{if(b&&b.onBattleStart)b.onBattleStart();});
+}
+
+function resolveBurden(burdenId){
+  // Remove burden when its release condition is met.
+  if(!G.burdens)return;
+  const before=G.burdens.length;
+  G.burdens=G.burdens.filter(b=>b.id!==burdenId);
+  const after=G.burdens.length;
+  if(before!==after)renderCounterStrip();
+}
+
+function renderCounterStrip(){
+  const el=document.getElementById('counterStrip');
+  if(!el)return;
+  if(!G.metrics){el.style.display='none';return;}
+  const parts=[];
+  parts.push(`<span style="opacity:.55;">⚔️ ${G.metrics.wildWins}W</span>`);
+  parts.push(`<span style="opacity:.55;">🏆 ${G.metrics.trainerWins}W</span>`);
+  if(G.metrics.itemsLostInBattle>0)parts.push(`<span style="opacity:.55;">💀 ${G.metrics.itemsLostInBattle}</span>`);
+  if(G.burdens&&G.burdens.length){
+    G.burdens.forEach(b=>{
+      const color=b.colorRed!=null&&b.countdown<=b.colorRed?'var(--honor-red)':
+                  b.colorAmber!=null&&b.countdown<=b.colorAmber?'var(--gold)':'var(--dim)';
+      parts.push(`<span style="color:${color};letter-spacing:.02em;">${b.icon} ${b.countdown}</span>`);
+    });
+  }
+  el.innerHTML=parts.join('');
+  el.style.display='flex';
+}
+
+const EASTER_EGGS={
+  priest:{
+    id:'the_priest',name:'The Priest',tier:'beginner',image:null,
+    unlock:null,
+    prompt:{title:'The Priest',flavor:'A wandering priest appears on the road. He says he sees potential in your path — and offers to help realign it.'},
+    choices:[
+      {id:'accept',label:'Accept his blessing — replace a skill',cost:null,requiresCost:false,
+       effect:{type:'upgrade_pick'},
+       outcomeText:'The priest blesses you and vanishes into the morning.'},
+      {id:'decline',label:'Thank him and leave',cost:null,requiresCost:false,
+       effect:{type:'none'},
+       outcomeText:'He nods and walks away.'},
+    ],
+    resolution:'immediate',tags:['free','secret'],easter_egg:true,
+  },
+};
+
+function checkEasterEggs(day,locationIndex){
+  if(G.metrics&&G.metrics.butcherDeclines>=2){
+    G.metrics.butcherDeclines=0; // Reset so Priest doesn't trigger again immediately
+    return EASTER_EGGS.priest;
+  }
+  return null;
 }
 
 // ============================================================
