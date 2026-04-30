@@ -2779,18 +2779,7 @@ function renderTrack(){
   },50);
 }
 function activateCurrentNode(){
-  // Fire any onLocationEnter burden callbacks (future-proofing)
-  tickBurdens();
-  // Tick burden countdowns once per location entry
-  if(G.burdens&&G.burdens.length){
-    G.burdens.forEach(b=>{if(b&&b.active!==false)b.countdown--;});
-    const expired=G.burdens.filter(b=>b&&b.countdown<=0);
-    if(expired.length){
-      renderCounterStrip();
-      fireBurdenHandler(expired[0],()=>loadCurrentNode());
-      return;
-    }
-  }
+  if(tickBurdens())return;
   renderCounterStrip();
   loadCurrentNode();
 }
@@ -3679,7 +3668,6 @@ function runBattle(type){
     });
   }
   registerSkillHandlers();
-  tickBurdens();
   fireEvent({type:'BATTLE_START',item:null,side:null,value:null,source:null});
   clearLog();hideItemInfo();log('x','Battle starts!');battleMs=0;
   const TICK=100,FATIGUE_START=30000;
@@ -6597,11 +6585,28 @@ function resolveEventChoice(choiceIdx){
       showEncounterWildPick();
       return;
 
-    case 'upgrade_pick':
-      // Priest easter egg: record discovery so Gossip hint[1] can detect it
+    case 'upgrade_pick': {
+      // Priest easter egg awards an item upgrade — NOT a skill node.
+      // (The Bet awards skill nodes via bet_resolve. Keep these separate.)
+      const upgradeable=[...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3);
+      if(!upgradeable.length){showNotif('All items already fully upgraded.');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
       if(event&&event.id==='the_priest'&&G.metrics&&!G.metrics.eventsCompleted.includes('priest')){G.metrics.eventsCompleted.push('priest');}
-      showAnyNodeSkillPicker();
+      window._boardPickerItems=upgradeable;
+      window._boardPickerOnPick=(picked)=>{
+        upgradeItem(picked);
+        renderBoard();
+        showBurdenPanel('THE PRIEST',picked.name+' upgraded.',()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();});
+        clearTimeout(_burdenAutoTimeout);
+      };
+      setEncTitle('CHOOSE AN ITEM TO UPGRADE');
+      const ucards=upgradeable.map((item,idx)=>{
+        const icon=getItemIcon(item);
+        const iconHtml=(typeof icon==='string'&&icon.startsWith('http'))?`<img src="${icon}" style="width:26px;height:26px;object-fit:contain;">`:`${icon}`;
+        return`<div class="dc" onclick="boardPickerSelect(${idx})"><div class="di">${iconHtml}</div><div class="dn">${item.name}</div><div class="dd">Tier ${item.upgradeLevel} → ${item.upgradeLevel+1}</div></div>`;
+      }).join('');
+      setEncBody(`<div style="font-size:13px;color:var(--dim);margin-bottom:10px;">Choose an item to upgrade.</div><div class="draft-row" style="flex-wrap:wrap;">${ucards}</div>`);
       return;
+    }
 
     case 'imbue_random_item_random_type': {
       const kidItems=[...board.front,...board.back].filter(i=>i&&!i.broken);
@@ -6843,6 +6848,7 @@ function resolveEventChoice(choiceIdx){
     }
 
     case 'gambler_throw': {
+      if(G.honor<3){showNotif('Not enough honor.');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
       G.honor=Math.max(0,G.honor-3);updateUI();
       const gPool=G.type?getItemsOfRarity('advanced',[]):getItemsOfRarity('advanced');
       if(!gPool.length){showNotif('No advanced items available!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
@@ -6869,7 +6875,7 @@ function resolveEventChoice(choiceIdx){
 
     case 'gambler_refuse': {
       const gRefOrig={};
-      const gRefTargets=[board.front[1],board.back[1]].filter(Boolean);
+      const gRefTargets=[...board.front,...board.back].filter(i=>i&&!i.broken);
       gRefTargets.forEach(item=>{
         gRefOrig[item.id]=item.maxHp;
         item.maxHp=Math.round(item.maxHp*0.75);
@@ -7096,8 +7102,9 @@ function hermitIndulgePick(idx){
   downgradeItem(item);
   imbueItem(item,'burn_on_act',2);
   if(G.metrics&&!G.metrics.npcsMet.includes('hermit'))G.metrics.npcsMet.push('hermit');
-  showNotif(item.name+' — demoted one tier, now applies 2 burn on activation!');
-  G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+  renderBoard();
+  showBurdenPanel('THE HERMIT','Your mind is on fire. So is everything else.',()=>{G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();});
+  clearTimeout(_burdenAutoTimeout);
 }
 
 // ── Cartographer two-item upgrade ─────────────────────────────
@@ -7285,27 +7292,68 @@ function appraiserSell(idx){
 // ── Collector two-step trade ──────────────────────────────────
 function collectorFirstPick(idx){
   const item=window._collectorItems&&window._collectorItems[idx];if(!item)return;
-  // Remove from board (no gold returned)
+  window._collectorItems=null;
+  // Remove from board — no gold returned (this is a trade, not a sale)
   for(let i=0;i<board.front.length;i++){if(board.front[i]===item){board.front[i]=null;break;}}
   for(let i=0;i<board.back.length;i++){if(board.back[i]===item){board.back[i]=null;break;}}
   renderBoard();
-  window._collectorGiven=item;
-  const remaining=[...board.front,...board.back].filter(i=>i);
-  if(!remaining.length){showNotif('Nothing left to imbue!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
-  window._collectorRemaining=remaining;
-  setEncTitle('THE COLLECTOR — KEEP');
-  const ccards2=remaining.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="collectorSecondPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div></div>`;}).join('');
-  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">"Choose what to strengthen."</div><div class="draft-row" style="flex-wrap:wrap;">${ccards2}</div>`);
+  G._collectorTier=item.itemRarity||'beginner';
+  showBurdenPanel('THE COLLECTOR','He takes it. He seems satisfied.',()=>{_collectorGiveNew();});
+  clearTimeout(_burdenAutoTimeout);
 }
+
+function _collectorGiveNew(){
+  // Draw one item one tier above what was given
+  const tierMap={beginner:'intermediate',intermediate:'advanced',advanced:'mastered',mastered:'mastered'};
+  const newTier=tierMap[G._collectorTier]||'intermediate';
+  const pool=getItemsOfRarity(newTier);
+  G._collectorTier=null;
+  if(!pool.length){showNotif('Nothing to trade.');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+  const newKey=pool[Math.floor(Math.random()*pool.length)];
+  const f=getItemFactory(newKey);
+  if(!f){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+  const newBase=f();
+  const newItem=Object.assign({},newBase,{
+    id:newKey+'_'+Math.random().toString(36).slice(2,7),
+    hp:newBase.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+    broken:false,uses:newBase.maxUses,upgradeLevel:0,effectAmt:newBase.baseEffect,imbues:[]
+  });
+  // Try auto-place in first available unlocked empty slot
+  const mf=maxFrontSlots();const mb=maxBackSlots();
+  const ok=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  let placed=false;
+  for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&ok('front',i)){board.front[i]=newItem;applySlotBonuses(newItem,'front');placed=true;}}
+  if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&ok('back',i)){board.back[i]=newItem;applySlotBonuses(newItem,'back');placed=true;}}
+  if(placed){
+    renderBoard();
+    showBurdenPanel('THE COLLECTOR','"Collecting is about more than just the things."\n\n'+newItem.name+' received.',()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();});
+    clearTimeout(_burdenAutoTimeout);
+  }else{
+    // Board full — show swap picker
+    G._collectorNewItem=newItem;
+    const existing=[...board.front,...board.back].filter(i=>i);
+    window._collectorSwapItems=existing;
+    setEncTitle('THE COLLECTOR — SWAP');
+    const ccards=existing.map((it,i)=>{
+      const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
+      const sv=Math.ceil(getSellValue(it)*0.5);
+      return`<div class="dc" onclick="collectorSecondPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Sell for 🪙${sv}</div></div>`;
+    }).join('');
+    setEncBody(`<div style="font-size:13px;color:var(--dim);margin-bottom:10px;">Board full. Choose an item to swap for ${newItem.name}.</div><div class="draft-row" style="flex-wrap:wrap;">${ccards}</div>`);
+  }
+}
+
 function collectorSecondPick(idx){
-  const item=window._collectorRemaining&&window._collectorRemaining[idx];if(!item)return;
-  window._collectorRemaining=null;window._collectorGiven=null;
-  const colTypes=[['damage',8],['hp',20],['burn_on_act',2],['poison_on_act',1]];
-  const [cType,cAmt]=colTypes[Math.floor(Math.random()*colTypes.length)];
-  imbueItem(item,cType,cAmt);
-  const cDesc=cType==='damage'?'+8 Damage':cType==='hp'?'+20 HP':cType==='burn_on_act'?'+2 Burn on act':'+1 Poison on act';
-  showNotif(item.name+' — '+cDesc+'!');
-  G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+  const existing=window._collectorSwapItems&&window._collectorSwapItems[idx];if(!existing)return;
+  const newItem=G._collectorNewItem;if(!newItem)return;
+  window._collectorSwapItems=null;G._collectorNewItem=null;
+  // Replace existing item in its board slot with new item; sell existing at 50%
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===existing){board.front[i]=newItem;applySlotBonuses(newItem,'front');break;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===existing){board.back[i]=newItem;applySlotBonuses(newItem,'back');break;}}
+  G.gold+=Math.ceil(getSellValue(existing)*0.5);
+  updateUI();renderBoard();
+  showBurdenPanel('THE COLLECTOR','"Collecting is about more than just the things."\n\n'+newItem.name+' received.',()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();});
+  clearTimeout(_burdenAutoTimeout);
 }
 
 // ── Stranger helpers ──────────────────────────────────────────
@@ -7361,9 +7409,22 @@ function strangerShopSkip(){const onDone=window._strangerShopOnDone;window._stra
 function strangerSwapSkip(){const onDone=window._strangerSwapOnDone;window._strangerSwapItems=null;window._strangerSwapOnDone=null;if(onDone)onDone();}
 
 function tickBurdens(){
-  // Called at battle start. Apply active burden effects each battle.
-  if(!G.burdens||!G.burdens.length)return;
-  G.burdens.forEach(b=>{if(b&&b.onBattleStart)b.onBattleStart();});
+  // Called once per location entry from activateCurrentNode.
+  // Decrements all active burden countdowns, fires handlers for expired ones,
+  // then resumes loadCurrentNode after all panels are dismissed.
+  // Returns true if any burden expired (caller must return — tickBurdens owns flow).
+  if(!G.burdens||!G.burdens.length)return false;
+  G.burdens.forEach(b=>{if(b&&b.active!==false)b.countdown--;});
+  const expired=G.burdens.filter(b=>b&&b.countdown<=0);
+  if(!expired.length)return false;
+  G.burdens=G.burdens.filter(b=>b.countdown>0);
+  renderCounterStrip();
+  function fireNext(i){
+    if(i>=expired.length){loadCurrentNode();return;}
+    fireBurdenHandler(expired[i],()=>fireNext(i+1));
+  }
+  fireNext(0);
+  return true;
 }
 
 
