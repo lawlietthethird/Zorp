@@ -5497,7 +5497,7 @@ function getTypedItemKeys(typeId){
     fire:[...Object.keys(BURN_ITEMS),...(TYPED_ITEM_POOLS.fire||[])],
     water:[...Object.keys(WATER_ITEMS),...(TYPED_ITEM_POOLS.water||[])],
     steel:[...Object.keys(STEEL_ITEMS),...(TYPED_ITEM_POOLS.steel||[])],
-    toxic:[...Object.keys(POISON_ITEMS),...(TYPED_ITEM_POOLS.toxic||[])],
+    toxic:[...new Set([...Object.keys(POISON_ITEMS),...(TYPED_ITEM_POOLS.toxic||[])])],
   };
   return poolMap[typeId]||[];
 }
@@ -6471,8 +6471,13 @@ function resolveEventChoice(choiceIdx){
   const choice=event.choices[choiceIdx];
   if(!choice)return;
   // Track metrics
-  if(choiceIdx===0){if(G.metrics)G.metrics.eventsCompleted.push(event.id);}
-  else{if(G.metrics)G.metrics.eventsDeclined.push(event.id);}
+  if(choiceIdx===0){
+    if(G.metrics){
+      // 'the_priest' uses short id 'priest' so Gossip hint includes() check works
+      const pushId=(event&&event.id==='the_priest')?'priest':event.id;
+      if(!G.metrics.eventsCompleted.includes(pushId))G.metrics.eventsCompleted.push(pushId);
+    }
+  }else{if(G.metrics)G.metrics.eventsDeclined.push(event.id);}
   currentEvent=null;
 
   // Legacy: choice has a resolve() function (Phase 1 compatibility)
@@ -6560,19 +6565,24 @@ function resolveEventChoice(choiceIdx){
       return;
 
     case 'bet_debuff':{
-      // Grant upfront gold, capture originals, apply -15% debuff, add burden with payload
-      G.gold+=5;
-      const originals={};
-      [...board.front,...board.back].filter(i=>i).forEach(item=>{
-        originals[item.id]=item.effectAmt;
-        item.effectAmt=Math.max(1,Math.floor((item.effectAmt||0)*0.85));
-      });
-      const betBurden={id:'the_bet',icon:'🎲',countdown:2,unit:'',colorAmber:2,colorRed:1,onResolve:'bet_resolve',active:true,payload:{originalEffects:originals}};
-      G.burdens.push(betBurden);
-      if(G.metrics)G.metrics.burdensTaken++;
-      updateUI();renderBoard();renderCounterStrip();
-      showNotif('+5 gold! Items weakened for 2 stops...');
-      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      // Show the deal panel first — gold is granted only after the player acknowledges
+      showBurdenPanel('THE BET',
+        'He shakes your hand.\n\n"Ten locations. Your items hit softer. Then you pick any node."\n\n"Oh — and here\'s something for your trouble."',
+        ()=>{
+          G.gold+=5;
+          const originals={};
+          [...board.front,...board.back].filter(i=>i).forEach(item=>{
+            originals[item.id]=item.effectAmt;
+            item.effectAmt=Math.max(1,Math.floor((item.effectAmt||0)*0.85));
+          });
+          const betBurden={id:'the_bet',icon:'🎲',countdown:10,unit:'',colorAmber:5,colorRed:2,onResolve:'bet_resolve',active:true,payload:{originalEffects:originals}};
+          G.burdens.push(betBurden);
+          if(G.metrics)G.metrics.burdensTaken++;
+          updateUI();renderBoard();renderCounterStrip();
+          G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+        }
+      );
+      clearTimeout(_burdenAutoTimeout);
       return;
     }
 
@@ -6875,7 +6885,7 @@ function resolveEventChoice(choiceIdx){
 
     case 'gambler_refuse': {
       const gRefOrig={};
-      const gRefTargets=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      const gRefTargets=[...board.front,...board.back].filter(i=>i&&!i.broken&&i.maxHp>0);
       gRefTargets.forEach(item=>{
         gRefOrig[item.id]=item.maxHp;
         item.maxHp=Math.round(item.maxHp*0.75);
@@ -7439,7 +7449,7 @@ function renderCounterStrip(){
       parts.push(`<span style="color:${color};letter-spacing:.02em;">${b.icon} ${b.countdown}</span>`);
     });
   }
-  el.innerHTML=parts.join('');
+  el.innerHTML=parts.join('<span style="width:8px;display:inline-block;"></span>');
   el.style.display=parts.length?'flex':'none';
 }
 
