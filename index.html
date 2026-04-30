@@ -5564,13 +5564,13 @@ function pickTypedShop(typeId){
 // ============================================================
 
 const SHOPS=[
-  {id:'the_market',coverName:'The Market',coverLine:'Open for business.',tier:'beginner',type:'market',unlock:{minDay:1,maxDay:99,requiresType:false}},
-  {id:'typed_stall',coverName:null,coverLine:'She only carries one kind.',tier:'beginner',type:'typed',unlock:{minDay:1,maxDay:99,requiresType:true}},
-  {id:'the_clearance',coverName:'The Clearance',coverLine:'Everything must go.',tier:'beginner',type:'clearance',unlock:{minDay:1,maxDay:99,requiresType:false}},
-  {id:'the_back_room',coverName:'The Back Room',coverLine:'He has better stuff in the back.',tier:'intermediate',type:'back_room',unlock:{minDay:2,maxDay:99,requiresType:false}},
-  {id:'upgrade_bench',coverName:'The Upgrade Bench',coverLine:"She doesn't sell. She improves.",tier:'intermediate',type:'upgrade_bench',unlock:{minDay:2,maxDay:99,requiresType:false}},
-  {id:'loot_crate',coverName:'Loot Crate',coverLine:"He's not sure what's inside.",tier:'intermediate',type:'loot_crate',unlock:{minDay:3,maxDay:99,requiresType:false}},
-  {id:'wholesale',coverName:'Wholesale',coverLine:'The more you take the cheaper it gets.',tier:'intermediate',type:'wholesale',unlock:{minDay:3,maxDay:99,requiresType:false}},
+  {id:'the_market',coverName:'The Market',coverEmoji:'🏪',coverLine:'Open for business.',tier:'beginner',type:'market',unlock:{minDay:1,maxDay:99,requiresType:false}},
+  {id:'typed_stall',coverName:null,coverEmoji:null,coverLine:'She only carries one kind.',tier:'beginner',type:'typed',unlock:{minDay:1,maxDay:99,requiresType:true}},
+  {id:'the_clearance',coverName:'The Clearance',coverEmoji:'🏷️',coverLine:'Everything must go.',tier:'beginner',type:'clearance',unlock:{minDay:1,maxDay:99,requiresType:false}},
+  {id:'the_back_room',coverName:'The Back Room',coverEmoji:'🚪',coverLine:'He has better stuff in the back.',tier:'intermediate',type:'back_room',unlock:{minDay:2,maxDay:99,requiresType:false}},
+  {id:'upgrade_bench',coverName:'The Upgrade Bench',coverEmoji:'🔨',coverLine:"She doesn't sell. She improves.",tier:'intermediate',type:'upgrade_bench',unlock:{minDay:2,maxDay:99,requiresType:false}},
+  {id:'loot_crate',coverName:'Loot Crate',coverEmoji:'📦',coverLine:"He's not sure what's inside.",tier:'intermediate',type:'loot_crate',unlock:{minDay:3,maxDay:99,requiresType:false}},
+  {id:'wholesale',coverName:'Wholesale',coverEmoji:'🛒',coverLine:'The more you take the cheaper it gets.',tier:'intermediate',type:'wholesale',unlock:{minDay:3,maxDay:99,requiresType:false}},
 ];
 
 function getShopPool(day){
@@ -5606,9 +5606,17 @@ function showShopPicker(){
   window._shopPickerList=picked;
   const cards=picked.map((s,i)=>{
     const cn=s.type==='typed'&&G.type?G.type.charAt(0).toUpperCase()+G.type.slice(1)+' Stall':(s.coverName||s.id);
-    return `<div class="dc" onclick="selectShopCard(${i})" style="text-align:left;padding:14px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;">
-      <div class="dn" style="font-size:11px;letter-spacing:.04em;">${cn}</div>
-      <div class="dd" style="line-height:1.45;font-style:italic;">${s.coverLine||''}</div>
+    let emoji;
+    if(s.type==='typed'&&G.type){
+      const tObj=TYPES.find(t=>t.id===G.type);
+      emoji=tObj?tObj.icon:'🏪';
+    }else{
+      emoji=s.coverEmoji||'🏪';
+    }
+    return `<div class="dc" onclick="selectShopCard(${i})" style="padding:14px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;align-items:center;border-color:var(--gold);background:rgba(180,140,40,0.08);">
+      <div style="font-size:32px;line-height:1;">${emoji}</div>
+      <div class="dn" style="font-size:11px;letter-spacing:.04em;font-weight:bold;">${cn}</div>
+      <div class="dd" style="line-height:1.45;font-style:italic;color:var(--dim);">${s.coverLine||''}</div>
     </div>`;
   }).join('');
   setEncBody(`<div class="draft-row" style="align-items:stretch;gap:8px;">${cards}</div>`);
@@ -5904,7 +5912,7 @@ const EVENTS=[
   // ── THE ROCK ──────────────────────────────────────────────
   {
     id:'the_rock',name:'The Rock',tier:'beginner',image:null,
-    coverName:'The Rock',coverLine:'Someone left a note.',
+    coverName:'The Rock',coverEmoji:'🪨',coverLine:'Someone left a note.',
     unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6},
     prompt:{title:'The Rock',flavor:'There is a rock. It has something written on it.'},
     choices:[
@@ -5920,7 +5928,7 @@ const EVENTS=[
   // ── THE SHARPENING STONE ──────────────────────────────────
   {
     id:'sharpening_stone',name:'The Sharpening Stone',tier:'beginner',image:null,
-    coverName:'The Stone',coverLine:"It's just sitting there.",
+    coverName:'The Stone',coverEmoji:'⚔️',coverLine:"It's just sitting there.",
     unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6},
     prompt:{title:'The Sharpening Stone',flavor:"It's just sitting there."},
     choices:[
@@ -5936,7 +5944,7 @@ const EVENTS=[
   // ── THE TAX COLLECTOR ─────────────────────────────────────
   {
     id:'tax_collector',name:'The Tax Collector',tier:'intermediate',image:null,
-    coverName:'Civic Duty',coverLine:"He's been looking for you.",
+    coverName:'Civic Duty',coverEmoji:'📋',coverLine:"He's been looking for you.",
     unlock:{minDay:2,maxDay:8,minWins:0,maxWins:6},
     prompt:{title:'The Tax Collector',flavor:"He's very polite about it."},
     choices:[
@@ -5951,7 +5959,7 @@ const EVENTS=[
   // ── THE FORK IN THE ROAD ──────────────────────────────────
   {
     id:'fork_in_the_road',name:'The Fork In The Road',tier:'beginner',image:null,
-    coverName:'Two Roads',coverLine:'One looks easier.',
+    coverName:'Two Roads',coverEmoji:'🍃',coverLine:'One looks easier.',
     validSlots:['pre_wild'],
     unlock:{minDay:1,maxDay:6,minWins:0,maxWins:6},
     prompt:{title:'The Fork In The Road',flavor:'Left looks harder. Right looks expensive.'},
@@ -5968,7 +5976,7 @@ const EVENTS=[
   // ── THE BUTCHER ───────────────────────────────────────────
   {
     id:'butcher',name:'The Butcher',tier:'intermediate',image:null,
-    coverName:'The Butcher',coverLine:'He has a proposition.',
+    coverName:'The Butcher',coverEmoji:'🥩',coverLine:'He has a proposition.',
     unlock:{minDay:2,maxDay:null,minWins:1,maxWins:5,excludeFlags:{loanActive:true}},
     prompt:{
       title:'The Butcher',
@@ -5989,7 +5997,7 @@ const EVENTS=[
   // ── THE BET ───────────────────────────────────────────────
   {
     id:'the_bet',name:'The Bet',tier:'advanced',image:null,
-    coverName:'The Bet',coverLine:'He seems confident.',
+    coverName:'The Bet',coverEmoji:'🎲',coverLine:'He seems confident.',
     unlock:{minDay:3,maxDay:null,minWins:2,maxWins:5},
     prompt:{
       title:'The Bet',
@@ -6009,7 +6017,7 @@ const EVENTS=[
   // ── THE KID ───────────────────────────────────────────────────
   {
     id:'the_kid',name:'The Kid',tier:'beginner',image:null,
-    coverName:'Lemonade Stand',coverLine:'Get some lemonade.',
+    coverName:'Lemonade Stand',coverEmoji:'🍋',coverLine:'Get some lemonade.',
     unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Kid',flavor:'A child is selling lemonade. It is not lemonade.',dialogue:null},
@@ -6024,7 +6032,7 @@ const EVENTS=[
   // ── THE OLD MAN'S CART ────────────────────────────────────────
   {
     id:'old_mans_cart',name:"The Old Man's Cart",tier:'beginner',image:null,
-    coverName:'The Old Man',coverLine:"He's tired of carrying this.",
+    coverName:'The Old Man',coverEmoji:'🛻',coverLine:"He's tired of carrying this.",
     unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:"The Old Man's Cart",flavor:"He's selling one thing. He doesn't know what it does.",dialogue:null},
@@ -6039,7 +6047,7 @@ const EVENTS=[
   // ── THE UNIMPRESSED FARMER ────────────────────────────────────
   {
     id:'unimpressed_farmer',name:'The Unimpressed Farmer',tier:'beginner',image:null,
-    coverName:'The Farmer',coverLine:'He watched the whole thing.',
+    coverName:'The Farmer',coverEmoji:'🌾',coverLine:'He watched the whole thing.',
     unlock:{minDay:1,maxDay:5,minWins:0,maxWins:6,performance:'wildLostToday',state:null,metricFlags:[],excludeFlags:[]},
     validSlots:['post_wild'],state:null,
     prompt:{image:null,title:'The Unimpressed Farmer',flavor:'He watched the whole thing.',
@@ -6053,7 +6061,7 @@ const EVENTS=[
   // ── THE GENEROUS NEIGHBOR ─────────────────────────────────────
   {
     id:'generous_neighbor',name:'The Generous Neighbor',tier:'beginner',image:null,
-    coverName:'The Neighbor',coverLine:'She insists.',
+    coverName:'The Neighbor',coverEmoji:'🏡',coverLine:'She insists.',
     unlock:{minDay:2,maxDay:5,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:['pre_wild'],state:'boardNotFull',
     prompt:{image:null,title:'The Generous Neighbor',flavor:"She's already unlocked it. She won't hear otherwise.",dialogue:null},
@@ -6064,7 +6072,7 @@ const EVENTS=[
   // ── THE CARTOGRAPHER ──────────────────────────────────────────
   {
     id:'the_cartographer',name:'The Cartographer',tier:'intermediate',image:null,
-    coverName:'The Cartographer',coverLine:"She's been mapping everything.",
+    coverName:'The Cartographer',coverEmoji:'🗺️',coverLine:"She's been mapping everything.",
     unlock:{minDay:4,maxDay:10,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Cartographer',flavor:"I'm mapping these lands. Mind telling me where you've been? I'll make it worth your while.",dialogue:null},
@@ -6077,7 +6085,7 @@ const EVENTS=[
   // ── THE HERMIT ────────────────────────────────────────────────
   {
     id:'the_hermit',name:'The Hermit',tier:'intermediate',image:null,
-    coverName:'The Hermit',coverLine:"He hasn't left in years.",
+    coverName:'The Hermit',coverEmoji:'🏔️',coverLine:"He hasn't left in years.",
     unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Hermit',flavor:"He hasn't spoken to anyone in years. He knows everything.",dialogue:null},
@@ -6092,7 +6100,7 @@ const EVENTS=[
   // ── THE BLACKSMITH ────────────────────────────────────────────
   {
     id:'the_blacksmith',name:'The Blacksmith',tier:'intermediate',image:null,
-    coverName:'The Blacksmith',coverLine:'She has opinions about your gear.',
+    coverName:'The Blacksmith',coverEmoji:'⚒️',coverLine:'She has opinions about your gear.',
     unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Blacksmith',flavor:'She looks at your board like it personally offended her.',dialogue:null},
@@ -6107,7 +6115,7 @@ const EVENTS=[
   // ── THE MERCHANT'S DAUGHTER ───────────────────────────────────
   {
     id:'merchants_daughter',name:"The Merchant's Daughter",tier:'intermediate',image:null,
-    coverName:'The Stall',coverLine:'The owner is asleep.',
+    coverName:'The Stall',coverEmoji:'💤',coverLine:'The owner is asleep.',
     unlock:{minDay:2,maxDay:8,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:"The Merchant's Daughter",flavor:"She's running the stall while her father sleeps. She doesn't know what things cost.",dialogue:null},
@@ -6122,7 +6130,7 @@ const EVENTS=[
   // ── THE APPRAISER ─────────────────────────────────────────────
   {
     id:'the_appraiser',name:'The Appraiser',tier:'intermediate',image:null,
-    coverName:'The Appraiser',coverLine:'He wants to take a look.',
+    coverName:'The Appraiser',coverEmoji:'🔍',coverLine:'He wants to take a look.',
     unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Appraiser',flavor:"He picks up each item. He's convinced each one is rarer than the last.",dialogue:null},
@@ -6135,7 +6143,7 @@ const EVENTS=[
   // ── THE OATH ──────────────────────────────────────────────────
   {
     id:'the_oath',name:'The Oath',tier:'intermediate',image:null,
-    coverName:'The Oath',coverLine:'The words feel permanent.',
+    coverName:'The Oath',coverEmoji:'📜',coverLine:'The words feel permanent.',
     unlock:{minDay:2,maxDay:8,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:{oathTaken:true}},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Oath',flavor:'The words feel permanent as soon as you say them.',dialogue:null},
@@ -6152,7 +6160,7 @@ const EVENTS=[
   // ── THE PAWNBROKER ────────────────────────────────────────────
   {
     id:'the_pawnbroker',name:'The Pawnbroker',tier:'intermediate',image:null,
-    coverName:'The Pawnbroker',coverLine:"He doesn't ask questions.",
+    coverName:'The Pawnbroker',coverEmoji:'💍',coverLine:"He doesn't ask questions.",
     unlock:{minDay:3,maxDay:9,minWins:1,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Pawnbroker',flavor:"He doesn't ask where you got it. He never does.",dialogue:null},
@@ -6167,7 +6175,7 @@ const EVENTS=[
   // ── THE SURGEON ───────────────────────────────────────────────
   {
     id:'the_surgeon',name:'The Surgeon',tier:'intermediate',image:null,
-    coverName:'The Surgeon',coverLine:'She can fix it.',
+    coverName:'The Surgeon',coverEmoji:'🩺',coverLine:'She can fix it.',
     unlock:{minDay:3,maxDay:9,minWins:1,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[],minHonor:5},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Surgeon',flavor:'She can fix it. It will cost you.',dialogue:null},
@@ -6182,7 +6190,7 @@ const EVENTS=[
   // ── THE GAMBLER ───────────────────────────────────────────────
   {
     id:'the_gambler',name:'The Gambler',tier:'intermediate',image:null,
-    coverName:'The Gambler',coverLine:"He's very friendly.",
+    coverName:'The Gambler',coverEmoji:'🃏',coverLine:"He's very friendly.",
     unlock:{minDay:3,maxDay:9,minWins:1,maxWins:5,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Gambler',flavor:"He's very friendly for someone asking you to lose on purpose.",dialogue:null},
@@ -6197,7 +6205,7 @@ const EVENTS=[
   // ── THE COLLECTOR ─────────────────────────────────────────────
   {
     id:'the_collector',name:'The Collector',tier:'intermediate',image:null,
-    coverName:'The Collector',coverLine:"He doesn't want your money.",
+    coverName:'The Collector',coverEmoji:'🗃️',coverLine:"He doesn't want your money.",
     unlock:{minDay:3,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Collector',flavor:"He doesn't want your money. He wants something you didn't want to part with.",
@@ -6213,7 +6221,7 @@ const EVENTS=[
   // ── THE GOSSIP ────────────────────────────────────────────────
   {
     id:'the_gossip',name:'The Gossip',tier:'intermediate',image:null,
-    coverName:'The Gossip',coverLine:"He's very excited to see you.",
+    coverName:'The Gossip',coverEmoji:'💬',coverLine:"He's very excited to see you.",
     unlock:{minDay:3,maxDay:9,minWins:1,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Gossip',flavor:"He knows things. He's very excited about this.",dialogue:null},
@@ -6230,7 +6238,7 @@ const EVENTS=[
   // ── THE STRANGER ──────────────────────────────────────────────
   {
     id:'the_stranger',name:'The Stranger',tier:'beginner',image:null,
-    coverName:'The Stranger',coverLine:'A man knows too much.',
+    coverName:'The Stranger',coverEmoji:'🌫️',coverLine:'A man knows too much.',
     unlock:{minDay:1,maxDay:5,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
     validSlots:['pre_wild'],state:null,
     prompt:{image:null,title:'The Stranger',flavor:"A man knows things he shouldn't. He offers to tell you more.",dialogue:null},
@@ -6245,7 +6253,7 @@ const EVENTS=[
   // ── THE HERBALIST ─────────────────────────────────────────────
   {
     id:'the_herbalist',name:'The Herbalist',tier:'beginner',image:null,
-    coverName:'The Herbalist',coverLine:'She has a theory about your monster.',
+    coverName:'The Herbalist',coverEmoji:'🌿',coverLine:'She has a theory about your monster.',
     unlock:{minDay:2,maxDay:8,minWins:0,maxWins:6,performance:'poisonApps>=5',metricFlags:[],excludeFlags:[]},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Herbalist',flavor:"She says your monster has a gift. You don't correct her on what kind.",dialogue:null},
@@ -6392,11 +6400,26 @@ function showEventPicker(events){
   window._eventPickerCards=events;
   setEncTitle('WHAT WILL YOU DO?');
   const cards=events.map((e,i)=>{
+    const isShop=e._isShopCard&&e._shopRef;
     const coverName=e.coverName||(e.prompt&&e.prompt.title)||e.name;
     const coverLine=e.coverLine||'';
-    return `<div class="dc" onclick="selectEventCard(${i})" style="text-align:left;padding:14px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;">
-      <div class="dn" style="font-size:11px;letter-spacing:.04em;">${coverName}</div>
-      <div class="dd" style="line-height:1.45;font-style:italic;">${coverLine}</div>
+    let emoji;
+    if(isShop){
+      const s=e._shopRef;
+      if(s.type==='typed'&&G.type){
+        const tObj=TYPES.find(t=>t.id===G.type);
+        emoji=tObj?tObj.icon:'🏪';
+      }else{
+        emoji=s.coverEmoji||'🏪';
+      }
+    }else{
+      emoji=e.coverEmoji||'';
+    }
+    const shopStyle=isShop?'border-color:var(--gold);background:rgba(180,140,40,0.08);':'';
+    return `<div class="dc" onclick="selectEventCard(${i})" style="padding:14px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;align-items:center;${shopStyle}">
+      <div style="font-size:32px;line-height:1;">${emoji}</div>
+      <div class="dn" style="font-size:11px;letter-spacing:.04em;font-weight:bold;">${coverName}</div>
+      <div class="dd" style="line-height:1.45;font-style:italic;color:var(--dim);">${coverLine}</div>
     </div>`;
   }).join('');
   setEncBody(`<div class="draft-row" style="align-items:stretch;gap:8px;">${cards}</div>`);
