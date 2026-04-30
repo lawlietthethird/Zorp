@@ -5924,6 +5924,20 @@ const EVENTS=[
     ],
     resolution:'immediate',tags:['forced','performance'],easter_egg:false,
   },
+  // ── THE HERBALIST ─────────────────────────────────────────────
+  {
+    id:'the_herbalist',name:'The Herbalist',tier:'beginner',image:null,
+    unlock:{minDay:2,maxDay:8,minWins:0,maxWins:6,performance:'poisonApps>=5',metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Herbalist',flavor:"She says your monster has a gift. You don't correct her on what kind.",dialogue:null},
+    choices:[
+      {id:'accept',label:'Let her work',cost:null,requiresCost:false,
+       effect:{type:'herbalist_imbue'},burden:null,outcomeText:null},
+      {id:'decline',label:'Decline',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:'She seems unsurprised.'},
+    ],
+    resolution:'immediate',tags:['free','performance'],easter_egg:false,
+  },
 ];
 
 let currentEvent=null;
@@ -5947,8 +5961,18 @@ function getEventPool(day,slotCtx='any'){
         else if(G.metrics[field]===val)return false;
       }
     }
-    // performance flag: event only appears if a specific metric is truthy
-    if(u.performance&&G.metrics&&!G.metrics[u.performance])return false;
+    // performance flag: truthy metric key OR numeric comparison like 'poisonApps>=5'
+    if(u.performance&&G.metrics){
+      const _pf=u.performance;
+      const _pm=_pf.match(/^(\w+)(>=|<=|===|==|>|<)(\d+)$/);
+      if(_pm){const _mv=G.metrics[_pm[1]]||0;const _cv=Number(_pm[3]);
+        if(_pm[2]=='>='&&!(_mv>=_cv))return false;
+        else if(_pm[2]=='<='&&!(_mv<=_cv))return false;
+        else if(_pm[2]=='>'&&!(_mv>_cv))return false;
+        else if(_pm[2]=='<'&&!(_mv<_cv))return false;
+        else if((_pm[2]==='==='||_pm[2]==='==')&&_mv!==_cv)return false;
+      }else if(!G.metrics[_pf])return false;
+    }
     // minHonor: event only appears if player has enough honor
     if(u.minHonor!=null&&G.honor<u.minHonor)return false;
     // metricFlags: inclusion filter — all listed metrics must be truthy
@@ -6154,6 +6178,16 @@ function resolveEventChoice(choiceIdx){
       });
       return;
 
+    case 'herbalist_imbue': {
+      showBoardPicker('Let her work. Pick an item:',(item)=>{
+        imbueItem(item,'poison_on_act',1);
+        if(G.metrics&&!G.metrics.npcsMet.includes('herbalist'))G.metrics.npcsMet.push('herbalist');
+        renderBoard();
+        showBurdenPanel('THE HERBALIST','She nods once. She already knew.',()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();});
+      });
+      return;
+    }
+
     case 'imbue_all':{
       const imbueAllItems=[...board.front,...board.back].filter(i=>i);
       imbueAllItems.forEach(item=>{imbueItem(item,effect.imbueType,effect.amount);});
@@ -6304,11 +6338,14 @@ function resolveEventChoice(choiceIdx){
       if(!G.metrics)G.metrics={npcsMet:[],eventsCompleted:[],trainerWins:0,wildWins:0};
       const nm=G.metrics.npcsMet||[];
       const done=()=>{if(!nm.includes('cartographer'))nm.push('cartographer');G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
-      // TIER 1A — herbalist family
+      // TIER 1A — herbalist family (scaling damage by poison application count)
       if(nm.includes('herbalist')){
-        showBoardPicker('She says your monster has a gift. Pick an item:',(item)=>{
-          imbueItem(item,'poison_on_act',1);
-          showNotif(item.name+' — poison on activation!');done();
+        const hBonus=Math.min(10,Math.max(1,Math.floor((G.metrics.poisonApps||0)/10)));
+        showBoardPicker('"I see you met my sister. She says your monster has a gift." Pick an item:',(item)=>{
+          imbueItem(item,'damage',hBonus);
+          renderBoard();
+          showBurdenPanel('THE CARTOGRAPHER',
+            '"I see you met my sister. She says your monster has a gift."\n\nYour monster has applied poison '+(G.metrics.poisonApps||0)+' times.\n+'+hBonus+' damage.',done);
         });return;
       }
       // TIER 1B — blacksmith family (continue to check tiers after gold grant)
