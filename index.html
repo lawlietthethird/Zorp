@@ -38,7 +38,8 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .enemy-tag{font-size:8px;color:var(--text);}.enemy-board{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;min-height:0;}
 .trainer-avatar{width:120px;height:auto;object-fit:contain;display:block;position:relative;z-index:2;}
 @media(max-width:600px){
-  .player-section{height:378px;}
+  .player-section{height:396px;}
+  .ci{padding-bottom:20px;}
   .enemy-area{flex-direction:column;gap:4px;}
   .enemy-info{width:100%;flex-direction:row;justify-content:flex-start;align-items:center;gap:8px;height:auto;flex-shrink:0;padding:0 2px;}
   .enemy-icon{font-size:72px;line-height:1;}
@@ -6595,6 +6596,7 @@ function resolveEventChoice(choiceIdx){
         poison_on_act:`Your ${kidItem.name} applies 1 poison on every activation.`,
       };
       showBurdenPanel('THE KID',kidOutcomes[kidType]||kidType+' applied to '+kidItem.name+'.',()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();});
+      clearTimeout(_burdenAutoTimeout);
       return;
     }
 
