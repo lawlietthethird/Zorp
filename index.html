@@ -1343,18 +1343,20 @@ const HEADBUTT_ITEMS={
 
   spite:()=>{
     const item=makeItem('spite','Spite','😤','Weapon',50,1000,
-      '1 dmg/s to random enemy. Gains +1 damage permanently each time any ally takes damage this battle.',
+      '1 dmg/s to random enemy. Gains +1 damage each time any ally takes damage this battle.',
       (s,a,self)=>{
-        dealDmgRandom(opp(s),self._spiteCounter||1,'Spite');
+        dealDmgRandom(opp(s),a,'Spite');
       },8,null,1,'weapon','advanced');
     item.flavorText='It remembers.';
-    item.stats=[{icon:'⚔️',value:'1+',cls:'dmg'}];
-    item._spiteCounter=1;
+    item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt,cls:'dmg'}];
     item.handleEvent=(event)=>{
       if(event.type!=='DAMAGE_RECEIVED')return;
-      if(event.side!==item._side)return;
-      if(event.item===item)return;
-      item._spiteCounter=(item._spiteCounter||1)+1;
+      if(!event.item||event.item._side!=='player')return;
+      if(event.item===item||item.broken)return;
+      item.effectAmt=(item.effectAmt||1)+1;
+      // Update stat display on the card in real time
+      const card=document.querySelector('[data-item-id="'+item.id+'"]');
+      if(card){const sr=card.querySelector('.stat-row');if(sr){sr.innerHTML=item.stats.map(s=>{const v=typeof s.value==='function'?s.value(item):s.value;return'<span class="stat-pip stat-'+(s.cls||'dmg')+'">'+s.icon+' '+v+'</span>';}).join('');}}
     };
     return item;
   },
@@ -2795,7 +2797,7 @@ function activateCurrentNode(){
 function loadCurrentNode(){
   const node=getDayNodes()[G.dayStep];
   if(node.id==='mom')showEncounterShop(0);
-  else if(node.id==='shop1')showEncounterShop(1);
+  else if(node.id==='shop1'){if(G.rivalDefeated&&G.day>1)showShopPicker();else showEncounterShop(1);}
   else if(node.id==='wild')showEncounterWildPick();
   else if(node.id==='shop2')showEncounterShop(2);
   else if(node.id==='event'){
@@ -3813,7 +3815,6 @@ function resetItemBattleState(b){
       item.hitCount=Math.round(item.baseHitCount*(UPGRADE_MULTS[item.upgradeLevel||0]||1));
     }
     if(item._firstActivation!==undefined)item._firstActivation=true;
-    if(item._spiteCounter!==undefined)item._spiteCounter=1;
     if(item._blazeCounter!==undefined)item._blazeCounter=1;
     if(item._mithridateCount!==undefined)item._mithridateCount=0;
     if(item._miasmaTriggerCount!==undefined)item._miasmaTriggerCount=0;
@@ -4243,7 +4244,7 @@ function monkWinstonShowHim(){
     <div style="font-weight:700;font-family:'Cinzel',serif;font-size:13px;text-align:center;letter-spacing:.08em;">THE MONK</div>
     <div style="font-size:13px;color:var(--text);line-height:1.65;">"A great amount of energy was poured into this."<br><br>"A friend. A partner. A lover..."<br><br>He drops the rock.<br><br>"You should put this back wherever you found it."</div>
     <button class="btn btn-p" style="width:100%;margin-top:4px;" onclick="monkWinstonReturn()">Return the rock</button>
-    <button class="btn btn-d" style="width:100%;margin-top:4px;" onclick="monkWinstonKeep()">Keep Winston</button>
+    <button class="btn btn-d" style="width:100%;margin-top:4px;" onclick="monkWinstonKeep()">Keep the rock</button>
   </div>`);
 }
 function monkWinstonReturn(){
@@ -5558,6 +5559,313 @@ function pickTypedShop(typeId){
 }
 
 // ============================================================
+// SHOP SYSTEM
+// ============================================================
+
+const SHOPS=[
+  {id:'the_market',coverName:'The Market',coverLine:'Open for business.',tier:'beginner',type:'market',unlock:{minDay:1,maxDay:99,requiresType:false}},
+  {id:'typed_stall',coverName:null,coverLine:'She only carries one kind.',tier:'beginner',type:'typed',unlock:{minDay:1,maxDay:99,requiresType:true}},
+  {id:'the_clearance',coverName:'The Clearance',coverLine:'Everything must go.',tier:'beginner',type:'clearance',unlock:{minDay:1,maxDay:99,requiresType:false}},
+  {id:'the_back_room',coverName:'The Back Room',coverLine:'He has better stuff in the back.',tier:'intermediate',type:'back_room',unlock:{minDay:2,maxDay:99,requiresType:false}},
+  {id:'upgrade_bench',coverName:'The Upgrade Bench',coverLine:"She doesn't sell. She improves.",tier:'intermediate',type:'upgrade_bench',unlock:{minDay:2,maxDay:99,requiresType:false}},
+  {id:'loot_crate',coverName:'Loot Crate',coverLine:"He's not sure what's inside.",tier:'intermediate',type:'loot_crate',unlock:{minDay:3,maxDay:99,requiresType:false}},
+  {id:'wholesale',coverName:'Wholesale',coverLine:'The more you take the cheaper it gets.',tier:'intermediate',type:'wholesale',unlock:{minDay:3,maxDay:99,requiresType:false}},
+];
+
+function getShopPool(day){
+  return SHOPS.filter(s=>{
+    if(s.unlock.minDay>day)return false;
+    if(s.unlock.requiresType&&(!G.type||G.type===null))return false;
+    return true;
+  });
+}
+
+function showShopPicker(){
+  const pool=getShopPool(G.day);
+  if(!pool.length){showEncounterShop(1);return;}
+  const tw=TIER_WEIGHTS[Math.min(Math.max(G.day,1),10)]||TIER_WEIGHTS[10];
+  function pickShop(src,used){
+    const eligible=src.filter(s=>!used.has(s.id));
+    if(!eligible.length)return null;
+    const withW=eligible.filter(s=>(tw[s.tier]||0)>0);
+    const from=withW.length?withW:eligible;
+    const total=from.reduce((sum,s)=>sum+(withW.length?(tw[s.tier]||0):1),0);
+    if(!total)return from[Math.floor(Math.random()*from.length)];
+    let r=Math.random()*total;
+    for(const s of from){r-=(withW.length?(tw[s.tier]||0):1);if(r<=0)return s;}
+    return from[from.length-1];
+  }
+  const picked=[];const used=new Set();
+  while(picked.length<3&&picked.length<pool.length){
+    const s=pickShop(pool,used);if(!s)break;
+    used.add(s.id);picked.push(s);
+  }
+  if(picked.length===1){showShop(picked[0]);return;}
+  setEncTitle('WHERE TO?');
+  window._shopPickerList=picked;
+  const cards=picked.map((s,i)=>{
+    const cn=s.type==='typed'&&G.type?G.type.charAt(0).toUpperCase()+G.type.slice(1)+' Stall':(s.coverName||s.id);
+    return `<div class="dc" onclick="selectShopCard(${i})" style="text-align:left;padding:14px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;">
+      <div class="dn" style="font-size:11px;letter-spacing:.04em;">${cn}</div>
+      <div class="dd" style="line-height:1.45;font-style:italic;">${s.coverLine||''}</div>
+    </div>`;
+  }).join('');
+  setEncBody(`<div class="draft-row" style="align-items:stretch;gap:8px;">${cards}</div>`);
+}
+
+function selectShopCard(idx){
+  const shops=window._shopPickerList;window._shopPickerList=null;
+  if(!shops||!shops[idx])return;
+  showShop(shops[idx]);
+}
+
+function showShop(shop){
+  shopItemCache={};
+  const rarityOrder=['beginner','intermediate','advanced','mastered'];
+  const tw=TIER_WEIGHTS[Math.min(Math.max(G.day,1),10)]||TIER_WEIGHTS[10];
+  switch(shop.type){
+    case 'market':{
+      setEncTitle('THE MARKET');
+      const slots=generateShopSlots(G.day);
+      const cards=slots.map(key=>{
+        const f=getItemFactory(key);if(!f)return'';
+        const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
+        return`<div class="dc ${(!can&&t.cost>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${t.cost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+      }).join('');
+      setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
+      break;
+    }
+    case 'typed':{
+      const typeName=G.type?G.type.charAt(0).toUpperCase()+G.type.slice(1):'TYPED';
+      setEncTitle(typeName+' STALL');
+      const allKeys=getTypedItemKeys(G.type||'');
+      const slots=[...allKeys].sort(()=>Math.random()-.5).slice(0,3);
+      const cards=slots.map(key=>{
+        const f=getItemFactory(key);if(!f)return'';
+        const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
+        return`<div class="dc ${(!can&&t.cost>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${t.cost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+      }).join('');
+      setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
+      break;
+    }
+    case 'clearance':{
+      setEncTitle('THE CLEARANCE');
+      const lowestRarity=rarityOrder.find(r=>(tw[r]||0)>0)||'beginner';
+      const pool=getItemsOfRarity(lowestRarity);
+      const slots=[...pool].sort(()=>Math.random()-.5).slice(0,3);
+      const cards=slots.map(key=>{
+        const f=getItemFactory(key);if(!f)return'';
+        const t=f();shopItemCache[key]=t;
+        const price=Math.max(1,Math.floor(t.cost*0.5));const can=G.gold>=price;
+        return`<div class="dc ${(!can&&price>0)?'cant':''}" onclick="buyItemAtPrice('${key}',${price})"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price} <span style="text-decoration:line-through;color:var(--dim);font-size:7px">${t.cost}</span></div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+      }).join('');
+      setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
+      break;
+    }
+    case 'back_room':{
+      setEncTitle('THE BACK ROOM');
+      const sorted=rarityOrder.filter(r=>(tw[r]||0)>0).sort((a,b)=>(tw[b]||0)-(tw[a]||0));
+      const rarity=sorted.length>=2?sorted[1]:(sorted[0]||'beginner');
+      const pool=getItemsOfRarity(rarity);
+      const slots=[...pool].sort(()=>Math.random()-.5).slice(0,4);
+      const cards=slots.map(key=>{
+        const f=getItemFactory(key);if(!f)return'';
+        const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
+        return`<div class="dc ${(!can&&t.cost>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${t.cost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+      }).join('');
+      setEncBody(`<div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
+      break;
+    }
+    case 'upgrade_bench':{
+      setEncTitle('THE UPGRADE BENCH');
+      const upgradeable=[...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3);
+      if(!upgradeable.length){
+        setEncBody(`<div style="text-align:center;padding:24px;color:var(--dim);">Nothing left to improve.</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
+        break;
+      }
+      const display=[...upgradeable].sort(()=>Math.random()-.5).slice(0,3);
+      window._upgradeBenchItems=display;
+      const cards=display.map((it,idx)=>{
+        const cost=it.cost||0;const can=G.gold>=cost;
+        const fromLabel=UPGRADE_NAMES[it.upgradeLevel]||'Base';
+        const toLabel=UPGRADE_NAMES[it.upgradeLevel+1]||'MAX';
+        return`<div class="dc ${(!can&&cost>0)?'cant':''}" onclick="${can?`upgradeBenchBuy(${idx})`:''}"><div class="di">${getItemIcon(it)}</div><div class="dn">${it.name}</div><div class="dd">${fromLabel} → ${toLabel}</div><div class="dp">🪙 ${cost}</div></div>`;
+      }).join('');
+      setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
+      break;
+    }
+    case 'loot_crate':{
+      setEncTitle('LOOT CRATE');
+      const mostCommon=[...rarityOrder].sort((a,b)=>(tw[b]||0)-(tw[a]||0)).find(r=>(tw[r]||0)>0)||'beginner';
+      const rarityPrices={beginner:4,intermediate:6,advanced:8,mastered:10};
+      const crates=[];
+      if(G.type){
+        crates.push({id:'typed',name:G.type.charAt(0).toUpperCase()+G.type.slice(1)+' Crate',price:5,desc:'One random '+G.type+' item.'});
+        crates.push({id:'rarity',name:mostCommon.charAt(0).toUpperCase()+mostCommon.slice(1)+' Crate',price:rarityPrices[mostCommon]||4,desc:'One random '+mostCommon+' item.'});
+      }else{
+        const twoR=rarityOrder.filter(r=>(tw[r]||0)>0).sort((a,b)=>(tw[b]||0)-(tw[a]||0)).slice(0,2);
+        twoR.forEach(r=>crates.push({id:'rarity_'+r,name:r.charAt(0).toUpperCase()+r.slice(1)+' Crate',price:rarityPrices[r]||4,desc:'One random '+r+' item.'}));
+      }
+      crates.push({id:'weapon',name:'Attack Crate',price:4,desc:'One random weapon.'});
+      window._lootCrates=crates;
+      const cards=crates.slice(0,3).map((c,i)=>{
+        const can=G.gold>=c.price;
+        return`<div class="dc ${can?'':'cant'}" onclick="${can?`lootCratePurchase(${i})`:''}"><div class="di">📦</div><div class="dn">${c.name}</div><div class="dd">${c.desc}</div><div class="dp">🪙 ${c.price}</div></div>`;
+      }).join('');
+      setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
+      break;
+    }
+    case 'wholesale':{
+      setEncTitle('WHOLESALE');
+      const slots=generateShopSlots(G.day);
+      const more=generateShopSlots(G.day,slots);
+      const allKeys=[...slots,...more].slice(0,5);
+      const wItems={};const wPrices={};
+      allKeys.forEach(key=>{
+        const f=getItemFactory(key);if(!f)return;
+        const t=f();shopItemCache[key]=t;wItems[key]=t;wPrices[key]=t.cost;
+      });
+      window._wholesaleKeys=[...allKeys];window._wholesalePrices=wPrices;window._wholesaleItems=wItems;
+      renderWholesale();
+      break;
+    }
+    default:showEncounterShop(1);
+  }
+}
+
+function buyItemAtPrice(key,price){
+  const f=getItemFactory(key);if(!f)return;
+  const t=f();if(G.gold<price)return;
+  G.gold-=price;
+  const allSlots=[...board.front,...board.back];
+  const existing=allSlots.find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+  if(existing){upgradeItem(existing);showNotif(existing.name+' upgraded to '+UPGRADE_NAMES[existing.upgradeLevel]+'!');updateUI();renderBoard();skipShop();return;}
+  const item={...t,baseMaxHp:t.maxHp,baseActMs:t.actMs,upgradeLevel:0,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'player'};
+  const mf=maxFrontSlots();const mb=maxBackSlots();let placed=false;
+  const slotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&slotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
+  if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
+  if(!placed){G.gold+=price;showNotif('Board full! Sell an item to make room.',3000);updateUI();return;}
+  showNotif(item.name+' added!');updateUI();renderBoard();skipShop();
+}
+
+function upgradeBenchBuy(idx){
+  const item=window._upgradeBenchItems&&window._upgradeBenchItems[idx];if(!item)return;
+  const cost=item.cost||0;if(G.gold<cost)return;
+  G.gold-=cost;window._upgradeBenchItems=null;
+  upgradeItem(item);showNotif(item.name+' upgraded to '+UPGRADE_NAMES[item.upgradeLevel]+'!');
+  updateUI();renderBoard();skipShop();
+}
+
+function lootCratePurchase(idx){
+  const crate=window._lootCrates&&window._lootCrates[idx];if(!crate||G.gold<crate.price)return;
+  G.gold-=crate.price;window._lootCrates=null;updateUI();
+  const rarityOrder=['beginner','intermediate','advanced','mastered'];
+  const tw=TIER_WEIGHTS[Math.min(Math.max(G.day,1),10)]||TIER_WEIGHTS[10];
+  let item=null;
+  if(crate.id==='typed'&&G.type){const keys=getTypedItemKeys(G.type);const k=keys[Math.floor(Math.random()*keys.length)];const f=getItemFactory(k);if(f)item=f();}
+  else if(crate.id.startsWith('rarity_')){const rar=crate.id.replace('rarity_','');const keys=getItemsOfRarity(rar);const k=keys[Math.floor(Math.random()*keys.length)];const f=getItemFactory(k);if(f)item=f();}
+  else if(crate.id==='rarity'){const mc=[...rarityOrder].sort((a,b)=>(tw[b]||0)-(tw[a]||0)).find(r=>(tw[r]||0)>0)||'beginner';const keys=getItemsOfRarity(mc);const k=keys[Math.floor(Math.random()*keys.length)];const f=getItemFactory(k);if(f)item=f();}
+  else if(crate.id==='weapon'){const keys=getItemsOfRarity(rollRarity(G.day),['weapon']);const k=keys[Math.floor(Math.random()*keys.length)];const f=getItemFactory(k);if(f)item=f();}
+  if(!item){showNotif('Nothing found!');skipShop();return;}
+  window._lootCrateItem=item;
+  const sellVal=Math.ceil((item.cost||1)*0.5);
+  const ic=getItemIcon(item);
+  setEncTitle('LOOT CRATE');
+  setEncBody(`<div style="text-align:center;padding:16px 0 8px;">
+    <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.08em;margin-bottom:12px;">${crate.name} contained:</div>
+    <div style="font-size:36px;margin-bottom:6px;">${ic}</div>
+    <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:6px;">${item.name}</div>
+    <div style="font-size:11px;color:var(--dim);line-height:1.5;max-width:280px;margin:0 auto 16px;">${item.desc}</div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button class="btn btn-p" style="min-width:100px;" onclick="lootCrateTake()">Take It</button>
+      <button class="btn btn-d" style="min-width:100px;" onclick="lootCrateSell()">Sell It (🪙${sellVal})</button>
+    </div>
+  </div>`);
+}
+
+function lootCrateTake(){
+  const t=window._lootCrateItem;if(!t)return;window._lootCrateItem=null;
+  const item={...t,baseMaxHp:t.maxHp,baseActMs:t.actMs,upgradeLevel:0,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'player'};
+  const mf=maxFrontSlots();const mb=maxBackSlots();let placed=false;
+  const slotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&slotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
+  if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
+  if(!placed){
+    window._lootCrateFullItem=item;
+    const exist=[...board.front,...board.back].filter(i=>i);window._lootCrateFullExist=exist;
+    setEncTitle('LOOT CRATE');
+    const fc=exist.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="lootCrateSwap(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Swap out — sell for 🪙${Math.ceil(getSellValue(it)*0.5)}</div></div>`;}).join('');
+    setEncBody(`<div style="font-size:13px;color:var(--dim);margin-bottom:10px;">Board is full. Swap something out.</div><div class="draft-row" style="flex-wrap:wrap;">${fc}</div>`);
+    return;
+  }
+  renderBoard();updateUI();showNotif(item.name+' added!');skipShop();
+}
+
+function lootCrateSell(){
+  const t=window._lootCrateItem;if(!t)return;window._lootCrateItem=null;
+  const val=Math.ceil((t.cost||1)*0.5);G.gold+=val;updateUI();
+  showNotif(t.name+' sold for 🪙'+val+'!');skipShop();
+}
+
+function lootCrateSwap(idx){
+  const ex=window._lootCrateFullExist&&window._lootCrateFullExist[idx];const ni=window._lootCrateFullItem;
+  if(!ex||!ni)return;window._lootCrateFullExist=null;window._lootCrateFullItem=null;
+  G.gold+=Math.ceil(getSellValue(ex)*0.5);
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===ex){board.front[i]=ni;applySlotBonuses(ni,'front');break;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===ex){board.back[i]=ni;applySlotBonuses(ni,'back');break;}}
+  renderBoard();updateUI();showNotif(ni.name+' added!');skipShop();
+}
+
+function renderWholesale(){
+  const keys=window._wholesaleKeys||[];const prices=window._wholesalePrices||{};const wItems=window._wholesaleItems||{};
+  setEncTitle('WHOLESALE');
+  if(!keys.length){
+    setEncBody(`<div style="text-align:center;padding:24px;color:var(--dim);">All items sold!</div><div class="btn-row"><button class="btn btn-p" onclick="wholesaleDone()">DONE →</button></div>`);
+    return;
+  }
+  const cards=keys.map((key,idx)=>{
+    const t=wItems[key];if(!t)return'';
+    const price=prices[key]||0;const can=G.gold>=price;
+    return`<div class="dc ${(!can&&price>0)?'cant':''}" onclick="${can?`wholesaleBuy(${idx})`:''}"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price}</div></div>`;
+  }).join('');
+  setEncBody(`<div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-p" onclick="wholesaleDone()">DONE →</button></div>`);
+}
+
+function wholesaleBuy(idx){
+  const keys=window._wholesaleKeys;const prices=window._wholesalePrices;const wItems=window._wholesaleItems;
+  if(!keys||idx>=keys.length)return;
+  const key=keys[idx];const price=prices[key]||0;if(G.gold<price)return;
+  G.gold-=price;
+  const t=wItems&&wItems[key];
+  if(!t){updateUI();return;}
+  const allSlots=[...board.front,...board.back];
+  const existing=allSlots.find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+  if(existing){
+    upgradeItem(existing);showNotif(existing.name+' upgraded to '+UPGRADE_NAMES[existing.upgradeLevel]+'!');
+    updateUI();renderBoard();
+    keys.splice(idx,1);delete prices[key];
+    Object.keys(prices).forEach(k=>{prices[k]=Math.max(1,(prices[k]||0)-1);});
+    renderWholesale();return;
+  }
+  const item={...t,baseMaxHp:t.maxHp,baseActMs:t.actMs,upgradeLevel:0,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'player'};
+  const mf=maxFrontSlots();const mb=maxBackSlots();let placed=false;
+  const slotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&slotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
+  if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
+  if(!placed){G.gold+=price;showNotif('Board full!',3000);updateUI();renderWholesale();return;}
+  showNotif(item.name+' added!');
+  keys.splice(idx,1);delete prices[key];
+  Object.keys(prices).forEach(k=>{prices[k]=Math.max(1,(prices[k]||0)-1);});
+  updateUI();renderBoard();renderWholesale();
+}
+
+function wholesaleDone(){
+  window._wholesaleKeys=null;window._wholesalePrices=null;window._wholesaleItems=null;
+  skipShop();
+}
+
+// ============================================================
 // EVENT SYSTEM CONSTANTS
 // ============================================================
 
@@ -6031,9 +6339,24 @@ function pickEvents(day,slotCtx='any',count=3){
   const slotA=pick(freePool,used)||pick(pool,used);
   if(slotA){used.add(slotA.id);result.push(slotA);}
 
-  // Slot B — guaranteed paid/burden event (fallback: any eligible)
-  const slotB=pick(paidPool,used)||pick(pool,used);
-  if(slotB){used.add(slotB.id);result.push(slotB);}
+  // Slot B — 35% chance shop card, else paid/burden event (fallback: any eligible)
+  if(Math.random()<0.35){
+    const sPool=getShopPool(day);
+    if(sPool.length){
+      const withW=sPool.filter(s=>(tw[s.tier]||0)>0);const fromS=withW.length?withW:sPool;
+      const totS=fromS.reduce((sum,s)=>sum+(withW.length?(tw[s.tier]||0):1),0);
+      let rS=Math.random()*totS;let pickedS=fromS[fromS.length-1];
+      for(const s of fromS){rS-=(withW.length?(tw[s.tier]||0):1);if(rS<=0){pickedS=s;break;}}
+      const cn=pickedS.type==='typed'&&G.type?G.type.charAt(0).toUpperCase()+G.type.slice(1)+' Stall':pickedS.coverName;
+      result.push({id:'shop_'+pickedS.id,_shopRef:pickedS,coverName:cn,coverLine:pickedS.coverLine,_isShopCard:true});
+    }else{
+      const slotB=pick(paidPool,used)||pick(pool,used);
+      if(slotB){used.add(slotB.id);result.push(slotB);}
+    }
+  }else{
+    const slotB=pick(paidPool,used)||pick(pool,used);
+    if(slotB){used.add(slotB.id);result.push(slotB);}
+  }
 
   // Slot C — 10% bonus wild fight (pre_wild only), 90% any eligible
   const canWild=allowWild&&!used.has(WILD_FIGHT_OPTION.id);
@@ -6082,7 +6405,9 @@ function selectEventCard(idx){
   const events=window._eventPickerCards;
   window._eventPickerCards=null;
   if(!events||!events[idx])return;
-  showEvent(events[idx]);
+  const card=events[idx];
+  if(card._isShopCard&&card._shopRef){showShop(card._shopRef);return;}
+  showEvent(card);
 }
 
 function showEvent(event){
@@ -6389,7 +6714,7 @@ function resolveEventChoice(choiceIdx){
       if(victim.hp>victim.maxHp)victim.hp=victim.maxHp;
       renderBoard();
       if(!G.inventory)G.inventory=[];
-      G.inventory.push({id:'winston',name:'Winston',icon:'🪨',tag:'He knew everything.',isWinston:true});
+      G.inventory.push({id:'winston',name:'A Rock',icon:'🪨',tag:'He knew everything.',isWinston:true});
       if(G.metrics){G.metrics.hasWinston=true;if(!G.metrics.npcsMet.includes('hermit'))G.metrics.npcsMet.push('hermit');}
       renderInventoryStrip();
       showBurdenPanel('THE HERMIT','He throws a rock at you.\n\n'+victim.name+' loses 10% max HP.\n\nYou pick up the rock. It has a smiley face on it.',()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();});
@@ -6872,6 +7197,9 @@ function merchantsDaughterBuy(idx){
   window._mdItems=null;window._mdPrices=null;
   if(G.gold<price){return;}
   G.gold-=price;
+  // Check for duplicate — upgrade existing item instead of placing new one
+  const mdDup=[...board.front,...board.back].find(i=>i&&i.itemKey===it.itemKey&&i.upgradeLevel<3);
+  if(mdDup){upgradeItem(mdDup);showNotif(mdDup.name+' upgraded!');updateUI();renderBoard();G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
   const newItem=Object.assign({},it,{id:(it.itemKey||'md')+'_'+Math.random().toString(36).slice(2,7),
     hp:it.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:it.maxUses,upgradeLevel:0,effectAmt:it.baseEffect,imbues:[]});
   const mf4=maxFrontSlots();const mb4=maxBackSlots();let p4=false;
