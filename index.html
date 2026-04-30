@@ -133,7 +133,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .clock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--border);}
 /* ENEMY CARDS */
 .ecard.ebroken{background:var(--broken-bg);border-color:var(--broken-b);}
-.eci{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px 2px 12px;}
+.eci{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;padding:4px 2px 12px;}
 .eicon{font-size:22px;}.ename{font-family:'Cinzel',serif;font-size:6px;font-weight:700;text-align:center;}
 .etag{font-size:5px;color:var(--dim);}
 .ebrk{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(100,80,120,.3);}
@@ -364,6 +364,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
         <div class="rl b">BACK</div>
         <div class="slots" id="backSlots"></div>
       </div>
+      <div id="inventoryStrip" style="display:none;flex-shrink:0;height:22px;padding:0 6px;align-items:center;gap:6px;border-top:1px solid var(--border);overflow-x:auto;scrollbar-width:none;"></div>
     </div>
   </div>
 </div>
@@ -818,7 +819,7 @@ function renderSkillTree(){
 // ============================================================
 // STATE
 // ============================================================
-const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',monsterType:'fox',rivalName:'Rival',tutorialSeen:false,secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false,betPending:false,difficulty:localStorage.getItem('zorpDifficulty')||'easy',metrics:{wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false},burdens:[],forkBonusGold:false};
+const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',monsterType:'fox',rivalName:'Rival',tutorialSeen:false,secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false,betPending:false,difficulty:localStorage.getItem('zorpDifficulty')||'easy',metrics:{wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false,wildLostToday:false},burdens:[],forkBonusGold:false,neighborSlotBonus:0,inventory:[],slotBonuses:{front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}},nextEventIsWild:false,lockedSlots:[]};
 let bannedTypes=[];
 let rivalRecord={wins:parseInt(localStorage.getItem('rivalWins')||'0'),losses:parseInt(localStorage.getItem('rivalLosses')||'0')};
 let lastOfferedTypes=[];
@@ -2016,8 +2017,8 @@ function getBoard(s){return s==='player'?board:enemyBoard;}
 function allSlots(s){return[...getBoard(s).front,...getBoard(s).back];}
 function aliveItems(s){return allSlots(s).filter(i=>i&&!i.broken);}
 
-function maxFrontSlots(){if(G.day<=1)return 1;if(G.day<=3)return 2;return 3;}
-function maxBackSlots(){if(G.day<=2)return 1;if(G.day<=4)return 2;return 3;}
+function maxFrontSlots(){const b=G.day<=1?1:G.day<=3?2:3;const bonus=G.neighborSlotBonus||0;return Math.min(3,b+Math.min(bonus,3-b));}
+function maxBackSlots(){const bf=G.day<=1?1:G.day<=3?2:3;const bb=G.day<=2?1:G.day<=4?2:3;const fo=Math.min(G.neighborSlotBonus||0,Math.max(0,3-bf));return Math.min(3,bb+Math.max(0,(G.neighborSlotBonus||0)-fo));}
 function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
 function isJolted(item){return item&&item.hasteMs>0;}
 function countJoltedAllies(){return[...board.front,...board.back].filter(i=>i&&!i.broken&&isJolted(i)).length;}
@@ -2335,7 +2336,7 @@ function applyShield(side,amount,src,targetItem){
   if(side==='enemy'&&activeSkills.some(s=>s.id==='shatter')){
     actual=Math.floor(actual/2);
   }
-  const t=targetItem&&!targetItem.broken?targetItem:alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
+  const t=targetItem&&!targetItem.broken&&targetItem.maxHp>0?targetItem:alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
   t.shield=(t.shield||0)+actual;t.maxShield=Math.max(t.maxShield||0,t.shield);
   if(side==='player')battleState.totalSidePlating+=actual;
   log('s',src+' plates '+t.name+' +'+actual);
@@ -2351,10 +2352,12 @@ function dealDmgTwoRandom(side,base,src){
   if(side==='player'&&activeSkills.some(s=>s.id==='charged')){const j=countJoltedEnemies();chargedBonus=j*2;}
   let stokedBonus=0;
   if(side==='player'&&activeSkills.some(s=>s.id==='stoked')){stokedBonus=countBurnStacksOnBoard(enemyBoard);}
+  const oBoard=oSide==='player'?board:enemyBoard;
+  const _twoFront=aliveItems(oSide).filter(t=>t.maxHp>0&&!t.broken&&oBoard.front.includes(t));
+  const _twoPool=_twoFront.length>0?_twoFront:aliveItems(oSide).filter(t=>t.maxHp>0&&!t.broken&&oBoard.back.includes(t));
   for(let i=0;i<2;i++){
-    const targets=aliveItems(oSide).filter(t=>t.maxHp>0);
-    if(!targets.length)break;
-    const t=targets[Math.floor(Math.random()*targets.length)];
+    if(!_twoPool.length)break;
+    const t=_twoPool[Math.floor(Math.random()*_twoPool.length)];
     let hitDmg=dmg+chargedBonus+stokedBonus;
     if(side==='player'&&activeSkills.some(s=>s.id==='arc')&&isJolted(t))hitDmg+=8;
     if(side==='player'&&activeSkills.some(s=>s.id==='searing')&&(t.burnStack||0)>0&&battleState.activatingItem&&battleState.activatingItem.itemType==='weapon')hitDmg+=8;
@@ -2378,9 +2381,11 @@ function dealDmgWithStatus(side,base,src,statusType,statusVal){
   let dmg=Math.round(base);
   if(attackerMods){dmg=Math.round(dmg*attackerMods.globalMult+attackerMods.dmgBonus+battleState.momentumBonus);battleState.momentumBonus=0;}
   const oSide=opp(side);
-  const targets=aliveItems(oSide).filter(t=>t.maxHp>0);
-  if(!targets.length)return;
-  const t=targets[Math.floor(Math.random()*targets.length)];
+  const _wsBoard=oSide==='player'?board:enemyBoard;
+  const _wsFront=aliveItems(oSide).filter(t=>t.maxHp>0&&!t.broken&&_wsBoard.front.includes(t));
+  const _wsPool=_wsFront.length>0?_wsFront:aliveItems(oSide).filter(t=>t.maxHp>0&&!t.broken&&_wsBoard.back.includes(t));
+  if(!_wsPool.length)return;
+  const t=_wsPool[Math.floor(Math.random()*_wsPool.length)];
   // Electric typed skill bonuses (player attacking enemy)
   if(side==='player'&&activeSkills.some(s=>s.id==='charged')){const j=countJoltedEnemies();if(j>0)dmg+=j*2;}
   if(side==='player'&&activeSkills.some(s=>s.id==='arc')&&isJolted(t))dmg+=8;
@@ -2620,17 +2625,33 @@ function getItemIcon(item){
   }
   return'<span>'+(item.icon||'?')+'</span>';
 }
-function renderBoard(){renderRow('frontSlots',board.front,'front',maxFrontSlots());renderRow('backSlots',board.back,'back',maxBackSlots());}
+function renderBoard(){renderRow('frontSlots',board.front,'front',maxFrontSlots());renderRow('backSlots',board.back,'back',maxBackSlots());renderInventoryStrip();}
+function renderInventoryStrip(){
+  const el=document.getElementById('inventoryStrip');if(!el)return;
+  const items=G.inventory||[];
+  if(!items.length){el.style.display='none';return;}
+  el.style.display='flex';
+  el.innerHTML=items.map((item,i)=>`<span title="${item.name}: ${item.tag}" onclick="showInventoryItem(${i})" style="font-size:14px;cursor:pointer;line-height:1;">${item.icon}</span>`).join('');
+}
+function showInventoryItem(idx){
+  const item=G.inventory&&G.inventory[idx];if(!item)return;
+  showNotif(item.name+' — '+item.tag,3000);
+}
 function renderRow(cid,slots,rowType,maxSlots){
   const el=document.getElementById(cid);el.innerHTML='';
   const max=maxSlots;
   slots.forEach((item,idx)=>{
     const card=document.createElement('div');card.className='ic';
     card.dataset.row=rowType;card.dataset.idx=idx;
+    const isBurdenLocked=idx<max&&!item&&G.lockedSlots&&G.lockedSlots.some(ls=>ls.row===rowType&&ls.idx===idx);
     if(idx>=max){
       card.classList.add('locked');
       const slotNum=rowType==='front'?idx+1:idx+4;
       card.innerHTML='<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><div class="clock">🔒</div><div style="font-family:Cinzel,serif;font-size:6px;letter-spacing:.1em;color:var(--border);opacity:0.25">'+slotNum+'</div></div>';
+    }
+    else if(isBurdenLocked){
+      card.classList.add('locked');
+      card.innerHTML='<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><div class="clock">🔒</div><div style="font-family:Cinzel,serif;font-size:6px;letter-spacing:.1em;color:var(--dim);opacity:0.5">HELD</div></div>';
     }
     else if(!item){
       const slotNum=rowType==='front'?idx+1:idx+4;
@@ -2777,6 +2798,8 @@ function loadCurrentNode(){
   else if(node.id==='wild')showEncounterWildPick();
   else if(node.id==='shop2')showEncounterShop(2);
   else if(node.id==='event'){
+    // Gossip wild override: replace event slot with a bonus wild fight
+    if(G.nextEventIsWild){G.nextEventIsWild=false;showEncounterWildPick();return;}
     const nodes=getDayNodes();
     const wildIdx=nodes.findIndex(n=>n.id==='wild');
     const slotCtx=wildIdx<0?'any':G.dayStep<wildIdx?'pre_wild':'post_wild';
@@ -2821,8 +2844,67 @@ function fireBurdenHandler(burden,onDone){
         });
         renderBoard();
       }
-      G.betPending=true;
-      showBurdenPanel('🎲 THE BET RESOLVES',"Your items return to full strength. The skill pick you would've had? Spent.",onDone);
+      _burdenContinue=onDone;
+      clearTimeout(_burdenAutoTimeout);
+      setEncTitle('🎲 THE BET RESOLVES');
+      setEncBody(`<div style="display:flex;flex-direction:column;gap:14px;max-width:380px;margin:0 auto;padding:8px 0;">
+        <div style="font-size:26px;text-align:center;">🎲</div>
+        <div style="font-weight:700;font-family:'Cinzel',serif;font-size:13px;text-align:center;letter-spacing:.08em;">THE BET RESOLVES</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.65;">Your items return to full strength. You win the bet.</div>
+        <button class="btn btn-p" style="width:100%;margin-top:4px;" onclick="showAnyNodeSkillPicker('unlock')">Claim your node</button>
+      </div>`);
+      break;
+    }
+    case 'oath_resolve':{
+      const pay=burden.payload;
+      // Restore debuffed back row effectAmts
+      if(pay&&pay.originalBackEffects){
+        board.back.filter(i=>i).forEach(item=>{
+          if(pay.originalBackEffects[item.id]!=null)item.effectAmt=pay.originalBackEffects[item.id];
+        });
+      }
+      // Apply +35 maxHp to current back row items and set slot bonus for future placements
+      if(!G.slotBonuses)G.slotBonuses={front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}};
+      G.slotBonuses.back.maxHp+=35;
+      board.back.filter(i=>i).forEach(item=>{
+        item.maxHp=(item.maxHp||0)+35;item.baseMaxHp=(item.baseMaxHp||0)+35;item.hp=(item.hp||0)+35;
+      });
+      renderBoard();updateUI();
+      showBurdenPanel('📜 THE OATH FULFILLED','The words cost you something. But your back line feels different now. Stronger.',onDone);
+      break;
+    }
+    case 'pawnbroker_unlock':{
+      const pay=burden.payload;
+      if(pay&&pay.slotRow!=null&&pay.slotIdx!=null){
+        G.lockedSlots=G.lockedSlots.filter(ls=>!(ls.row===pay.slotRow&&ls.idx===pay.slotIdx));
+        renderBoard();
+      }
+      showBurdenPanel('The slot is yours again.','',onDone);
+      break;
+    }
+    case 'gambler_resolve':{
+      const pay=burden.payload;
+      if(pay&&pay.originalHps){
+        [...board.front,...board.back].filter(i=>i).forEach(item=>{
+          if(pay.originalHps[item.id]!=null){
+            item.maxHp=pay.originalHps[item.id];
+            item.hp=Math.min(item.hp,item.maxHp);
+          }
+        });
+        renderBoard();
+      }
+      showBurdenPanel('🎰 THE ODDS RESTORE','His little experiment is over. Your items recover.',onDone);
+      break;
+    }
+    case 'gossip_resolve':{
+      const pay=burden.payload;
+      if(pay&&pay.originalEffects){
+        [...board.front,...board.back].filter(i=>i).forEach(item=>{
+          if(pay.originalEffects[item.id]!=null)item.effectAmt=pay.originalEffects[item.id];
+        });
+        renderBoard();
+      }
+      onDone();
       break;
     }
     default:
@@ -2842,9 +2924,28 @@ function showBurdenPanel(title,bodyText,onDone){
   _burdenAutoTimeout=setTimeout(_doBurdenContinue,2500);
 }
 
-// ─── Upgrade Pick (Priest easter egg) ────────────────────────
-function showAnyNodeSkillPicker(){
+// ─── Upgrade Pick (Priest easter egg) / Unlock Pick (The Bet) ─
+function showAnyNodeSkillPicker(mode='replace'){
   const presId=getPrestigeNodeId();
+  if(mode==='unlock'){
+    // Bet reward: show all locked non-prestige nodes; player picks one to fill
+    const locked=getTreeNodes().filter(n=>n.id!==presId&&!treeState[n.id]);
+    if(!locked.length){
+      showNotif('No locked nodes available.');
+      _doBurdenContinue();
+      return;
+    }
+    setEncTitle('CHOOSE A NODE TO UNLOCK');
+    const nodeCards=locked.map(n=>`<div class="dc" onclick="betSelectNode('${n.id}','unlock')">
+      <div class="di">${rarityIcon(n.rarity)}</div>
+      <div class="dn">${n.label}</div>
+      <div class="dd">${n.rarity.charAt(0).toUpperCase()+n.rarity.slice(1)} node</div>
+      <div class="dp sk-rarity rarity-${n.rarity}">${n.rarity}</div>
+    </div>`).join('');
+    setEncBody('<div class="dialogue"><div class="dlg-name">THE BET</div>"A node of your choosing."</div><div class="draft-row" style="flex-wrap:wrap;">'+nodeCards+'</div>');
+    return;
+  }
+  // mode === 'replace' — Priest/Cartographer: replace skill in a filled node
   const filled=getTreeNodes().filter(n=>n.id!==presId&&treeState[n.id]);
   if(!filled.length){
     showNotif('No filled nodes to upgrade.');
@@ -2852,7 +2953,7 @@ function showAnyNodeSkillPicker(){
     return;
   }
   setEncTitle('CHOOSE A NODE TO UPGRADE');
-  const nodeCards=filled.map(n=>`<div class="dc" onclick="betSelectNode('${n.id}')">
+  const nodeCards=filled.map(n=>`<div class="dc" onclick="betSelectNode('${n.id}','replace')">
     <div class="di">${rarityIcon(n.rarity)}</div>
     <div class="dn">${n.label}</div>
     <div class="dd">Currently: ${treeState[n.id]?treeState[n.id].name:'Empty'}</div>
@@ -2861,12 +2962,12 @@ function showAnyNodeSkillPicker(){
   setEncBody('<div class="dialogue"><div class="dlg-name">THE PRIEST</div>"Change your path. The Spirit has more to offer."</div><div class="draft-row" style="flex-wrap:wrap;">'+nodeCards+'</div>');
 }
 
-function betSelectNode(nodeId){
+function betSelectNode(nodeId,mode='replace'){
   const node=getNodeById(nodeId);
   const offers=getSkillOffers(node.rarity);
-  setEncTitle('CHOOSE A REPLACEMENT — '+node.rarity.toUpperCase());
+  setEncTitle((mode==='unlock'?'CHOOSE A SKILL — ':'CHOOSE A REPLACEMENT — ')+node.rarity.toUpperCase());
   const cards=offers.map(sk=>`
-    <div class="sk-card" onclick="betPickSkill('${nodeId}','${sk.id}','${sk.type||'generic'}')">
+    <div class="sk-card" onclick="betPickSkill('${nodeId}','${sk.id}','${sk.type||'generic'}','${mode}')">
       <div class="sk-icon">${sk.icon}</div>
       <div class="sk-name">${sk.name}</div>
       ${sk.type?`<div style="font-family:Cinzel,serif;font-size:7px;color:var(--dim);margin-bottom:2px">[${sk.type.toUpperCase()}]</div>`:''}
@@ -2877,7 +2978,7 @@ function betSelectNode(nodeId){
   setEncBody(`<div class="skill-opts">${cards}</div>`);
 }
 
-function betPickSkill(nodeId,skillId,skillType){
+function betPickSkill(nodeId,skillId,skillType,mode='replace'){
   const allSkills=[
     ...SKILLS.prestige,...SKILLS.beginner,...SKILLS.intermediate,...SKILLS.advanced,...SKILLS.mastered,
     ...(G.type?[
@@ -2889,13 +2990,24 @@ function betPickSkill(nodeId,skillId,skillType){
   ];
   const skill=allSkills.find(s=>s.id===skillId);
   if(!skill)return;
-  const old=treeState[nodeId];
-  if(old)activeSkills=activeSkills.filter(s=>s!==old);
-  treeState[nodeId]=skill;
-  activeSkills.push(skill);
-  renderSkillTree();
-  showNotif(skill.name+' learned!');
-  G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+  if(mode==='unlock'){
+    // Bet free node — fill empty node, then mark betPending to skip next skill pick
+    treeState[nodeId]=skill;
+    activeSkills.push(skill);
+    renderSkillTree();
+    showNotif(skill.name+' unlocked via The Bet.');
+    G.betPending=true;
+    _doBurdenContinue();
+  } else {
+    // Priest/Cartographer replace — swap skill in filled node, advance day
+    const old=treeState[nodeId];
+    if(old)activeSkills=activeSkills.filter(s=>s!==old);
+    treeState[nodeId]=skill;
+    activeSkills.push(skill);
+    renderSkillTree();
+    showNotif(skill.name+' learned!');
+    G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+  }
 }
 
 // ============================================================
@@ -3007,8 +3119,9 @@ function buyMomItem(key,free,isConsolation){
     burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,
     _side:'player'};
   const maxFront=maxFrontSlots();const maxBack=maxBackSlots();let placed=false;
-  for(let i=0;i<maxFront&&!placed;i++){if(!board.front[i]){board.front[i]=item;placed=true;}}
-  if(!placed)for(let i=0;i<maxBack&&!placed;i++){if(!board.back[i]){board.back[i]=item;placed=true;}}
+  const momSlotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<maxFront&&!placed;i++){if(!board.front[i]&&momSlotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
+  if(!placed)for(let i=0;i<maxBack&&!placed;i++){if(!board.back[i]&&momSlotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
   if(!placed){showNotif('Board full! Open an item and hit SELL to make room.',4000);return;}
   showNotif(item.name+' received!');
   logEvent({event:'mom_pick',item_key:key,is_consolation:isConsolation});
@@ -3038,8 +3151,9 @@ function buyItem(key,free){
   const item={...t,baseMaxHp:t.maxHp,baseActMs:t.actMs,upgradeLevel:0,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,
     hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'player'};
   const maxFront=maxFrontSlots();const maxBack=maxBackSlots();let placed=false;
-  for(let i=0;i<maxFront&&!placed;i++){if(!board.front[i]){board.front[i]=item;placed=true;}}
-  if(!placed)for(let i=0;i<maxBack&&!placed;i++){if(!board.back[i]){board.back[i]=item;placed=true;}}
+  const slotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<maxFront&&!placed;i++){if(!board.front[i]&&slotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
+  if(!placed)for(let i=0;i<maxBack&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
   if(!placed){showNotif('Board full! Open an item and hit SELL, or swap positions.',4000);return;}
   showNotif(item.name+' added!');
   logEvent({event:'shop_buy',item_key:key,item_rarity:t.itemRarity||'',item_type:t.itemType||'',gold_spent:t.cost,gold_remaining:G.gold,upgraded:!!existing});
@@ -3209,7 +3323,7 @@ const TRAINER_DATA=[
     img:TRAINER_MIRROR_IMG,
     icon:'🪞',
     tag:'Knows your every move',
-    dialogueBefore:'I GameSharked your build.',
+    get dialogueBefore(){return G.metrics&&G.metrics.oathTaken?'Careless words for a quick reward. Did you even ask what it cost?':'I GameSharked your build.';},
     dialogueAfterWin:'You found the crack. There\'s always one.',
     dialogueAfterLoss:'I just held up the glass.',
     buildTeam:()=>{
@@ -3272,6 +3386,8 @@ const TRAINER_DATA=[
         },
       };
       enemyBoard.back[0]=shame;
+      // Oath interaction: oath takers face double Shame return damage
+      if(G.metrics&&G.metrics.oathTaken){shame._shameReturnDmg=shame._shameReturnDmg*2;}
       // SKILL NOTE: Mirror copies player skills if trainer skills implemented
     }
   },
@@ -4032,6 +4148,11 @@ function endBattle(result){
         const isPerfect=G.honor===13;
         if(isPerfect){title='FLAWLESS';sub='Six wins. Zero losses. '+G.monsterName+' knew all along.';}
         else{sub='Six wins. The run is complete.';}
+        if(G.metrics&&G.metrics.hasWinston){
+          localStorage.setItem('zorpWinstonFound','1');
+          const ww=WINSTON_WISDOM[Math.floor(Math.random()*WINSTON_WISDOM.length)];
+          sub+=`<br><br><div style="text-align:center;font-size:22px;margin-top:8px;">🪨</div><div style="font-size:11px;color:var(--dim);font-style:italic;line-height:1.7;text-align:center;">"Thank you for saving me."<br><br>${ww}</div>`;
+        }
         btnText='PLAY AGAIN';btnOnclick='resetRun()';
         logEvent({event:'run_complete',wins:G.wins,honor:G.honor,perfect:isPerfect,board:boardSnapshot(),skills:activeSkills.map(s=>s.id)});
       }else{
@@ -4044,7 +4165,7 @@ function endBattle(result){
   }else{
     if(currentBattleType==='wild'){
       title='DEFEATED';
-      if(G.metrics)G.metrics.wildLosses++;
+      if(G.metrics){G.metrics.wildLosses++;G.metrics.wildLostToday=true;}
       const monsterName=currentWildMonster?currentWildMonster.name:'Wild Monster';
       logEvent({event:'wild_battle',result:'lose',wild_monster:monsterName,board:boardSnapshot(),battle_duration_ms:battleMs});
       if(G.day===1){
@@ -4094,11 +4215,58 @@ function continueAfterResult(){
 }
 
 function postTrainerWin(){
+  // Winston → Monk interaction triggers on Win 4
+  if(G.wins===4&&G.metrics&&G.metrics.hasWinston&&!G.metrics.eventsCompleted.includes('monk_winston')){
+    showMonkWinstonArc();
+    return;
+  }
   if(G.type===null){
     showTypeSelect();
   }else{
     showSkillPick();
   }
+}
+function showMonkWinstonArc(){
+  setEncTitle('THE MONK');
+  setEncBody(`<div style="display:flex;flex-direction:column;gap:12px;max-width:380px;margin:0 auto;padding:8px 0;">
+    <div style="font-size:26px;text-align:center;">🪨</div>
+    <div style="font-weight:700;font-family:'Cinzel',serif;font-size:13px;text-align:center;letter-spacing:.08em;">THE MONK</div>
+    <div style="font-size:13px;color:var(--text);line-height:1.65;">"Can I see that rock?"<br><br>"Hmm. Yes."</div>
+    <button class="btn btn-p" style="width:100%;margin-top:4px;" onclick="monkWinstonShowHim()">Show him</button>
+  </div>`);
+}
+function monkWinstonShowHim(){
+  setEncTitle('THE MONK');
+  setEncBody(`<div style="display:flex;flex-direction:column;gap:12px;max-width:380px;margin:0 auto;padding:8px 0;">
+    <div style="font-size:26px;text-align:center;">🪨</div>
+    <div style="font-weight:700;font-family:'Cinzel',serif;font-size:13px;text-align:center;letter-spacing:.08em;">THE MONK</div>
+    <div style="font-size:13px;color:var(--text);line-height:1.65;">"A great amount of energy was poured into this."<br><br>"A friend. A partner. A lover..."<br><br>He drops the rock.<br><br>"You should put this back wherever you found it."</div>
+    <button class="btn btn-p" style="width:100%;margin-top:4px;" onclick="monkWinstonReturn()">Return the rock</button>
+    <button class="btn btn-d" style="width:100%;margin-top:4px;" onclick="monkWinstonKeep()">Keep Winston</button>
+  </div>`);
+}
+function monkWinstonReturn(){
+  G.metrics.hasWinston=false;
+  G.inventory=(G.inventory||[]).filter(i=>!i.isWinston);
+  renderInventoryStrip();
+  G.metrics.eventsCompleted.push('monk_winston_returned');
+  G.metrics.eventsCompleted.push('monk_winston');
+  showBurdenPanel('THE MONK','"He takes the rock. He curses you. Or blesses you."\n\nEither way your item feels different.',()=>{
+    showBoardPicker('Choose an item to strengthen:',(item)=>{
+      const bonus=Math.round((item.maxHp||0)*0.20)||1;
+      item.maxHp=(item.maxHp||0)+bonus;item.baseMaxHp=(item.baseMaxHp||0)+bonus;item.hp=(item.hp||0)+bonus;
+      renderBoard();updateUI();
+      showNotif(item.name+' — +'+bonus+' max HP!');
+      if(G.type===null){showTypeSelect();}else{showSkillPick();}
+    });
+  });
+}
+function monkWinstonKeep(){
+  G.metrics.eventsCompleted.push('monk_winston_kept');
+  G.metrics.eventsCompleted.push('monk_winston');
+  showBurdenPanel('THE MONK','He watches you leave.',()=>{
+    if(G.type===null){showTypeSelect();}else{showSkillPick();}
+  });
 }
 
 // ============================================================
@@ -4303,6 +4471,7 @@ function pickType(id){
     updateFoxImage();
     renderSkillTree();
     logEvent({event:'type_select',chosen:id,offered:lastOfferedTypes,win_number:G.wins});
+    if(G.betPending){G.betPending=false;} // Bet already granted free pick; skip the normal pick silently
     advanceDay(); // no node pick this win for typed players
   }
 }
@@ -4436,13 +4605,14 @@ function advanceDay(){
     G.consolationPending=false;
     G.day++;
     G.dayStep=0;
+    if(G.metrics)G.metrics.wildLostToday=false;
     updateUI();
     renderBoard();
     renderTrack();
     showEncounterShop(0); // Mom consolation as first event of day 2
     return;
   }
-  G.day++;G.dayStep=0;updateUI();renderBoard();renderTrack();
+  G.day++;G.dayStep=0;if(G.metrics)G.metrics.wildLostToday=false;updateUI();renderBoard();renderTrack();
   showNotif('Day '+G.day+' begins!');
   activateCurrentNode();
 }
@@ -5132,6 +5302,7 @@ function showTitleScreen(){
   const wm=document.getElementById('logo-watermark');
   if(wm)wm.style.display='none';
   const hasBeat=!!localStorage.getItem('zorpBeatGame');
+  const hasWinston=!!localStorage.getItem('zorpWinstonFound');
   const curDiff=localStorage.getItem('zorpDifficulty')||'easy';
   const diffPills=['easy','normal','hard'].map(d=>`
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
@@ -5154,6 +5325,7 @@ function showTitleScreen(){
     </div>
     <img src="${SCRUFFLING_IMG}" style="position:fixed;left:0;bottom:0;height:30vh;max-width:45vw;object-fit:contain;object-position:bottom left;pointer-events:none;filter:drop-shadow(4px 0 18px rgba(0,0,0,.65));"/>
     <img src="${THORNBACK_IMG}" style="position:fixed;right:0;bottom:0;height:30vh;max-width:45vw;object-fit:contain;object-position:bottom right;pointer-events:none;filter:drop-shadow(-4px 0 18px rgba(0,0,0,.65));transform:scaleX(-1);"/>
+    ${hasWinston?`<div onclick="showWinstonPanel()" style="position:fixed;bottom:12px;left:12px;font-size:20px;opacity:0.6;cursor:pointer;pointer-events:all;z-index:201;user-select:none;" title="He knew everything.">🪨</div>`:''}
   `;
   document.body.appendChild(ts);
 }
@@ -5181,6 +5353,17 @@ function startFromTitle(){
   }else{wm.style.display='';}
   showProfessorFlow();
 }
+function showWinstonPanel(){
+  const ex=document.getElementById('winston-modal');if(ex)ex.remove();
+  const el=document.createElement('div');el.id='winston-modal';
+  el.style.cssText='position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);pointer-events:all;';
+  el.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:24px 28px;max-width:280px;text-align:center;display:flex;flex-direction:column;gap:12px;">
+    <div style="font-size:32px;">🪨</div>
+    <div style="font-size:13px;color:var(--text);font-style:italic;line-height:1.6;">"He knew everything."</div>
+    <button class="btn btn-d" onclick="document.getElementById('winston-modal').remove()">Close</button>
+  </div>`;
+  document.body.appendChild(el);
+}
 
 // ============================================================
 // RESET
@@ -5188,8 +5371,9 @@ function startFromTitle(){
 function resetRun(){
   stopBattle();
   G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;G.consolationPending=false;G.monsterType='fox';G.monsterName='Kip';
-  G.metrics={wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false};
-  G.burdens=[];G.forkBonusGold=false;G.betPending=false;
+  G.metrics={wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false,wildLostToday:false};
+  G.burdens=[];G.forkBonusGold=false;G.betPending=false;G.neighborSlotBonus=0;
+  G.inventory=[];G.slotBonuses={front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}};G.nextEventIsWild=false;G.lockedSlots=[];
   board={front:[null,null,null],back:[null,null,null]};
   enemyBoard={front:[null,null,null],back:[null,null,null]};
   getTreeNodes().forEach(n=>treeState[n.id]=null);
@@ -5434,7 +5618,7 @@ const EVENTS=[
        effect:{type:'imbue_pick',imbueType:'damage',amount:7},
        outcomeText:'Much sharper.'},
     ],
-    resolution:'immediate',tags:['free','paid','imbue'],easter_egg:false,
+    resolution:'immediate',tags:['paid','imbue'],easter_egg:false,
   },
   // ── THE TAX COLLECTOR ─────────────────────────────────────
   {
@@ -5505,6 +5689,241 @@ const EVENTS=[
     ],
     resolution:'immediate',tags:['burden','risk'],easter_egg:false,
   },
+  // ── THE KID ───────────────────────────────────────────────────
+  {
+    id:'the_kid',name:'The Kid',tier:'beginner',image:null,
+    unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Kid',flavor:'A child is selling lemonade. It is not lemonade.',dialogue:null},
+    choices:[
+      {id:'buy',label:'Buy one — 2 gold',cost:{type:'gold',amount:2},requiresCost:true,
+       effect:{type:'imbue_random_item_random_type'},burden:null,outcomeText:null},
+      {id:'decline',label:'Walk past',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:'He watches you leave. He does not understand.'},
+    ],
+    resolution:'immediate',tags:['paid','imbue'],easter_egg:false,
+  },
+  // ── THE OLD MAN'S CART ────────────────────────────────────────
+  {
+    id:'old_mans_cart',name:"The Old Man's Cart",tier:'beginner',image:null,
+    unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:"The Old Man's Cart",flavor:"He's selling one thing. He doesn't know what it does.",dialogue:null},
+    choices:[
+      {id:'take',label:'Take it',cost:null,requiresCost:false,
+       effect:{type:'old_mans_cart_take'},burden:null,outcomeText:null},
+      {id:'leave',label:'Leave it',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:'The old man nods like this was expected.'},
+    ],
+    resolution:'immediate',tags:['free'],easter_egg:false,
+  },
+  // ── THE UNIMPRESSED FARMER ────────────────────────────────────
+  {
+    id:'unimpressed_farmer',name:'The Unimpressed Farmer',tier:'beginner',image:null,
+    unlock:{minDay:1,maxDay:5,minWins:0,maxWins:6,performance:'wildLostToday',state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:['post_wild'],state:null,
+    prompt:{image:null,title:'The Unimpressed Farmer',flavor:'He watched the whole thing.',
+      dialogue:'"I never seen someone miss that many times. Try this next time."'},
+    choices:[
+      {id:'accept',label:'Take his advice',cost:null,requiresCost:false,
+       effect:{type:'upgrade_weapon_pick'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free','performance'],easter_egg:false,
+  },
+  // ── THE GENEROUS NEIGHBOR ─────────────────────────────────────
+  {
+    id:'generous_neighbor',name:'The Generous Neighbor',tier:'beginner',image:null,
+    unlock:{minDay:2,maxDay:5,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:['pre_wild'],state:'boardNotFull',
+    prompt:{image:null,title:'The Generous Neighbor',flavor:"She's already unlocked it. She won't hear otherwise.",dialogue:null},
+    effect:{type:'generous_neighbor_slot'},
+    choices:[],
+    resolution:'immediate',tags:['free','forced'],easter_egg:false,
+  },
+  // ── THE CARTOGRAPHER ──────────────────────────────────────────
+  {
+    id:'the_cartographer',name:'The Cartographer',tier:'intermediate',image:null,
+    unlock:{minDay:4,maxDay:10,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Cartographer',flavor:"I'm mapping these lands. Mind telling me where you've been? I'll make it worth your while.",dialogue:null},
+    choices:[
+      {id:'talk',label:"Tell her where you've been",cost:null,requiresCost:false,
+       effect:{type:'cartographer_reward'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free','performance'],easter_egg:false,
+  },
+  // ── THE HERMIT ────────────────────────────────────────────────
+  {
+    id:'the_hermit',name:'The Hermit',tier:'intermediate',image:null,
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Hermit',flavor:"He hasn't spoken to anyone in years. He knows everything.",dialogue:null},
+    choices:[
+      {id:'indulge',label:'Indulge his delusions',cost:null,requiresCost:false,
+       effect:{type:'hermit_indulge'},burden:null,outcomeText:null},
+      {id:'walk_away',label:'Walk away from this craziness',cost:null,requiresCost:false,
+       effect:{type:'hermit_walk_away'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free','risk'],easter_egg:false,
+  },
+  // ── THE BLACKSMITH ────────────────────────────────────────────
+  {
+    id:'the_blacksmith',name:'The Blacksmith',tier:'intermediate',image:null,
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Blacksmith',flavor:'She looks at your board like it personally offended her.',dialogue:null},
+    choices:[
+      {id:'free',label:'Let her pick',cost:null,requiresCost:false,
+       effect:{type:'blacksmith_free'},burden:null,outcomeText:null},
+      {id:'paid',label:'Commission the work — 4 gold',cost:{type:'gold',amount:4},requiresCost:true,
+       effect:{type:'blacksmith_paid'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['paid','imbue'],easter_egg:false,
+  },
+  // ── THE MERCHANT'S DAUGHTER ───────────────────────────────────
+  {
+    id:'merchants_daughter',name:"The Merchant's Daughter",tier:'intermediate',image:null,
+    unlock:{minDay:2,maxDay:8,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:"The Merchant's Daughter",flavor:"She's running the stall while her father sleeps. She doesn't know what things cost.",dialogue:null},
+    choices:[
+      {id:'browse',label:'Browse — 2 gold',cost:{type:'gold',amount:2},requiresCost:true,
+       effect:{type:'merchants_daughter_shop'},burden:null,outcomeText:null},
+      {id:'decline',label:'Keep walking',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['paid'],easter_egg:false,
+  },
+  // ── THE APPRAISER ─────────────────────────────────────────────
+  {
+    id:'the_appraiser',name:'The Appraiser',tier:'intermediate',image:null,
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Appraiser',flavor:"He picks up each item. He's convinced each one is rarer than the last.",dialogue:null},
+    choices:[
+      {id:'sell',label:'Let him buy one',cost:null,requiresCost:false,
+       effect:{type:'appraiser_sell'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free','paid'],easter_egg:false,
+  },
+  // ── THE OATH ──────────────────────────────────────────────────
+  {
+    id:'the_oath',name:'The Oath',tier:'intermediate',image:null,
+    unlock:{minDay:2,maxDay:8,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:{oathTaken:true}},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Oath',flavor:'The words feel permanent as soon as you say them.',dialogue:null},
+    choices:[
+      {id:'accept',label:'Accept',cost:null,requiresCost:false,
+       effect:{type:'oath_debuff'},
+       burden:{id:'the_oath',icon:'📜',countdown:15,unit:'locations',colorAmber:5,colorRed:2,payload:{},onResolve:'oath_resolve',active:true},
+       outcomeText:'...What did I agree to?'},
+      {id:'decline',label:'Decline',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:null},
+    ],
+    resolution:'automatic',tags:['burden','risk'],easter_egg:false,
+  },
+  // ── THE PAWNBROKER ────────────────────────────────────────────
+  {
+    id:'the_pawnbroker',name:'The Pawnbroker',tier:'intermediate',image:null,
+    unlock:{minDay:3,maxDay:9,minWins:1,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Pawnbroker',flavor:"He doesn't ask where you got it. He never does.",dialogue:null},
+    choices:[
+      {id:'pawn',label:'Make a deal',cost:null,requiresCost:false,
+       effect:{type:'pawnbroker_deal'},burden:null,outcomeText:null},
+      {id:'decline',label:'Walk away',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['paid','burden'],easter_egg:false,
+  },
+  // ── THE SURGEON ───────────────────────────────────────────────
+  {
+    id:'the_surgeon',name:'The Surgeon',tier:'intermediate',image:null,
+    unlock:{minDay:3,maxDay:9,minWins:1,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[],minHonor:5},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Surgeon',flavor:'She can fix it. It will cost you.',dialogue:null},
+    choices:[
+      {id:'pay',label:'Pay — 4 honor',cost:{type:'honor',amount:4},requiresCost:true,
+       effect:{type:'surgeon_upgrade'},burden:null,outcomeText:null},
+      {id:'decline',label:'Decline',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['paid','honor'],easter_egg:false,
+  },
+  // ── THE GAMBLER ───────────────────────────────────────────────
+  {
+    id:'the_gambler',name:'The Gambler',tier:'intermediate',image:null,
+    unlock:{minDay:3,maxDay:9,minWins:1,maxWins:5,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Gambler',flavor:"He's very friendly for someone asking you to lose on purpose.",dialogue:null},
+    choices:[
+      {id:'throw',label:'Throw the fight — lose 3 honor',cost:{type:'honor',amount:3},requiresCost:true,
+       effect:{type:'gambler_throw'},burden:null,outcomeText:null},
+      {id:'refuse',label:'Maintain your honor',cost:null,requiresCost:false,
+       effect:{type:'gambler_refuse'},burden:null,outcomeText:'"Suit yourself."'},
+    ],
+    resolution:'immediate',tags:['paid','burden','honor'],easter_egg:false,
+  },
+  // ── THE COLLECTOR ─────────────────────────────────────────────
+  {
+    id:'the_collector',name:'The Collector',tier:'intermediate',image:null,
+    unlock:{minDay:3,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Collector',flavor:"He doesn't want your money. He wants something you didn't want to part with.",
+      dialogue:'"Collecting is about more than just the things."'},
+    choices:[
+      {id:'trade',label:'Make the trade',cost:null,requiresCost:false,
+       effect:{type:'collector_trade'},burden:null,outcomeText:null},
+      {id:'decline',label:'Keep everything',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:"He understands. He doesn't like it."},
+    ],
+    resolution:'immediate',tags:['free','risk'],easter_egg:false,
+  },
+  // ── THE GOSSIP ────────────────────────────────────────────────
+  {
+    id:'the_gossip',name:'The Gossip',tier:'intermediate',image:null,
+    unlock:{minDay:3,maxDay:9,minWins:1,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Gossip',flavor:"He knows things. He's very excited about this.",dialogue:null},
+    choices:[
+      {id:'clue',label:'A clue',cost:null,requiresCost:false,
+       effect:{type:'gossip_clue'},burden:null,outcomeText:null},
+      {id:'damage',label:'Something extra',cost:null,requiresCost:false,
+       effect:{type:'gossip_damage'},burden:null,outcomeText:null},
+      {id:'wild',label:'Where the wild things are',cost:null,requiresCost:false,
+       effect:{type:'gossip_wild'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free'],easter_egg:false,
+  },
+  // ── THE STRANGER ──────────────────────────────────────────────
+  {
+    id:'the_stranger',name:'The Stranger',tier:'beginner',image:null,
+    unlock:{minDay:1,maxDay:5,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:['pre_wild'],state:null,
+    prompt:{image:null,title:'The Stranger',flavor:"A man knows things he shouldn't. He offers to tell you more.",dialogue:null},
+    choices:[
+      {id:'peek',label:'Let him talk — free',cost:null,requiresCost:false,
+       effect:{type:'stranger_peek'},burden:null,outcomeText:null},
+      {id:'peek_swap',label:'Let him talk and act on it — 3 gold',cost:{type:'gold',amount:3},requiresCost:true,
+       effect:{type:'stranger_peek_swap'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free','paid'],easter_egg:false,
+  },
+  // ── CULT ACCUSATION (advanced placeholder) ───────────────────
+  {
+    id:'cult_accusation',name:'A Familiar Look',tier:'advanced',image:null,
+    unlock:{minDay:4,maxDay:10,minWins:1,maxWins:6,performance:null,state:null,metricFlags:['oathTaken'],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:null,flavor:null,
+      dialogue:'"You took the Oath didn\'t you. It\'s not a question."'},
+    choices:[
+      {id:'deny',label:'Deny it',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:"He doesn't believe you."},
+      {id:'admit',label:'Admit it',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:'He nods slowly. Walks away faster than necessary.'},
+    ],
+    resolution:'immediate',tags:['forced','performance'],easter_egg:false,
+  },
 ];
 
 let currentEvent=null;
@@ -5514,6 +5933,8 @@ function getEventPool(day,slotCtx='any'){
     if(!e)return false;
     // Slot-context filter: events with validSlots only appear in their allowed slots
     if(e.validSlots&&slotCtx!=='any'&&!e.validSlots.includes(slotCtx))return false;
+    // state check: event-level condition on live game state
+    if(e.state==='boardNotFull'&&maxFrontSlots()+maxBackSlots()>=6)return false;
     const u=e.unlock;
     if(!u)return true;
     if(u.minDay!=null&&day<u.minDay)return false;
@@ -5525,6 +5946,14 @@ function getEventPool(day,slotCtx='any'){
         if(val===true){if(G.metrics[field])return false;}
         else if(G.metrics[field]===val)return false;
       }
+    }
+    // performance flag: event only appears if a specific metric is truthy
+    if(u.performance&&G.metrics&&!G.metrics[u.performance])return false;
+    // minHonor: event only appears if player has enough honor
+    if(u.minHonor!=null&&G.honor<u.minHonor)return false;
+    // metricFlags: inclusion filter — all listed metrics must be truthy
+    if(u.metricFlags&&u.metricFlags.length&&G.metrics){
+      for(const field of u.metricFlags){if(!G.metrics[field])return false;}
     }
     return true;
   });
@@ -5635,10 +6064,27 @@ function showEvent(event){
   const flavor=(event.prompt&&event.prompt.flavor)||event.desc||'';
   const dialogue=(event.prompt&&event.prompt.dialogue)||'';
   const icon=event.image||event.icon||'📜';
+
+  // No-choice event: fire top-level effect immediately, show flavor, auto-advance after 1.5s
+  if(!event.choices||!event.choices.length){
+    if(event.effect&&event.effect.type==='generous_neighbor_slot'){
+      G.neighborSlotBonus=(G.neighborSlotBonus||0)+1;
+      renderBoard();updateUI();
+    }
+    setEncBody(`<div style="display:flex;flex-direction:column;gap:12px;max-width:380px;margin:0 auto;padding:8px 0;">
+      <div style="font-weight:700;font-size:15px;text-align:center;letter-spacing:.04em;">${title}</div>
+      <div style="font-size:13px;color:var(--dim);line-height:1.65;">${flavor}</div>
+    </div>`);
+    setTimeout(()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();},1500);
+    return;
+  }
+
   const choicesHtml=event.choices.map((c,i)=>{
-    const hasCost=c.cost&&c.cost.type==='gold';
-    const cantAfford=c.requiresCost&&hasCost&&G.gold<c.cost.amount;
-    const costLabel=hasCost?` (🪙${c.cost.amount})`:'';
+    const isGoldCost=c.cost&&c.cost.type==='gold';
+    const isHonorCost=c.cost&&c.cost.type==='honor';
+    const cantAfford=c.requiresCost&&c.cost&&(
+      (isGoldCost&&G.gold<c.cost.amount)||(isHonorCost&&G.honor<c.cost.amount));
+    const costLabel=isGoldCost?` (🪙${c.cost.amount})`:isHonorCost?` (${c.cost.amount} honor)`:'';
     const style=cantAfford?'opacity:.4;pointer-events:none;':'';
     return `<button class="btn btn-p" style="margin:4px 0;width:100%;text-align:left;padding:10px 14px;${style}" onclick="${cantAfford?'':('resolveEventChoice('+i+')')}">${c.label}${costLabel}</button>`;
   }).join('');
@@ -5669,22 +6115,27 @@ function resolveEventChoice(choiceIdx){
     updateUI();
   }
 
+  // outcomeText helpers — immediate effects use done() instead of raw advance
+  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  const eventTitle=(event&&event.prompt&&event.prompt.title)||(event&&event.name)||'';
+  const done=choice.outcomeText?()=>showBurdenPanel(eventTitle,choice.outcomeText,advance):advance;
+
   // Effect handler
   const effect=choice.effect;
-  if(!effect){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+  if(!effect){done();return;}
 
   // Add burden if defined on choice (non-bet_debuff — that adds its own inline)
   if(choice.burden&&effect.type!=='bet_debuff'){
     const b=Object.assign({},choice.burden);
     if(!b.payload)b.payload={};
     G.burdens.push(b);
-    if(G.metrics){G.metrics.burdensTaken++;if(b.onResolve==='butcher_collect')G.metrics.loanActive=true;}
+    if(G.metrics){G.metrics.burdensTaken++;if(b.onResolve==='butcher_collect'){G.metrics.loanActive=true;if(!G.metrics.npcsMet.includes('butcher'))G.metrics.npcsMet.push('butcher');}}
     renderCounterStrip();
   }
 
   switch(effect.type){
     case 'none':
-      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      done();
       return;
 
     case 'gold':
@@ -5715,7 +6166,7 @@ function resolveEventChoice(choiceIdx){
     case 'fork_left':
       G.forkBonusGold=true;
       showNotif('+1 gold bonus on wild win!');
-      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      done();
       return;
 
     case 'fork_right':
@@ -5725,8 +6176,8 @@ function resolveEventChoice(choiceIdx){
       return;
 
     case 'butcher_decline':
-      if(G.metrics)G.metrics.butcherDeclines++;
-      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      if(G.metrics){G.metrics.butcherDeclines++;if(!G.metrics.npcsMet.includes('butcher'))G.metrics.npcsMet.push('butcher');}
+      done();
       return;
 
     case 'bet_debuff':{
@@ -5756,13 +6207,716 @@ function resolveEventChoice(choiceIdx){
       return;
 
     case 'upgrade_pick':
+      // Priest easter egg: record discovery so Gossip hint[1] can detect it
+      if(event&&event.id==='the_priest'&&G.metrics&&!G.metrics.eventsCompleted.includes('priest')){G.metrics.eventsCompleted.push('priest');}
       showAnyNodeSkillPicker();
       return;
+
+    case 'imbue_random_item_random_type': {
+      const kidItems=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      if(!kidItems.length){showNotif('No items to imbue!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      const kidItem=kidItems[Math.floor(Math.random()*kidItems.length)];
+      const kidTypes=['damage','hp','burn_on_act','poison_on_act'];
+      const kidAmounts={damage:4,hp:8,burn_on_act:1,poison_on_act:1};
+      const kidType=kidTypes[Math.floor(Math.random()*kidTypes.length)];
+      imbueItem(kidItem,kidType,kidAmounts[kidType]);
+      const kidDesc=kidType==='damage'?'+4 Damage':kidType==='hp'?'+8 HP':kidType==='burn_on_act'?'+1 Burn on act':'+1 Poison on act';
+      showNotif(kidDesc+' applied to '+kidItem.name+'!');
+      G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+      return;
+    }
+
+    case 'old_mans_cart_take': {
+      const cartPool=getItemsOfRarity('beginner');
+      if(!cartPool.length){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      const cartKey=cartPool[Math.floor(Math.random()*cartPool.length)];
+      const cartFactory=getItemFactory(cartKey);
+      if(!cartFactory){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      const cartBase=cartFactory();
+      const cartItem=Object.assign({},cartBase,{
+        id:cartKey+'_'+Math.random().toString(36).slice(2,7),
+        hp:cartBase.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+        broken:false,uses:cartBase.maxUses,upgradeLevel:0,effectAmt:cartBase.baseEffect,
+        imbues:[],
+      });
+      const mf=maxFrontSlots();const mb=maxBackSlots();
+      const cartOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+      let placed=false;
+      for(let i=0;i<mf;i++){if(!board.front[i]&&cartOk('front',i)){board.front[i]=cartItem;placed=true;break;}}
+      if(!placed)for(let i=0;i<mb;i++){if(!board.back[i]&&cartOk('back',i)){board.back[i]=cartItem;placed=true;break;}}
+      if(placed){
+        renderBoard();updateUI();
+        showNotif(cartItem.name+' added! The old man nods like this was expected.');
+        G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      }else{
+        // Board full: show swap/sell picker
+        window._oldManNewItem=cartItem;
+        const existingItems=[...board.front,...board.back].filter(i=>i);
+        setEncTitle("THE OLD MAN'S CART");
+        const cards=existingItems.map((item,idx)=>{
+          const icn=getItemIcon(item);
+          const icnHtml=(typeof icn==='string'&&icn.startsWith('http'))?`<img src="${icn}" style="width:26px;height:26px;object-fit:contain;">`:`${icn}`;
+          const half=Math.ceil(getSellValue(item)*0.5);
+          return `<div class="dc" onclick="oldManCartSwap(${idx})" style="text-align:left;">
+            <div class="di">${icnHtml}</div>
+            <div class="dn">${item.name}</div>
+            <div class="dd">Swap out — sell for 🪙${half}</div>
+          </div>`;
+        }).join('');
+        const sellCard=`<div class="dc" onclick="oldManCartSell()" style="text-align:left;">
+          <div class="di">🪙</div>
+          <div class="dn">Sell the new item</div>
+          <div class="dd">Take 🪙1 instead</div>
+        </div>`;
+        window._oldManExistingItems=existingItems;
+        setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Your board is full. Swap something out or sell it.</div>
+          <div class="draft-row" style="flex-wrap:wrap;">${cards}${sellCard}</div>`);
+      }
+      return;
+    }
+
+    case 'upgrade_weapon_pick': {
+      const allBoardItems=[...board.front,...board.back].filter(i=>i);
+      const farmWeapons=allBoardItems.filter(i=>i.itemType==='weapon'&&i.upgradeLevel<3);
+      const farmCandidates=farmWeapons.length?farmWeapons:allBoardItems.filter(i=>i.upgradeLevel<3);
+      if(!farmCandidates.length){
+        showNotif('All items are at max upgrade!');
+        G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+        return;
+      }
+      window._farmPickerItems=farmCandidates;
+      setEncTitle('CHOOSE AN ITEM');
+      const farmCards=farmCandidates.map((item,idx)=>{
+        const icn=getItemIcon(item);
+        const icnHtml=(typeof icn==='string'&&icn.startsWith('http'))?`<img src="${icn}" style="width:26px;height:26px;object-fit:contain;">`:`${icn}`;
+        return `<div class="dc" onclick="farmPickerSelect(${idx})">
+          <div class="di">${icnHtml}</div>
+          <div class="dn">${item.name}</div>
+          <div class="dd">${item.desc||''}</div>
+        </div>`;
+      }).join('');
+      setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Farmer says nothing else. Hands it to you without ceremony.</div>
+        <div class="draft-row" style="flex-wrap:wrap;">${farmCards}</div>`);
+      return;
+    }
+
+    case 'cartographer_reward': {
+      if(!G.metrics)G.metrics={npcsMet:[],eventsCompleted:[],trainerWins:0,wildWins:0};
+      const nm=G.metrics.npcsMet||[];
+      const done=()=>{if(!nm.includes('cartographer'))nm.push('cartographer');G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+      // TIER 1A — herbalist family
+      if(nm.includes('herbalist')){
+        showBoardPicker('She says your monster has a gift. Pick an item:',(item)=>{
+          imbueItem(item,'poison_on_act',1);
+          showNotif(item.name+' — poison on activation!');done();
+        });return;
+      }
+      // TIER 1B — blacksmith family (continue to check tiers after gold grant)
+      const hasBlacksmith=nm.includes('blacksmith');
+      // TIER 1C — butcher family (additive — grant gold then fall through)
+      const hasBUtcherConn=nm.includes('butcher')||G.metrics.loanActive||(G.metrics.eventsCompleted||[]).includes('butcher_small')||(G.metrics.eventsCompleted||[]).includes('butcher_large');
+      if(hasBUtcherConn){G.gold+=2;updateUI();showNotif('+2 gold — for the interest. Don\'t tell him.');}
+      // TIER 4 — 3+ trainer wins AND 5+ wild wins
+      if(G.metrics.trainerWins>=3&&G.metrics.wildWins>=5){
+        window._cartoPickNum=0;window._cartoFirstId=null;
+        const items1=[...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3);
+        if(!items1.length){showNotif('She looks at you. "Keep going." +3 gold.');G.gold+=3;updateUI();done();return;}
+        window._cartoItems=items1;
+        setEncTitle('CARTOGRAPHER — UPGRADE 1 OF 2');
+        const c1=items1.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="cartoPickItem(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div></div>`;}).join('');
+        setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">"She looks at everything. She takes a long time."</div><div class="draft-row" style="flex-wrap:wrap;">${c1}</div>`);
+        return;
+      }
+      // TIER 2 — 3+ trainer wins (skill pick)
+      if(G.metrics.trainerWins>=3){
+        showNotif('"You\'ve beaten people who were supposed to beat you."');
+        showAnyNodeSkillPicker();return;
+      }
+      // TIER 3 — 5+ wild wins (+5 damage all)
+      if(G.metrics.wildWins>=5){
+        const allIt=[...board.front,...board.back].filter(i=>i);
+        allIt.forEach(it=>imbueItem(it,'damage',5));
+        showNotif('"You\'ve been in a lot of fights." +5 damage to all items!');done();return;
+      }
+      // TIER 4B — blacksmith only (no combined)
+      if(hasBlacksmith){
+        showBoardPicker('Her cousin fixed something for you. Pick an item:',(item)=>{
+          imbueItem(item,'hp',8);showNotif(item.name+' +8 max HP!');done();
+        });return;
+      }
+      // TIER 5 — fallback
+      G.gold+=3;updateUI();
+      showBurdenPanel('THE CARTOGRAPHER','"She looks at your record. She looks at you."\n\n"Keep going." +3 gold.',done);
+      return;
+    }
+
+    case 'hermit_indulge': {
+      const allIt=[...board.front,...board.back].filter(i=>i);
+      const upgraded=allIt.filter(i=>i.upgradeLevel>0);
+      const pool=upgraded.length?upgraded:allIt;
+      if(!pool.length){showNotif('Nothing to work with.');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      window._hermitPool=pool;
+      setEncTitle('THE HERMIT');
+      const hcards=pool.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="hermitIndulgePick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Tier ${it.upgradeLevel}</div></div>`;}).join('');
+      setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">He adjusts something. Something is lost. Something else changes.</div><div class="draft-row" style="flex-wrap:wrap;">${hcards}</div>`);
+      return;
+    }
+
+    case 'hermit_walk_away': {
+      const allIt=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      if(!allIt.length){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      const victim=allIt[Math.floor(Math.random()*allIt.length)];
+      victim.maxHp=Math.round(victim.maxHp*0.9);
+      if(victim.hp>victim.maxHp)victim.hp=victim.maxHp;
+      renderBoard();
+      if(!G.inventory)G.inventory=[];
+      G.inventory.push({id:'winston',name:'Winston',icon:'🪨',tag:'He knew everything.',isWinston:true});
+      if(G.metrics){G.metrics.hasWinston=true;if(!G.metrics.npcsMet.includes('hermit'))G.metrics.npcsMet.push('hermit');}
+      renderInventoryStrip();
+      showBurdenPanel('THE HERMIT','He throws a rock at you.\n\n'+victim.name+' loses 10% max HP.\n\nYou pick up the rock. It has a smiley face on it.',()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();});
+      return;
+    }
+
+    case 'blacksmith_free': {
+      const allIt=[...board.front,...board.back].filter(i=>i);
+      if(!allIt.length){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      const lowest=allIt.reduce((a,b)=>(a.maxHp||0)<=(b.maxHp||0)?a:b);
+      imbueItem(lowest,'hp',5);
+      if(G.metrics&&!G.metrics.npcsMet.includes('blacksmith'))G.metrics.npcsMet.push('blacksmith');
+      renderBoard();
+      showNotif('She picks '+lowest.name+'. +5 max HP. She seems mildly less offended.');
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      return;
+    }
+
+    case 'blacksmith_paid': {
+      if(G.metrics&&!G.metrics.npcsMet.includes('blacksmith'))G.metrics.npcsMet.push('blacksmith');
+      showBoardPicker('She\'ll work on whichever one you hand her:',(item)=>{
+        imbueItem(item,'hp',15);imbueItem(item,'damage',5);
+        showNotif(item.name+' — +15 max HP, +5 damage!');
+        G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+      });
+      return;
+    }
+
+    case 'merchants_daughter_shop': {
+      const mdPool=getItemsOfRarity('intermediate');
+      const mdKeys=[...mdPool].sort(()=>Math.random()-.5).slice(0,3);
+      window._mdItems=mdKeys.map(k=>{const f=getItemFactory(k);return f?f():null;}).filter(Boolean);
+      window._mdPrices=window._mdItems.map(it=>Math.max(1,Math.floor((it.cost||2)*0.5)));
+      setEncTitle("THE MERCHANT'S DAUGHTER");
+      const mdCards=window._mdItems.map((it,i)=>{
+        const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
+        const can=G.gold>=window._mdPrices[i];
+        return `<div class="dc ${can?'':'cant'}" onclick="${can?`merchantsDaughterBuy(${i})`:''}">
+          <div class="di">${ih}</div><div class="dn">${it.name}</div>
+          <div class="dd">${it.desc||''}</div>
+          <div class="dp">🪙 ${window._mdPrices[i]} <span style="font-size:8px;color:var(--dim);text-decoration:line-through">${it.cost}</span></div>
+        </div>`;
+      }).join('');
+      setEncBody(`<div class="draft-row">${mdCards}</div>
+        <div class="btn-row"><button class="btn btn-d" onclick="merchantsDaughterLeave()">LEAVE</button></div>`);
+      return;
+    }
+
+    case 'appraiser_sell': {
+      const allIt=[...board.front,...board.back].filter(i=>i);
+      if(!allIt.length){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      window._appraiserItems=allIt;
+      setEncTitle('THE APPRAISER');
+      const acards=allIt.map((it,i)=>{
+        const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
+        const pay=Math.floor((it.cost||1)*1.5);
+        return `<div class="dc" onclick="appraiserSell(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">🪙 ${pay} (150%)</div></div>`;
+      }).join('');
+      setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">He is already reaching for his wallet.</div><div class="draft-row" style="flex-wrap:wrap;">${acards}</div>`);
+      return;
+    }
+
+    case 'oath_debuff': {
+      const origBack={};
+      board.back.filter(i=>i).forEach(item=>{
+        origBack[item.id]=item.effectAmt;
+        item.effectAmt=Math.max(1,Math.floor((item.effectAmt||0)*0.8));
+      });
+      // Add burden's originalBackEffects payload
+      const oathBurden=G.burdens[G.burdens.length-1];
+      if(oathBurden&&oathBurden.onResolve==='oath_resolve')oathBurden.payload.originalBackEffects=origBack;
+      if(G.metrics){G.metrics.oathTaken=true;if(!G.metrics.npcsMet.includes('oath'))G.metrics.npcsMet.push('oath');}
+      renderBoard();updateUI();
+      showNotif('Back row items weakened. The Oath begins.');
+      done();
+      return;
+    }
+
+    case 'pawnbroker_deal': {
+      const allIt=[...board.front,...board.back].filter(i=>i);
+      if(!allIt.length){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      window._pawnItems=allIt;
+      setEncTitle('THE PAWNBROKER');
+      const pcards=allIt.map((it,i)=>{
+        const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
+        return `<div class="dc" onclick="pawnBrokerSell(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">🪙 ${it.cost||1} (full value)</div></div>`;
+      }).join('');
+      setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">He doesn't ask where you got it.</div><div class="draft-row" style="flex-wrap:wrap;">${pcards}</div>`);
+      return;
+    }
+
+    case 'surgeon_upgrade': {
+      const surg1=[...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3);
+      if(!surg1.length){showNotif('All items at max upgrade!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      G.honor=Math.max(0,G.honor-4);updateUI();
+      window._surgeonPool=surg1;window._surgeonFirstId=null;
+      setEncTitle('THE SURGEON — PICK 1');
+      const sc1=surg1.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="surgeonFirstPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div></div>`;}).join('');
+      setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">"She can fix two. Choose the first."</div><div class="draft-row" style="flex-wrap:wrap;">${sc1}</div>`);
+      return;
+    }
+
+    case 'gambler_throw': {
+      G.honor=Math.max(0,G.honor-3);updateUI();
+      const gPool=G.type?getItemsOfRarity('advanced',[]):getItemsOfRarity('advanced');
+      if(!gPool.length){showNotif('No advanced items available!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      const gKey=gPool[Math.floor(Math.random()*gPool.length)];
+      const gF=getItemFactory(gKey);if(!gF){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      const gBase=gF();
+      const gItem=Object.assign({},gBase,{id:gKey+'_'+Math.random().toString(36).slice(2,7),hp:gBase.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:gBase.maxUses,upgradeLevel:0,effectAmt:gBase.baseEffect,imbues:[]});
+      const mf2=maxFrontSlots();const mb2=maxBackSlots();let gPlaced=false;
+      const gOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+      for(let i=0;i<mf2&&!gPlaced;i++){if(!board.front[i]&&gOk('front',i)){board.front[i]=gItem;applySlotBonuses(gItem,'front');gPlaced=true;}}
+      if(!gPlaced)for(let i=0;i<mb2&&!gPlaced;i++){if(!board.back[i]&&gOk('back',i)){board.back[i]=gItem;applySlotBonuses(gItem,'back');gPlaced=true;}}
+      if(gPlaced){renderBoard();showNotif(gItem.name+' added!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();}
+      else{
+        // Board full — show swap picker for new item
+        window._gamblersNewItem=gItem;
+        const gExisting=[...board.front,...board.back].filter(i=>i);
+        window._gamblersExisting=gExisting;
+        setEncTitle('THE GAMBLER — SWAP ITEM');
+        const gcards=gExisting.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;const half=Math.ceil(getSellValue(it)*0.5);return`<div class="dc" onclick="gamblersNewItemSwap(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Swap — sell for 🪙${half}</div></div>`;}).join('');
+        setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Board full. Make room for ${gItem.name}.</div><div class="draft-row" style="flex-wrap:wrap;">${gcards}</div>`);
+      }
+      return;
+    }
+
+    case 'gambler_refuse': {
+      const gRefOrig={};
+      const gRefTargets=[board.front[1],board.back[1]].filter(Boolean);
+      gRefTargets.forEach(item=>{
+        gRefOrig[item.id]=item.maxHp;
+        item.maxHp=Math.round(item.maxHp*0.75);
+        if(item.hp>item.maxHp)item.hp=item.maxHp;
+      });
+      const gRefBurden={id:'gambler_odds',icon:'🎰',countdown:7,unit:'',colorAmber:3,colorRed:1,
+        payload:{originalHps:gRefOrig},onResolve:'gambler_resolve',active:true};
+      G.burdens.push(gRefBurden);if(G.metrics)G.metrics.burdensTaken++;
+      renderBoard();renderCounterStrip();
+      done();
+      return;
+    }
+
+    case 'collector_trade': {
+      const colItems=[...board.front,...board.back].filter(i=>i);
+      if(colItems.length<2){showNotif('Need at least 2 items to trade.');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      window._collectorItems=colItems;
+      setEncTitle('THE COLLECTOR — GIVE UP');
+      const ccards=colItems.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="collectorFirstPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div></div>`;}).join('');
+      setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">"Something you didn't want to part with."</div><div class="draft-row" style="flex-wrap:wrap;">${ccards}</div>`);
+      return;
+    }
+
+    case 'gossip_clue': {
+      const gossipAdvance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+      const done2=(G.metrics&&G.metrics.eventsCompleted)||[];
+      const hints=[
+        {found:done2.includes('winston')||((G.metrics&&G.metrics.hasWinston)||false),
+         text:'He mentioned something about a rock. And a hermit. And a monk.'},
+        {found:((G.metrics&&G.metrics.eventsCompleted)||[]).includes('priest'),
+         text:'Apparently if you tell the Butcher no twice... something happens.'},
+        {found:done2.includes('old_mans_cart_sell'),
+         text:'Someone told me you can sell things you were just given. Immediately.'},
+        {found:done2.includes('the_cartographer'),
+         text:'The Cartographer has family everywhere. Everywhere.'},
+      ];
+      const undiscovered=hints.filter(h=>!h.found);
+      if(!undiscovered.length){
+        G.gold+=2;updateUI();showNotif('"He seems disappointed you already know everything." +2 gold.');
+        gossipAdvance();
+      }else{
+        const hint=undiscovered[Math.floor(Math.random()*undiscovered.length)];
+        showBurdenPanel('💬 THE GOSSIP','"'+hint.text+'"',gossipAdvance);
+      }
+      return;
+    }
+
+    case 'gossip_damage': {
+      const gDmgOrig={};
+      [...board.front,...board.back].filter(i=>i).forEach(item=>{
+        gDmgOrig[item.id]=item.effectAmt;
+        item.effectAmt=Math.round((item.effectAmt||0)*1.1);
+      });
+      const gDmgBurden={id:'gossip_boost',icon:'💬',countdown:10,unit:'',colorAmber:3,colorRed:1,
+        payload:{originalEffects:gDmgOrig},onResolve:'gossip_resolve',active:true};
+      G.burdens.push(gDmgBurden);if(G.metrics)G.metrics.burdensTaken++;
+      renderBoard();renderCounterStrip();
+      showNotif('+10% damage to all items for 10 locations!');
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      return;
+    }
+
+    case 'gossip_wild': {
+      G.nextEventIsWild=true;
+      showNotif('Something stirs in the next clearing...');
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      return;
+    }
+
+    case 'stranger_peek': {
+      if(G.metrics&&!G.metrics.npcsMet.includes('stranger'))G.metrics.npcsMet.push('stranger');
+      const spAdvance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+      const spWarn=()=>showBurdenPanel('THE STRANGER','"One more thing. Stay away from the Butcher." He is gone before you can ask what he means.',spAdvance);
+      strangerShowPeek(spWarn);
+      return;
+    }
+
+    case 'stranger_peek_swap': {
+      if(G.metrics&&!G.metrics.npcsMet.includes('stranger'))G.metrics.npcsMet.push('stranger');
+      const spswAdvance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+      const spswWarn=()=>showBurdenPanel('THE STRANGER','"One more thing. Stay away from the Butcher." He is gone before you can ask what he means.',spswAdvance);
+      strangerShowPeek(()=>strangerShowSwap(spswWarn));
+      return;
+    }
 
     default:
       G.dayStep++;updateUI();renderTrack();activateCurrentNode();
   }
 }
+
+// ── Unimpressed Farmer picker ─────────────────────────────────
+function farmPickerSelect(idx){
+  const item=window._farmPickerItems&&window._farmPickerItems[idx];
+  if(!item)return;
+  window._farmPickerItems=null;
+  upgradeItem(item);
+  showNotif(item.name+' upgraded!');
+  G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+}
+
+// ── Old Man's Cart full-board helpers ─────────────────────────
+function oldManCartSwap(idx){
+  const existing=window._oldManExistingItems&&window._oldManExistingItems[idx];
+  const newItem=window._oldManNewItem;
+  if(!existing||!newItem)return;
+  window._oldManExistingItems=null;window._oldManNewItem=null;
+  // sell existing at 50% (rounded up), remove from board, place new item
+  G.gold+=Math.ceil(getSellValue(existing)*0.5);
+  let placed=false;
+  for(let i=0;i<board.front.length;i++){
+    if(board.front[i]===existing){board.front[i]=newItem;applySlotBonuses(newItem,'front');placed=true;break;}
+  }
+  if(!placed)for(let i=0;i<board.back.length;i++){
+    if(board.back[i]===existing){board.back[i]=newItem;applySlotBonuses(newItem,'back');placed=true;break;}
+  }
+  renderBoard();updateUI();
+  showNotif(existing.name+' swapped for '+newItem.name+'!');
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+function oldManCartSell(){
+  window._oldManExistingItems=null;window._oldManNewItem=null;
+  G.gold+=1;updateUI();
+  if(G.metrics)G.metrics.eventsCompleted.push('old_mans_cart_sell');
+  showBurdenPanel('🛒 SOLD',"You grab the junk and peddle it to the first schmuck you can find.<br><br><em>\"You won't believe what this can do!\"</em><br><br>The old man is gone when you look back.",()=>{
+    G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+  });
+}
+
+// ── downgradeItem — reverse of upgradeItem, one tier down ─────
+function downgradeItem(item){
+  if(!item||item.upgradeLevel<=0)return false;
+  item.upgradeLevel--;
+  const m=UPGRADE_MULTS[item.upgradeLevel];
+  if(item.baseMaxHp>0)item.maxHp=Math.round(item.baseMaxHp*m);
+  item.actMs=item.baseActMs;
+  item.effectAmt=Math.round((item.baseEffect||0)*m);
+  if(item.baseHitCount!=null)item.hitCount=Math.round(item.baseHitCount*m);
+  item.hp=Math.min(item.hp||0,item.maxHp);
+  return true;
+}
+
+// ── applySlotBonuses — called when placing an item in a slot ──
+function applySlotBonuses(item,rowType){
+  const bonus=G.slotBonuses&&G.slotBonuses[rowType];
+  if(!bonus)return;
+  if(bonus.maxHp){item.maxHp=(item.maxHp||0)+bonus.maxHp;item.baseMaxHp=(item.baseMaxHp||0)+bonus.maxHp;item.hp=(item.hp||0)+bonus.maxHp;}
+  if(bonus.damage){item.effectAmt=(item.effectAmt||0)+bonus.damage;item.baseEffect=(item.baseEffect||0)+bonus.damage;}
+}
+
+// ── Hermit indulge board picker ────────────────────────────────
+function hermitIndulgePick(idx){
+  const item=window._hermitPool&&window._hermitPool[idx];
+  if(!item)return;window._hermitPool=null;
+  downgradeItem(item);
+  imbueItem(item,'burn_on_act',2);
+  if(G.metrics&&!G.metrics.npcsMet.includes('hermit'))G.metrics.npcsMet.push('hermit');
+  showNotif(item.name+' — demoted one tier, now applies 2 burn on activation!');
+  G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+}
+
+// ── Cartographer two-item upgrade ─────────────────────────────
+function cartoPickItem(idx){
+  const items=window._cartoItems;
+  const item=items&&items[idx];if(!item)return;
+  if(window._cartoPickNum===0){
+    window._cartoFirstId=item.id;
+    window._cartoPickNum=1;
+    upgradeItem(item);renderBoard();
+    const remaining=([...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3&&i.id!==window._cartoFirstId));
+    if(!remaining.length){
+      showNotif('Both upgrades done!');
+      if(G.metrics&&!G.metrics.npcsMet.includes('cartographer'))G.metrics.npcsMet.push('cartographer');
+      G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;
+    }
+    window._cartoItems=remaining;
+    setEncTitle('CARTOGRAPHER — UPGRADE 2 OF 2');
+    const c2=remaining.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="cartoPickItem(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div></div>`;}).join('');
+    setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">"And the second."</div><div class="draft-row" style="flex-wrap:wrap;">${c2}</div>`);
+  }else{
+    upgradeItem(item);renderBoard();
+    if(G.metrics&&!G.metrics.npcsMet.includes('cartographer'))G.metrics.npcsMet.push('cartographer');
+    showNotif('Two items upgraded!');
+    G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+  }
+}
+
+// ── Surgeon two-item upgrade ───────────────────────────────────
+function surgeonFirstPick(idx){
+  const pool=window._surgeonPool;const item=pool&&pool[idx];if(!item)return;
+  window._surgeonFirstId=item.id;
+  upgradeItem(item);renderBoard();
+  const pool2=[...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3&&i.id!==item.id);
+  if(!pool2.length){showNotif(item.name+' upgraded! No second item available.');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+  window._surgeonPool2=pool2;
+  setEncTitle('THE SURGEON — PICK 2');
+  const sc2=pool2.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="surgeonSecondPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div></div>`;}).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">"And the second."</div><div class="draft-row" style="flex-wrap:wrap;">${sc2}</div>`);
+}
+function surgeonSecondPick(idx){
+  const item=window._surgeonPool2&&window._surgeonPool2[idx];if(!item)return;
+  upgradeItem(item);renderBoard();
+  showNotif('Two items upgraded!');
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+
+// ── Gambler new item swap ──────────────────────────────────────
+function gamblersNewItemSwap(idx){
+  const existing=window._gamblersExisting&&window._gamblersExisting[idx];
+  const newItem=window._gamblersNewItem;
+  if(!existing||!newItem)return;
+  window._gamblersExisting=null;window._gamblersNewItem=null;
+  G.gold+=Math.ceil(getSellValue(existing)*0.5);
+  let placed=false;
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===existing){board.front[i]=newItem;placed=true;break;}}
+  if(!placed)for(let i=0;i<board.back.length;i++){if(board.back[i]===existing){board.back[i]=newItem;placed=true;break;}}
+  renderBoard();updateUI();
+  showNotif(existing.name+' swapped for '+newItem.name+'!');
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+
+// ── Pawnbroker sell & shop ─────────────────────────────────────
+function pawnBrokerSell(idx){
+  const item=window._pawnItems&&window._pawnItems[idx];if(!item)return;
+  window._pawnItems=null;
+  const soldTier=item.itemRarity||'beginner';
+  G.gold+=(item.cost||1);
+  if(G.metrics)G.metrics.itemsSold++;
+  // Lock the slot
+  let sRow=null,sIdx=null;
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===item){board.front[i]=null;sRow='front';sIdx=i;break;}}
+  if(sRow===null)for(let i=0;i<board.back.length;i++){if(board.back[i]===item){board.back[i]=null;sRow='back';sIdx=i;break;}}
+  if(sRow!==null){
+    G.lockedSlots=G.lockedSlots||[];
+    G.lockedSlots.push({row:sRow,idx:sIdx});
+    G.burdens.push({id:'pawnbroker_lock',icon:'🔒',countdown:5,unit:'',colorAmber:2,colorRed:1,
+      payload:{slotRow:sRow,slotIdx:sIdx},onResolve:'pawnbroker_unlock',active:true});
+    if(G.metrics)G.metrics.burdensTaken++;
+    renderCounterStrip();
+  }
+  renderBoard();updateUI();
+  // Show tier-matched shop
+  const pawnPool=getItemsOfRarity(soldTier).slice(0,6);
+  const pawnKeys=[...pawnPool].sort(()=>Math.random()-.5).slice(0,3);
+  window._pawnShopItems=pawnKeys.map(k=>{const f=getItemFactory(k);return f?f():null;}).filter(Boolean);
+  setEncTitle('THE PAWNBROKER — SHOP');
+  const pshop=window._pawnShopItems.map((it,i)=>{
+    const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
+    const can=G.gold>=(it.cost||1);
+    return `<div class="dc ${can?'':'cant'}" onclick="${can?`pawnBrokerShopBuy(${i})`:''}"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">🪙 ${it.cost||1}</div></div>`;
+  }).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">He pulls something out of the back. Slot locked for 5 stops.</div>
+    <div class="draft-row">${pshop}</div>
+    <div class="btn-row"><button class="btn btn-d" onclick="pawnBrokerShopLeave()">LEAVE</button></div>`);
+}
+function pawnBrokerShopBuy(idx){
+  const it=window._pawnShopItems&&window._pawnShopItems[idx];if(!it)return;
+  window._pawnShopItems=null;
+  if(G.gold<(it.cost||1)){return;}
+  G.gold-=(it.cost||1);
+  const newItem=Object.assign({},it,{id:(it.itemKey||'pw')+'_'+Math.random().toString(36).slice(2,7),
+    hp:it.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:it.maxUses,upgradeLevel:0,effectAmt:it.baseEffect,imbues:[]});
+  const mf3=maxFrontSlots();const mb3=maxBackSlots();let p3=false;
+  const ok3=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf3&&!p3;i++){if(!board.front[i]&&ok3('front',i)){board.front[i]=newItem;applySlotBonuses(newItem,'front');p3=true;}}
+  if(!p3)for(let i=0;i<mb3&&!p3;i++){if(!board.back[i]&&ok3('back',i)){board.back[i]=newItem;applySlotBonuses(newItem,'back');p3=true;}}
+  renderBoard();updateUI();
+  showNotif(newItem.name+' bought!');
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+function pawnBrokerShopLeave(){
+  window._pawnShopItems=null;
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+
+// ── Merchant's Daughter buy/leave ─────────────────────────────
+function merchantsDaughterBuy(idx){
+  const it=window._mdItems&&window._mdItems[idx];
+  const price=window._mdPrices&&window._mdPrices[idx];
+  if(!it||price==null)return;
+  window._mdItems=null;window._mdPrices=null;
+  if(G.gold<price){return;}
+  G.gold-=price;
+  const newItem=Object.assign({},it,{id:(it.itemKey||'md')+'_'+Math.random().toString(36).slice(2,7),
+    hp:it.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:it.maxUses,upgradeLevel:0,effectAmt:it.baseEffect,imbues:[]});
+  const mf4=maxFrontSlots();const mb4=maxBackSlots();let p4=false;
+  const ok4=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf4&&!p4;i++){if(!board.front[i]&&ok4('front',i)){board.front[i]=newItem;applySlotBonuses(newItem,'front');p4=true;}}
+  if(!p4)for(let i=0;i<mb4&&!p4;i++){if(!board.back[i]&&ok4('back',i)){board.back[i]=newItem;applySlotBonuses(newItem,'back');p4=true;}}
+  if(!p4){
+    // Board full — show swap picker (no refund; gold already spent)
+    window._mdFullItem=newItem;
+    const mdFull=[...board.front,...board.back].filter(i=>i);
+    window._mdFullExisting=mdFull;
+    setEncTitle("THE MERCHANT'S DAUGHTER");
+    const fcards=mdFull.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;const half=Math.ceil(getSellValue(it)*0.5);return`<div class="dc" onclick="merchantsDaughterFullSwap(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Swap out — sell for 🪙${half}</div></div>`;}).join('');
+    const discardCard=`<div class="dc" onclick="merchantsDaughterDiscard()"><div class="di">🗑️</div><div class="dn">Discard the new item</div><div class="dd">No refund. Gold already spent.</div></div>`;
+    setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Board is full. Swap something out or discard it.</div><div class="draft-row" style="flex-wrap:wrap;">${fcards}${discardCard}</div>`);
+    return;
+  }
+  renderBoard();updateUI();
+  showNotif('"You know, you really need to learn how to haggle."');
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+function merchantsDaughterLeave(){
+  window._mdItems=null;window._mdPrices=null;
+  showNotif('"You know, you really need to learn how to haggle."');
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+function merchantsDaughterFullSwap(idx){
+  const existing=window._mdFullExisting&&window._mdFullExisting[idx];
+  const newItem=window._mdFullItem;
+  if(!existing||!newItem)return;
+  window._mdFullExisting=null;window._mdFullItem=null;
+  G.gold+=Math.ceil(getSellValue(existing)*0.5);
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===existing){board.front[i]=newItem;applySlotBonuses(newItem,'front');break;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===existing){board.back[i]=newItem;applySlotBonuses(newItem,'back');break;}}
+  renderBoard();updateUI();
+  showNotif('"You know, you really need to learn how to haggle."');
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+function merchantsDaughterDiscard(){
+  window._mdFullExisting=null;window._mdFullItem=null;
+  showNotif('"You know, you really need to learn how to haggle."');
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+
+// ── Appraiser sell ────────────────────────────────────────────
+function appraiserSell(idx){
+  const item=window._appraiserItems&&window._appraiserItems[idx];if(!item)return;
+  window._appraiserItems=null;
+  const pay=Math.floor((item.cost||1)*1.5);
+  G.gold+=pay;if(G.metrics)G.metrics.itemsSold++;
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===item){board.front[i]=null;break;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===item){board.back[i]=null;break;}}
+  renderBoard();updateUI();
+  showNotif(item.name+' sold for 🪙'+pay+'!');
+  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+}
+
+// ── Collector two-step trade ──────────────────────────────────
+function collectorFirstPick(idx){
+  const item=window._collectorItems&&window._collectorItems[idx];if(!item)return;
+  // Remove from board (no gold returned)
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===item){board.front[i]=null;break;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===item){board.back[i]=null;break;}}
+  renderBoard();
+  window._collectorGiven=item;
+  const remaining=[...board.front,...board.back].filter(i=>i);
+  if(!remaining.length){showNotif('Nothing left to imbue!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+  window._collectorRemaining=remaining;
+  setEncTitle('THE COLLECTOR — KEEP');
+  const ccards2=remaining.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="collectorSecondPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div></div>`;}).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">"Choose what to strengthen."</div><div class="draft-row" style="flex-wrap:wrap;">${ccards2}</div>`);
+}
+function collectorSecondPick(idx){
+  const item=window._collectorRemaining&&window._collectorRemaining[idx];if(!item)return;
+  window._collectorRemaining=null;window._collectorGiven=null;
+  const colTypes=[['damage',8],['hp',20],['burn_on_act',2],['poison_on_act',1]];
+  const [cType,cAmt]=colTypes[Math.floor(Math.random()*colTypes.length)];
+  imbueItem(item,cType,cAmt);
+  const cDesc=cType==='damage'?'+8 Damage':cType==='hp'?'+20 HP':cType==='burn_on_act'?'+2 Burn on act':'+1 Poison on act';
+  showNotif(item.name+' — '+cDesc+'!');
+  G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+}
+
+// ── Stranger helpers ──────────────────────────────────────────
+function strangerShowPeek(onDone){
+  const pool=G.day===1?[DAY1_WILD]:getWildPool();
+  setEncTitle('THE STRANGER — SCOUTING REPORT');
+  const cards=pool.map(m=>{
+    const iconHtml=m.img&&m.img.startsWith('https://')?`<img src="${m.img}" style="width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 4px"/>`:
+      `<div style="font-size:24px;text-align:center;">${m.icon}</div>`;
+    const frontIcons=m.front.filter(Boolean).map(it=>`<span style="font-size:12px;">${it.icon||'?'}</span>`).join(' ');
+    const backIcons=m.back.filter(Boolean).map(it=>`<span style="font-size:12px;">${it.icon||'?'}</span>`).join(' ');
+    return `<div class="dc" style="pointer-events:none;">${iconHtml}<div class="dn">${m.name}</div><div class="dd">${m.tag}</div>${frontIcons?`<div style="font-size:10px;color:var(--dim);margin-top:4px;">Front: ${frontIcons}</div>`:''}${backIcons?`<div style="font-size:10px;color:var(--dim);">Back: ${backIcons}</div>`:''}</div>`;
+  }).join('');
+  window._strangerOnDone=onDone;
+  setEncBody(`<div style="font-size:13px;color:var(--dim);margin-bottom:8px;font-style:italic;">"He shows you something he shouldn't know."</div><div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="strangerPeekDone()">SEEN ENOUGH</button></div>`);
+}
+function strangerPeekDone(){const onDone=window._strangerOnDone;window._strangerOnDone=null;if(onDone)onDone();}
+function strangerShowSwap(onDone){
+  const allIt=[...board.front,...board.back].filter(i=>i);
+  if(!allIt.length){onDone();return;}
+  window._strangerSwapItems=allIt;window._strangerSwapOnDone=onDone;
+  setEncTitle('THE STRANGER — SWAP');
+  const cards=allIt.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;const half=Math.ceil(getSellValue(it)*0.5);return`<div class="dc" onclick="strangerSwapPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Sell for 🪙${half} — pick a replacement</div></div>`;}).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Make a trade before the fight. Or don't.</div><div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="strangerSwapSkip()">KEEP EVERYTHING</button></div>`);
+}
+function strangerSwapPick(idx){
+  const item=window._strangerSwapItems&&window._strangerSwapItems[idx];if(!item)return;
+  const onDone=window._strangerSwapOnDone;window._strangerSwapItems=null;window._strangerSwapOnDone=null;
+  G.gold+=Math.ceil(getSellValue(item)*0.5);
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===item){board.front[i]=null;break;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===item){board.back[i]=null;break;}}
+  renderBoard();updateUI();
+  const sPool=getItemsOfRarity('beginner');
+  const sKeys=[...sPool].sort(()=>Math.random()-.5).slice(0,3);
+  window._strangerShopItems=sKeys.map(k=>{const f=getItemFactory(k);return f?f():null;}).filter(Boolean);
+  window._strangerShopOnDone=onDone;
+  setEncTitle('THE STRANGER — REPLACEMENT');
+  const scards=window._strangerShopItems.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="strangerShopBuy(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">FREE</div></div>`;}).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">He has three. Take one.</div><div class="draft-row" style="flex-wrap:wrap;">${scards}</div><div class="btn-row"><button class="btn btn-d" onclick="strangerShopSkip()">TAKE NOTHING</button></div>`);
+}
+function strangerShopBuy(idx){
+  const it=window._strangerShopItems&&window._strangerShopItems[idx];const onDone=window._strangerShopOnDone;
+  if(!it)return;window._strangerShopItems=null;window._strangerShopOnDone=null;
+  const newItem=Object.assign({},it,{id:(it.itemKey||'st')+'_'+Math.random().toString(36).slice(2,7),hp:it.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:it.maxUses,upgradeLevel:0,effectAmt:it.baseEffect,imbues:[]});
+  const mf=maxFrontSlots();const mb=maxBackSlots();let placed=false;
+  const ok=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&ok('front',i)){board.front[i]=newItem;applySlotBonuses(newItem,'front');placed=true;}}
+  if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&ok('back',i)){board.back[i]=newItem;applySlotBonuses(newItem,'back');placed=true;}}
+  renderBoard();updateUI();showNotif(newItem.name+' added!');
+  if(onDone)onDone();
+}
+function strangerShopSkip(){const onDone=window._strangerShopOnDone;window._strangerShopItems=null;window._strangerShopOnDone=null;if(onDone)onDone();}
+function strangerSwapSkip(){const onDone=window._strangerSwapOnDone;window._strangerSwapItems=null;window._strangerSwapOnDone=null;if(onDone)onDone();}
 
 function tickBurdens(){
   // Called at battle start. Apply active burden effects each battle.
@@ -5789,6 +6943,19 @@ function renderCounterStrip(){
   el.innerHTML=parts.join('');
   el.style.display='flex';
 }
+
+const WINSTON_WISDOM=[
+  'The constraint was always there. You just hadn\'t touched it yet.',
+  'Every delay has a price. Most people pay it without knowing.',
+  'You protected your options until you ran out of time to use them.',
+  'The thing that felt safe was the thing that cost you the most.',
+  'He threw me because I knew too much. You kept me for the same reason.',
+  'Enforcement doesn\'t care if you were ready.',
+  'The gap between what you believed and what was true — that\'s where it always happens.',
+  'You built something. Most people just react.',
+  'The boundary was visible the whole time. You just thought you had more room.',
+  'Good run. Come back.',
+];
 
 const EASTER_EGGS={
   priest:{
