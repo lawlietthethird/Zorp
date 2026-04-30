@@ -1221,14 +1221,14 @@ const PACIFIST_ITEMS={
 
   chrysalis:()=>{
     const item=makeItem('chrysalis','Chrysalis','🫧','Armor',1,1000,
-      'Gains 8 plating every second. Breaks instantly if hit before building plating.',
+      'Gains 2 plating every second. Breaks instantly if hit before building plating.',
       (s,a,self)=>{
-        self.shield=(self.shield||0)+(self.effectAmt||8);
+        self.shield=(self.shield||0)+(self.effectAmt||2);
         self.maxShield=Math.max(self.maxShield||0,self.shield);
-        log('s','Chrysalis hardens +'+(self.effectAmt||8)+' plating (total: '+self.shield+')');
-      },4,null,8,'armor','intermediate');
+        log('s','Chrysalis hardens +'+(self.effectAmt||2)+' plating (total: '+self.shield+')');
+      },4,null,2,'armor','intermediate');
     item.flavorText="Don't touch it.";
-    item.stats=[{icon:'🛡',value:(i)=>(i.effectAmt||8)+'/s',cls:'shield'}];
+    item.stats=[{icon:'🛡',value:(i)=>(i.effectAmt||2)+'/s',cls:'shield'}];
     return item;
   },
 
@@ -4527,8 +4527,9 @@ function showSkillPick(){
 function rarityIcon(r){return{prestige:'✦',beginner:'◎',intermediate:'◈',advanced:'◆',mastered:'★'}[r]||'○';}
 
 function getSkillOffers(nodeRarity){
-  const genericPool=[...(SKILLS[nodeRarity]||[])];
-  const typedPool=G.type?[...(TYPED_SKILLS[G.type]?.[nodeRarity]||[])]:[];
+  const takenSkillIds=activeSkills.map(s=>s.id);
+  const genericPool=[...(SKILLS[nodeRarity]||[])].filter(s=>!takenSkillIds.includes(s.id));
+  const typedPool=G.type?[...(TYPED_SKILLS[G.type]?.[nodeRarity]||[])].filter(s=>!takenSkillIds.includes(s.id)):[];
 
   const pickGeneric=()=>{
     if(!genericPool.length)return null;
@@ -6149,7 +6150,7 @@ function resolveEventChoice(choiceIdx){
   // outcomeText helpers — immediate effects use done() instead of raw advance
   const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
   const eventTitle=(event&&event.prompt&&event.prompt.title)||(event&&event.name)||'';
-  const done=choice.outcomeText?()=>showBurdenPanel(eventTitle,choice.outcomeText,advance):advance;
+  const done=choice.outcomeText?()=>{showBurdenPanel(eventTitle,choice.outcomeText,advance);clearTimeout(_burdenAutoTimeout);}:advance;
 
   // Effect handler
   const effect=choice.effect;
@@ -7016,11 +7017,7 @@ function tickBurdens(){
 function renderCounterStrip(){
   const el=document.getElementById('counterStrip');
   if(!el)return;
-  if(!G.metrics){el.style.display='none';return;}
   const parts=[];
-  parts.push(`<span style="opacity:.55;">⚔️ ${G.metrics.wildWins}W</span>`);
-  parts.push(`<span style="opacity:.55;">🏆 ${G.metrics.trainerWins}W</span>`);
-  if(G.metrics.itemsLostInBattle>0)parts.push(`<span style="opacity:.55;">💀 ${G.metrics.itemsLostInBattle}</span>`);
   if(G.burdens&&G.burdens.length){
     G.burdens.forEach(b=>{
       const color=b.colorRed!=null&&b.countdown<=b.colorRed?'var(--honor-red)':
@@ -7029,7 +7026,7 @@ function renderCounterStrip(){
     });
   }
   el.innerHTML=parts.join('');
-  el.style.display='flex';
+  el.style.display=parts.length?'flex':'none';
 }
 
 const WINSTON_WISDOM=[
