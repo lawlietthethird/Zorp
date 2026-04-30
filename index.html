@@ -300,7 +300,6 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 <div class="page">
   <div class="encounter" id="encounterArea">
     <div class="enc-title" id="encTitle">LOADING...</div>
-    <div id="counterStrip" style="display:none;font-size:10px;color:var(--muted);gap:10px;padding:1px 0;flex-wrap:wrap;"></div>
     <div class="enc-body" id="encBody"></div>
   </div>
   <div class="player-section">
@@ -353,6 +352,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
           <div class="zorp-name">ZORP</div>
           <div class="type-badge type-pot" id="typeBadge">✦ POTENTIAL</div>
         </div>
+        <div id="counterStrip" style="display:none;flex-shrink:0;font-size:10px;align-items:center;gap:8px;height:16px;overflow:hidden;"></div>
         <div class="day-track-inline" id="dayTrack"></div>
       </div>
     </div>
@@ -662,12 +662,6 @@ function initBattleState(){
   };
 }
 
-function registerSkillHandlers(){
-  // Skill handlers registered here when new skills are implemented
-  activeSkills.forEach(sk=>{
-    // placeholder — handlers added per skill in future prompts
-  });
-}
 function getNodeById(id){ return getTreeNodes().find(n=>n.id===id); }
 function isNodeUnlockable(id){
   const node=getNodeById(id); if(!node)return false;
@@ -3609,13 +3603,6 @@ let firingEvent=false;
 function fireEvent(event){
   if(firingEvent)return;
   firingEvent=true;
-  // Notify skill handlers
-  activeSkills.forEach(sk=>{
-    if(sk._battleHandler){
-      try{sk._battleHandler(event);}
-      catch(e){console.error('skill handler error',e);}
-    }
-  });
   // Notify item handlers
   [...board.front,...board.back,...enemyBoard.front,...enemyBoard.back].forEach(item=>{
     if(item&&!item.broken&&item.handleEvent){
@@ -3667,7 +3654,6 @@ function runBattle(type){
       }
     });
   }
-  registerSkillHandlers();
   fireEvent({type:'BATTLE_START',item:null,side:null,value:null,source:null});
   clearLog();hideItemInfo();log('x','Battle starts!');battleMs=0;
   const TICK=100,FATIGUE_START=30000;
@@ -5369,7 +5355,6 @@ function resetRun(){
   board={front:[null,null,null],back:[null,null,null]};
   enemyBoard={front:[null,null,null],back:[null,null,null]};
   getTreeNodes().forEach(n=>treeState[n.id]=null);
-  activeSkills.forEach(sk=>{sk._battleHandler=null;});
   activeSkills=[];bannedTypes=[];lastOfferedTypes=[];
   // Pre-fill prestige root with Potential — Zorp starts with it
   treeState[getPrestigeNodeId()]=SKILLS.prestige[0];
@@ -6483,10 +6468,22 @@ function resolveEventChoice(choiceIdx){
   // Legacy: choice has a resolve() function (Phase 1 compatibility)
   if(choice.resolve){choice.resolve();return;}
 
-  // Apply gold cost (taken regardless of requiresCost — already gated in showEvent)
-  if(choice.cost&&choice.cost.type==='gold'){
-    G.gold=Math.max(0,G.gold-Math.min(choice.cost.amount,G.gold));
-    updateUI();
+  // Pre-viability check for honor costs — must run BEFORE cost deduction
+  // (surgeon_upgrade is the only honor-cost event with a board-state viability guard)
+  if(choice.cost&&choice.cost.type==='honor'&&effect&&effect.type==='surgeon_upgrade'){
+    const _preVia=[...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3);
+    if(!_preVia.length){showNotif('All items at max upgrade!');advance();return;}
+  }
+
+  // Apply cost — gold or honor (generic handler, covers all cost types)
+  if(choice.cost){
+    if(choice.cost.type==='gold'){
+      G.gold=Math.max(0,G.gold-Math.min(choice.cost.amount,G.gold));
+      updateUI();
+    }else if(choice.cost.type==='honor'){
+      G.honor=Math.max(0,G.honor-choice.cost.amount);
+      updateUI();
+    }
   }
 
   // outcomeText helpers — immediate effects use done() instead of raw advance
@@ -6516,7 +6513,7 @@ function resolveEventChoice(choiceIdx){
       G.gold=Math.max(0,G.gold+effect.amount);
       updateUI();
       showNotif((effect.amount>=0?'+':'')+effect.amount+' gold!');
-      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      done();
       return;
 
     case 'imbue_pick':
@@ -6847,9 +6844,9 @@ function resolveEventChoice(choiceIdx){
     }
 
     case 'surgeon_upgrade': {
+      // Viability check already ran before generic cost handler (see pre-viability block above).
+      // Honor already deducted by generic cost handler.
       const surg1=[...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3);
-      if(!surg1.length){showNotif('All items at max upgrade!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
-      G.honor=Math.max(0,G.honor-4);updateUI();
       window._surgeonPool=surg1;window._surgeonFirstId=null;
       setEncTitle('THE SURGEON — PICK 1');
       const sc1=surg1.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="surgeonFirstPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div></div>`;}).join('');
