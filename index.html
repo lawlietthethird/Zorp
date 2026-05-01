@@ -1086,10 +1086,10 @@ const MOM_CONSOLATION_ITEMS={
     return item;
   },
   river_stone:()=>{
-    const item=makeItem('river_stone',"Mom's Rock",'🪨','Definitely not Winston.',80,3500,'10 dmg random.',(s,a)=>dealDmgRandom(opp(s),a,"Mom's Rock"),2,null,10);
+    const item=makeItem('river_stone',"Mom's Rock",'🪨','She said you could throw it.',80,3500,'10 dmg random.',(s,a)=>dealDmgRandom(opp(s),a,"Mom's Rock"),2,null,10);
     item.itemRarity='beginner';item.itemType='weapon';
     item.isWinston=false;
-    item.flavorText="She said you could throw it if things got tough.";
+    item.flavorText="Definitely not Winston.";
     item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'}];
     return item;
   },
@@ -1875,7 +1875,7 @@ function getSellValue(item){
   if(item.sellOverride!==null&&item.sellOverride!==undefined)return item.sellOverride;
   const base={beginner:1,intermediate:2,advanced:4,mastered:8};
   const tierBonus=[0,1,2,4];
-  return (base[item.itemRarity]||1)+(tierBonus[item.upgradeLevel]||0);
+  return (base[getDisplayRarity(item)]||1)+(tierBonus[item.upgradeLevel]||0);
 }
 function upgradeItem(item){
   if(item.upgradeLevel>=3)return false;
@@ -3548,7 +3548,7 @@ function showEncounterBattle(type,wildMonster=null){
   const dlgOverlay='<div id="prebattle-overlay" onclick="var o=document.getElementById(\'prebattle-overlay\');if(o)o.style.display=\'none\'" style="position:absolute;inset:0;z-index:10;border-radius:6px;background:rgba(8,6,18,0.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;cursor:pointer;"><div style="font-family:\'Cinzel\',serif;font-size:14px;font-weight:700;letter-spacing:.12em;color:var(--gold);">'+dlgName+'</div><div style="font-size:15px;color:var(--text);font-style:italic;line-height:1.65;max-width:320px;">'+dlgText+'</div><div style="font-family:\'Cinzel\',serif;font-size:12px;letter-spacing:.15em;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 14px;margin-top:4px;">TAP TO DISMISS</div></div>';
   setEncTitle(isWild?'WILD BATTLE — '+enemy.name:'TRAINER BATTLE — '+trainer.name);
   const wildImgHTML=enemy.img&&enemy.img.startsWith('https://')?'<img src="'+enemy.img+'" class="trainer-avatar"/>':'<div class="enemy-icon">'+enemy.icon+'</div>';
-  setEncBody('<div class="enemy-area"><div class="enemy-info">'+(!isWild?trainerImgHTML:wildImgHTML)+'<div style="display:flex;flex-direction:column;gap:2px;"><div class="enemy-name">'+enemy.name+'</div>'+(isWild?'':'<div class="enemy-tag">'+enemy.tag+'</div>')+'</div></div><div class="enemy-board" style="position:relative;">'+dlgOverlay+'<div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
+  setEncBody('<div class="enemy-area"><div class="enemy-info">'+(!isWild?trainerImgHTML:wildImgHTML)+'<div style="display:flex;flex-direction:column;gap:2px;"><div class="enemy-name">'+enemy.name+'</div>'+(isWild?'':'<div class="enemy-tag">'+enemy.tag+'</div>')+'</div></div><div class="enemy-board" style="position:relative;">'+dlgOverlay+'<div class="eboard-row"><div class="enc-row-label">BACK</div><div class="slots" id="eBack" style="display:flex;gap:5px;flex:1"></div></div><div class="eboard-row"><div class="enc-row-label">FRONT</div><div class="slots" id="eFront" style="display:flex;gap:5px;flex:1"></div></div></div></div><div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div class="timer-box" id="timerTxt">—</div><div class="fatigue-wrap" id="fatigueWrap" style="display:none;flex:1"><div class="fl">FATIGUE</div><div class="fatigue-track"><div class="fatigue-fill" id="fatigueFill" style="width:0%"></div></div></div><button class="btn btn-p" onclick="toggleBattleLog()" style="font-size:7px;padding:3px 8px">LOG</button></div><div class="btn-row"><button class="btn btn-p" id="startBattleBtn" onclick="var o=document.getElementById(\'prebattle-overlay\');if(o)o.style.display=\'none\';runBattle(\''+type+'\')">⚔️ BEGIN</button><button class="btn btn-p" id="speedBtn" onclick="toggleSpeed()">▶▶ 2x</button></div>');
   renderEnemyBoard();
 }
 function toggleSpeed(){
