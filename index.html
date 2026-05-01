@@ -601,6 +601,7 @@ function initBattleState(){
     fatigueDamageMultiplier:1,
     totalSidePlating:0,
     burnApplicationsToEnemy:0,
+    totalBurnApplied:0,
     fireworksThreshold:6,
     outbreakTriggered:false,
     slowProcsThisBattle:0,
@@ -1328,6 +1329,7 @@ const HEADBUTT_ITEMS={
         ...enemyBoard.front,...enemyBoard.back
       ].filter(i=>i&&!i.broken);
       allItems.forEach(i=>{
+        if(!targetable(i))return; // skip maxHp=0 items (provisions, relics)
         if(i.burnStack===0)i.burnTickMs=500;
         i.burnStack=(i.burnStack||0)+(item.effectAmt||5);
       });
@@ -2120,9 +2122,9 @@ function checkAndBreak(item,side){
       [...enemyBoard.front,...enemyBoard.back].forEach(i=>{if(i&&!i.broken&&i!==item)applyBurn(i,spread,'Conflagration','player');});
       log('a','🔥 CONFLAGRATION — '+spread+' burn spreads!');
     }
-    // Backdraft — player breaks → dmg to random enemy = total enemy burn stacks
+    // Backdraft — player breaks → dmg to random enemy = cumulative burn ever applied to enemies
     if(side==='player'&&activeSkills.some(s=>s.id==='backdraft')){
-      const totalBurn=countBurnStacksOnBoard(enemyBoard);
+      const totalBurn=battleState?battleState.totalBurnApplied:countBurnStacksOnBoard(enemyBoard);
       if(totalBurn>0){dealDmgRandom('enemy',totalBurn,'Backdraft');log('a','💨 BACKDRAFT — '+totalBurn+' dmg!');}
     }
     // Discharge — 2nd player break → all remaining allies Jolt 2s (once per battle)
@@ -2467,6 +2469,7 @@ function applyBurn(item,stacks,src,attackerSide='player'){
   fireEvent({type:'BURN_APPLIED',item:item,side:item._side||null,value:stacks,source:null});
   if(item._side==='enemy'&&battleState){
     battleState.burnApplicationsToEnemy=(battleState.burnApplicationsToEnemy||0)+stacks;
+    battleState.totalBurnApplied=(battleState.totalBurnApplied||0)+stacks;
     checkFireworks();
   }
 }
@@ -3304,8 +3307,8 @@ const TRAINER_DATA=[
           burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'enemy'};
       };
       enemyBoard.front[0]=mi('thorn_mantle');
-      enemyBoard.front[1]=mi('training_dummy');
-      enemyBoard.front[2]=mi('ironclad');
+      enemyBoard.front[1]=mi('ironclad'); // middle position shields both neighbors
+      enemyBoard.front[2]=mi('training_dummy');
       enemyBoard.back[0]=mi('temper');
       enemyBoard.back[1]=mi('patience');
       enemyBoard.back[2]=null;
@@ -3370,9 +3373,9 @@ const TRAINER_DATA=[
         stats:[{icon:'↩️',value:'12/50dmg',cls:'reflect'}],
         _side:'enemy',
         handleEvent:(event)=>{
-          if(event.type!=='DAMAGE_DEALT')return;
+          if(event.type!=='DAMAGE_RECEIVED')return;
           if(event.side!=='enemy')return; // player dealt damage to enemy
-          shame._shameDmgTracked=(shame._shameDmgTracked||0)+event.value;
+          shame._shameDmgTracked=(shame._shameDmgTracked||0)+(event.rawValue||event.value);
           while(shame._shameDmgTracked>=50){
             shame._shameDmgTracked-=50;
             dealDmgRandom('player',shame._shameReturnDmg,'Shame');
@@ -4133,10 +4136,17 @@ function endBattle(result){
         const isPerfect=G.honor===13;
         if(isPerfect){title='FLAWLESS';sub='Six wins. Zero losses. '+G.monsterName+' knew all along.';}
         else{sub='Six wins. The run is complete.';}
+        // Achievement: minimalist — won with 5 or fewer items
+        const _boardCount=[...board.front,...board.back].filter(i=>i&&!i.broken).length;
+        if(_boardCount<=5){
+          localStorage.setItem('zorpAchievementMinimalist','1');
+          sub+='<br><br><div style="text-align:center;font-size:10px;color:var(--gold);font-weight:600;border:1px solid var(--gold);border-radius:6px;padding:5px 10px;display:inline-block;margin-top:4px;">🏆 MINIMALIST — Won with '+_boardCount+' item'+(_boardCount===1?'':'s')+'.</div>';
+        }
         if(G.metrics&&G.metrics.hasWinston){
           localStorage.setItem('zorpWinstonFound','1');
-          const ww=WINSTON_WISDOM[Math.floor(Math.random()*WINSTON_WISDOM.length)];
-          sub+=`<br><br><div style="text-align:center;font-size:22px;margin-top:8px;">🪨</div><div style="font-size:11px;color:var(--dim);font-style:italic;line-height:1.7;text-align:center;">"Thank you for saving me."<br><br>${ww}</div>`;
+          _winstonWisdomIdx=Math.floor(Math.random()*WINSTON_WISDOM.length);
+          const ww=WINSTON_WISDOM[_winstonWisdomIdx];
+          sub+=`<br><br><div onclick="cycleWinstonWisdom()" style="cursor:pointer;text-align:center;font-size:22px;margin-top:8px;" title="Tap for more wisdom">🪨</div><div id="victory-winston-text" style="font-size:11px;color:var(--dim);font-style:italic;line-height:1.7;text-align:center;">"Thank you for saving me."<br><br>${ww}</div>`;
         }
         btnText='PLAY AGAIN';btnOnclick='resetRun()';
         logEvent({event:'run_complete',wins:G.wins,honor:G.honor,perfect:isPerfect,board:boardSnapshot(),skills:activeSkills.map(s=>s.id)});
@@ -5093,6 +5103,12 @@ function profLayout(dialogueHTML,extraHTML){
 
 let professorStep=0;
 let selectedMonsterType='fox';
+let _winstonWisdomIdx=0;
+function cycleWinstonWisdom(){
+  _winstonWisdomIdx=(_winstonWisdomIdx+1)%WINSTON_WISDOM.length;
+  const el=document.getElementById('victory-winston-text');
+  if(el)el.innerHTML='"Thank you for saving me."<br><br>'+WINSTON_WISDOM[_winstonWisdomIdx];
+}
 
 function showProfessorFlow(){
   professorFlowActive=true;
@@ -5177,6 +5193,13 @@ function professorShopDecline(){
 
 function showMonsterSelection(){
   setEncTitle('THE PROFESSOR — Choose Your Companion');
+  const hasBeatGame=!!localStorage.getItem('zorpBeatGame');
+  const randomCard=hasBeatGame?`
+      <div class="dc ${selectedMonsterType==='random'?'sel':''}" onclick="selectMonster('random')" style="flex:1;max-width:120px;cursor:pointer;padding:6px;">
+        <div style="font-size:40px;text-align:center;line-height:1.3;">🎲</div>
+        <div class="dn" style="font-size:7px">SURPRISE ME</div>
+        <div class="dd" style="margin:3px 0;font-size:7px">Random companion.</div>
+      </div>`:'';
   setEncBody(`
     <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0;">
       <img src="${PROFESSOR_IMG}" style="flex-shrink:0;width:64px;object-fit:contain;object-position:top;align-self:flex-start;"/>
@@ -5198,6 +5221,7 @@ function showMonsterSelection(){
         <div class="dd" style="margin:3px 0;font-size:7px">Weak early. Two mastered skills.</div>
         <div style="font-family:Cinzel,serif;font-size:11px;letter-spacing:.05em;color:var(--dim)">✦→○→○→○→★→★</div>
       </div>
+      ${randomCard}
     </div>
     <div class="btn-row" style="margin-top:6px;flex-shrink:0;">
       <button class="btn btn-p" onclick="confirmMonsterSelection()">SELECT ${selectedMonsterType.toUpperCase()} →</button>
@@ -5211,8 +5235,11 @@ function selectMonster(type){
 }
 
 function confirmMonsterSelection(){
-  G.monsterType=selectedMonsterType;
-  G.monsterName=selectedMonsterType==='fox'?'Kip':'Hydrax';
+  let chosenType=selectedMonsterType;
+  if(chosenType==='random')chosenType=Math.random()<0.5?'fox':'hydra';
+  selectedMonsterType=chosenType; // resolve random before naming screen
+  G.monsterType=chosenType;
+  G.monsterName=chosenType==='fox'?'Kip':'Hydrax';
   rebuildSkillTreeSVG();
   professorStep=3;
   showProfessorStep();
