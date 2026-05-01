@@ -20,7 +20,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .pb{font-family:'Cinzel',serif;font-size:8px;letter-spacing:.12em;color:var(--glow);background:rgba(96,64,160,.15);padding:2px 8px;border-radius:8px;border:1px solid rgba(96,64,160,.3);}
 .page{display:flex;flex-direction:column;flex:1;min-height:0;width:100%;max-width:960px;margin:0 auto;padding:0;overflow:hidden;}
 /* ENCOUNTER */
-.encounter{flex:1;min-height:0;overflow:hidden;background:rgba(8,6,18,0.55);border:1px solid var(--border);border-radius:10px 10px 0 0;display:flex;flex-direction:column;padding:8px 12px;gap:6px;}
+.encounter{flex:1;min-height:0;overflow:hidden;background:rgba(8,6,18,0.55);border:1px solid var(--border);border-radius:10px 10px 0 0;display:flex;flex-direction:column;padding:8px 12px;gap:6px;position:relative;}
 .enc-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.15em;color:var(--text);text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 8px rgba(0,0,0,.7);margin-bottom:2px;}
 .enc-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;}
 .draft-row{display:flex;gap:8px;justify-content:center;}
@@ -4168,8 +4168,9 @@ function endBattle(result){
           _winstonWisdomIdx=Math.floor(Math.random()*WINSTON_WISDOM.length);
           const ww=WINSTON_WISDOM[_winstonWisdomIdx];
           sub+=`<br><br><div onclick="cycleWinstonWisdom()" style="cursor:pointer;text-align:center;font-size:22px;margin-top:8px;" title="Tap for more wisdom">🪨</div><div id="victory-winston-text" style="font-size:11px;color:var(--dim);font-style:italic;line-height:1.7;text-align:center;">"Thank you for saving me."<br><br>${ww}</div>`;
+          showWinstonToast();
         }
-        btnText='PLAY AGAIN';btnOnclick='resetRun()';
+        btnText='CONTINUE';btnOnclick='goToTitleFromVictory()';
         logEvent({event:'run_complete',wins:G.wins,honor:G.honor,perfect:isPerfect,board:boardSnapshot(),skills:activeSkills.map(s=>s.id)});
       }else{
         const trainerWinner=TRAINER_DATA[G.wins]||TRAINER_DATA[1];
@@ -5125,10 +5126,25 @@ function profLayout(dialogueHTML,extraHTML){
 let professorStep=0;
 let selectedMonsterType='fox';
 let _winstonWisdomIdx=0;
+let _titleWinstonIdx=0;
 function cycleWinstonWisdom(){
   _winstonWisdomIdx=(_winstonWisdomIdx+1)%WINSTON_WISDOM.length;
   const el=document.getElementById('victory-winston-text');
   if(el)el.innerHTML='"Thank you for saving me."<br><br>'+WINSTON_WISDOM[_winstonWisdomIdx];
+}
+function cycleTitleWinston(){
+  _titleWinstonIdx=(_titleWinstonIdx+1)%WINSTON_WISDOM.length;
+  const el=document.getElementById('title-winston-line');
+  if(el)el.textContent=WINSTON_WISDOM[_titleWinstonIdx];
+}
+function showWinstonToast(){
+  const ex=document.getElementById('winston-toast');if(ex)ex.remove();
+  const el=document.createElement('div');
+  el.id='winston-toast';
+  el.style.cssText='position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:600;background:rgba(16,8,36,.97);border:1px solid var(--gold);border-radius:8px;padding:10px 22px;font-family:Cinzel,serif;font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--gold);text-align:center;pointer-events:none;box-shadow:0 0 28px rgba(240,192,64,.35);white-space:nowrap;';
+  el.innerHTML='🏆 ACHIEVEMENT UNLOCKED<br><span style="font-size:10px;font-weight:400;color:var(--text);font-family:\'Crimson Pro\',serif;font-style:italic;letter-spacing:0;">He knew everything.</span>';
+  document.body.appendChild(el);
+  setTimeout(()=>{if(el.parentNode)el.parentNode.removeChild(el);},5000);
 }
 
 function showProfessorFlow(){
@@ -5357,15 +5373,21 @@ function showTitleScreen(){
   const ts=document.createElement('div');
   ts.id='title-screen';
   ts.style.cssText='position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;padding-top:8vh;pointer-events:none;';
+  if(hasWinston)_titleWinstonIdx=Math.floor(Math.random()*WINSTON_WISDOM.length);
+  const bottomLeft=hasWinston
+    ?`<div onclick="cycleTitleWinston()" style="position:fixed;left:0;bottom:0;height:30vh;max-width:45vw;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 10px 10px;cursor:pointer;pointer-events:all;z-index:201;user-select:none;">
+        <div style="font-size:min(22vw,20vh);line-height:1.1;filter:drop-shadow(4px 0 18px rgba(0,0,0,.65));">🪨</div>
+        <div id="title-winston-line" style="font-size:9px;color:var(--dim);font-style:italic;line-height:1.4;text-align:center;max-width:110px;margin-top:4px;">${WINSTON_WISDOM[_titleWinstonIdx]}</div>
+      </div>`
+    :`<img src="${SCRUFFLING_IMG}" style="position:fixed;left:0;bottom:0;height:30vh;max-width:45vw;object-fit:contain;object-position:bottom left;pointer-events:none;filter:drop-shadow(4px 0 18px rgba(0,0,0,.65));"/>`;
   ts.innerHTML=`
     <div style="pointer-events:all;display:flex;flex-direction:column;align-items:center;">
       <img src="${ZORP_LOGO_IMG}" style="width:70vw;max-width:340px;object-fit:contain;display:block;filter:drop-shadow(0 0 28px rgba(240,192,64,.45));"/>
       ${diffSel}
       <button onclick="startFromTitle()" style="margin-top:${hasBeat?'4vh':'8vh'};font-family:'Cinzel',serif;font-size:14px;font-weight:900;letter-spacing:.25em;padding:12px 44px;border-radius:8px;border:2px solid var(--gold);background:rgba(240,192,64,.12);color:var(--gold);cursor:pointer;text-shadow:0 0 16px rgba(240,192,64,.5);box-shadow:0 0 24px rgba(240,192,64,.15);" onmouseover="this.style.background='rgba(240,192,64,.28)'" onmouseout="this.style.background='rgba(240,192,64,.12)'">START</button>
     </div>
-    <img src="${SCRUFFLING_IMG}" style="position:fixed;left:0;bottom:0;height:30vh;max-width:45vw;object-fit:contain;object-position:bottom left;pointer-events:none;filter:drop-shadow(4px 0 18px rgba(0,0,0,.65));"/>
+    ${bottomLeft}
     <img src="${THORNBACK_IMG}" style="position:fixed;right:0;bottom:0;height:30vh;max-width:45vw;object-fit:contain;object-position:bottom right;pointer-events:none;filter:drop-shadow(-4px 0 18px rgba(0,0,0,.65));transform:scaleX(-1);"/>
-    ${hasWinston?`<div onclick="showWinstonPanel()" style="position:fixed;bottom:12px;left:12px;font-size:20px;opacity:0.6;cursor:pointer;pointer-events:all;z-index:201;user-select:none;" title="He knew everything.">🪨</div>`:''}
   `;
   document.body.appendChild(ts);
 }
@@ -5379,6 +5401,10 @@ function selectDifficulty(d){
     btn.style.color=x===d?'var(--gold)':'var(--dim)';
   });
 }
+function goToTitleFromVictory(){
+  resetRun();
+  showTitleScreen();
+}
 function startFromTitle(){
   G.difficulty=localStorage.getItem('zorpDifficulty')||'easy';
   const ts=document.getElementById('title-screen');
@@ -5387,9 +5413,10 @@ function startFromTitle(){
   if(!wm){
     wm=document.createElement('div');
     wm.id='logo-watermark';
-    wm.style.cssText='position:fixed;bottom:8px;right:8px;z-index:999;pointer-events:none;';
-    wm.innerHTML='<img src="'+ZORP_LOGO_IMG+'" style="width:64px;opacity:0.18;display:block;"/>';
-    document.body.appendChild(wm);
+    wm.style.cssText='position:absolute;top:4px;left:6px;width:72px;pointer-events:none;z-index:10;';
+    wm.innerHTML='<img src="'+ZORP_LOGO_IMG+'" style="width:72px;opacity:0.22;display:block;"/>';
+    const enc=document.getElementById('encounterArea');
+    if(enc)enc.appendChild(wm);else document.body.appendChild(wm);
   }else{wm.style.display='';}
   showProfessorFlow();
 }
