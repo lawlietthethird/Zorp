@@ -2015,8 +2015,8 @@ function getBoard(s){return s==='player'?board:enemyBoard;}
 function allSlots(s){return[...getBoard(s).front,...getBoard(s).back];}
 function aliveItems(s){return allSlots(s).filter(i=>i&&!i.broken);}
 
-function maxFrontSlots(){const b=G.day<=1?1:G.day<=3?2:3;const bonus=G.neighborSlotBonus||0;return Math.min(3,b+Math.min(bonus,3-b));}
-function maxBackSlots(){const bf=G.day<=1?1:G.day<=3?2:3;const bb=G.day<=3?1:G.day<=4?2:3;const fo=Math.min(G.neighborSlotBonus||0,Math.max(0,3-bf));return Math.min(3,bb+Math.max(0,(G.neighborSlotBonus||0)-fo));}
+function maxFrontSlots(){const b=G.day<=3?2:3;const bonus=G.neighborSlotBonus||0;return Math.min(3,b+Math.min(bonus,3-b));}
+function maxBackSlots(){const bb=G.day<=2?1:G.day<=4?2:3;const bf=G.day<=3?2:3;const fo=Math.min(G.neighborSlotBonus||0,Math.max(0,3-bf));return Math.min(3,bb+Math.max(0,(G.neighborSlotBonus||0)-fo));}
 function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
 function isJolted(item){return item&&item.hasteMs>0;}
 function countJoltedAllies(){return[...board.front,...board.back].filter(i=>i&&!i.broken&&isJolted(i)).length;}
@@ -4187,6 +4187,7 @@ function continueAfterResult(){
       G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
     }else{
       if(G.honor<=0&&!G.secondWindUsed){
+        G.honor=1;
         renderBoard();updateUI();renderTrack();
         showSecondWind();
       }else if(G.honor<=0&&G.secondWindUsed){
@@ -4283,10 +4284,15 @@ const SECOND_WIND_BUFFS=[
 function showSecondWind(){
   G.secondWindUsed=true;
   setEncTitle('SECOND WIND');
-  const dialogue='<div class="dialogue"><div class="dlg-name">—</div>'+G.monsterName+' hits the ground.<br><br>You kneel beside them. No words. Just the two of you and the sound of something ending.<br><br>Then '+G.monsterName+' gets up.<br><br>Not because they have to. Not because you asked.<br><br>Something let go. Something that had been held a long time.<br><br>'+G.monsterName+' looks different. You\'re not sure how. You\'re not sure it matters.</div>';
   const offered=[...SECOND_WIND_BUFFS].sort(()=>Math.random()-.5).slice(0,3);
   const cards=offered.map(b=>'<div class="dc" onclick="pickSecondWindBuff(\''+b.id+'\')"><div class="di">'+b.icon+'</div><div class="dn">'+b.name+'</div><div class="dd">'+b.desc+'</div></div>').join('');
-  setEncBody(dialogue+'<div style="font-family:Cinzel,serif;font-size:8px;letter-spacing:.1em;color:var(--dim);text-align:center;margin:6px 0">CHOOSE WHAT CHANGED</div><div class="draft-row">'+cards+'</div>');
+  const text='<div style="text-align:center;font-size:13px;color:var(--text);line-height:1.7;padding:8px 0 10px;">'
+    +'Oh. A resurrection mechanic.<br><br>'
+    +'Didn\'t see that coming. Did you?<br><br>'
+    +'People don\'t stay dead like they used to.<br><br>'
+    +'Ok then. One more try.'
+    +'</div>';
+  setEncBody(text+'<div class="draft-row">'+cards+'</div>');
 }
 function pickSecondWindBuff(id){
   const buff=SECOND_WIND_BUFFS.find(b=>b.id===id);
@@ -5357,7 +5363,7 @@ function showWinstonPanel(){
 function resetRun(){
   stopBattle();
   G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;G.consolationPending=false;G.monsterType='fox';G.monsterName='Kip';
-  G.metrics={wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false,wildLostToday:false,trenchcoatFound:false};
+  G.metrics={wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false,wildLostToday:false,trenchcoatFound:false,hermitVisited:false};
   G.burdens=[];G.forkBonusGold=false;G.betPending=false;G.neighborSlotBonus=0;
   G.inventory=[];G.slotBonuses={front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}};G.nextEventIsWild=false;G.lockedSlots=[];
   board={front:[null,null,null],back:[null,null,null]};
@@ -5631,7 +5637,7 @@ function _openShop(shop){
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
         const t=f();shopItemCache[key]=t;const shopCost=getShopItemCost(key,t.cost);const can=G.gold>=shopCost;
-        return`<div class="dc ${(!can&&shopCost>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        return`<div class="dc ${(!can&&shopCost>0)?'cant':''}" data-item-cost="${shopCost}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5644,7 +5650,7 @@ function _openShop(shop){
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
         const t=f();shopItemCache[key]=t;const shopCostT=getShopItemCost(key,t.cost);const can=G.gold>=shopCostT;
-        return`<div class="dc ${(!can&&shopCostT>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostT}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        return`<div class="dc ${(!can&&shopCostT>0)?'cant':''}" data-item-cost="${shopCostT}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostT}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5658,7 +5664,7 @@ function _openShop(shop){
         const f=getItemFactory(key);if(!f)return'';
         const t=f();shopItemCache[key]=t;
         const clearBase=getShopItemCost(key,t.cost);const price=Math.max(1,Math.floor(clearBase*0.5));const can=G.gold>=price;
-        return`<div class="dc ${(!can&&price>0)?'cant':''}" onclick="buyItemAtPrice('${key}',${price})"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price} <span style="text-decoration:line-through;color:var(--dim);font-size:7px">${clearBase}</span></div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        return`<div class="dc ${(!can&&price>0)?'cant':''}" data-item-cost="${price}" onclick="buyItemAtPrice('${key}',${price})"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price} <span style="text-decoration:line-through;color:var(--dim);font-size:7px">${clearBase}</span></div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5672,7 +5678,7 @@ function _openShop(shop){
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
         const t=f();shopItemCache[key]=t;const shopCostBR=getShopItemCost(key,t.cost);const can=G.gold>=shopCostBR;
-        return`<div class="dc ${(!can&&shopCostBR>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostBR}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        return`<div class="dc ${(!can&&shopCostBR>0)?'cant':''}" data-item-cost="${shopCostBR}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostBR}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5690,7 +5696,7 @@ function _openShop(shop){
         const cost=Math.round(it.cost*UPGRADE_MULTS[it.upgradeLevel+1]);const can=G.gold>=cost;
         const fromLabel=UPGRADE_NAMES[it.upgradeLevel]||'Base';
         const toLabel=UPGRADE_NAMES[it.upgradeLevel+1]||'MAX';
-        return`<div class="dc ${(!can&&cost>0)?'cant':''}" onclick="${can?`upgradeBenchBuy(${idx})`:''}"><div class="di">${getItemIcon(it)}</div><div class="dn">${it.name}</div><div class="dd">${fromLabel} → ${toLabel}</div><div class="dp">🪙 ${cost}</div></div>`;
+        return`<div class="dc ${(!can&&cost>0)?'cant':''}" data-item-cost="${cost}" onclick="${can?`upgradeBenchBuy(${idx})`:''}"><div class="di">${getItemIcon(it)}</div><div class="dn">${it.name}</div><div class="dd">${fromLabel} → ${toLabel}</div><div class="dp">🪙 ${cost}</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5711,7 +5717,7 @@ function _openShop(shop){
       window._lootCrates=crates;
       const cards=crates.slice(0,3).map((c,i)=>{
         const can=G.gold>=c.price;
-        return`<div class="dc ${can?'':'cant'}" onclick="${can?`lootCratePurchase(${i})`:''}"><div class="di">📦</div><div class="dn">${c.name}</div><div class="dd">${c.desc}</div><div class="dp">🪙 ${c.price}</div></div>`;
+        return`<div class="dc ${can?'':'cant'}" data-item-cost="${c.price}" onclick="${can?`lootCratePurchase(${i})`:''}"><div class="di">📦</div><div class="dn">${c.name}</div><div class="dd">${c.desc}</div><div class="dp">🪙 ${c.price}</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5763,7 +5769,7 @@ function checkTrenchcoat(shop,onDone){
     const icHtml=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
     const can=G.gold>=t.cost;
     const hpNote=ti.hp<t.maxHp?`<div style="font-size:7px;color:var(--honor-red);">⚠ ${ti.hp}/${t.maxHp} HP</div>`:'';
-    return`<div class="dc ${can?'':'cant'}" onclick="${can?`trenchcoatBuy(${i})`:''}"><div class="di">${icHtml}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div>${hpNote}<div class="dp">🪙 ${t.cost}</div></div>`;
+    return`<div class="dc ${can?'':'cant'}" data-item-cost="${t.cost}" onclick="${can?`trenchcoatBuy(${i})`:''}"><div class="di">${icHtml}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div>${hpNote}<div class="dp">🪙 ${t.cost}</div></div>`;
   }).join('');
   setEncBody(`<div style="font-size:13px;color:var(--dim);margin-bottom:10px;font-style:italic;">A figure. Two items visible. They make eye contact and say nothing.</div>
     <div class="draft-row">${cards}</div>
@@ -5894,7 +5900,7 @@ function renderWholesale(){
   const cards=keys.map((key,idx)=>{
     const t=wItems[key];if(!t)return'';
     const price=prices[key]||0;const can=G.gold>=price;
-    return`<div class="dc ${(!can&&price>0)?'cant':''}" onclick="${can?`wholesaleBuy(${idx})`:''}"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price}</div></div>`;
+    return`<div class="dc ${(!can&&price>0)?'cant':''}" data-item-cost="${price}" onclick="${can?`wholesaleBuy(${idx})`:''}"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price}</div></div>`;
   }).join('');
   setEncBody(`<div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-p" onclick="wholesaleDone()">DONE →</button></div>`);
 }
@@ -6179,7 +6185,7 @@ const EVENTS=[
   {
     id:'the_hermit',name:'The Hermit',tier:'intermediate',image:null,
     coverName:'The Hermit',coverEmoji:'🏔️',coverLine:"He hasn't left in years.",
-    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:{hermitVisited:true}},
     validSlots:null,state:null,
     prompt:{image:null,title:'The Hermit',flavor:"He hasn't spoken to anyone in years. He knows everything.",dialogue:null},
     choices:[
@@ -6945,7 +6951,10 @@ function resolveEventChoice(choiceIdx){
       }
       // TIER 2 — 3+ trainer wins (skill pick)
       if(G.metrics.trainerWins>=3){
-        showBurdenPanel('THE CARTOGRAPHER','"You\'ve beaten people who were supposed to beat you."\n\nPick any node.',()=>{showAnyNodeSkillPicker();});
+        showBurdenPanel('THE CARTOGRAPHER','"You\'ve beaten people who were supposed to beat you."\n\nPick any node.',()=>{
+          _burdenContinue=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+          showAnyNodeSkillPicker('unlock');
+        });
         clearTimeout(_burdenAutoTimeout);
         return;
       }
@@ -6994,7 +7003,7 @@ function resolveEventChoice(choiceIdx){
       renderBoard();
       if(!G.inventory)G.inventory=[];
       G.inventory.push({id:'winston',name:'A Rock',icon:'🪨',tag:'He knew everything.',isWinston:true});
-      if(G.metrics){G.metrics.hasWinston=true;if(!G.metrics.npcsMet.includes('hermit'))G.metrics.npcsMet.push('hermit');}
+      if(G.metrics){G.metrics.hasWinston=true;if(!G.metrics.npcsMet.includes('hermit'))G.metrics.npcsMet.push('hermit');G.metrics.hermitVisited=true;}
       renderInventoryStrip();
       showBurdenPanel('THE HERMIT','He throws a rock at you.\n\n'+victim.name+' loses 10% max HP.\n\nYou pick up the rock. It has a smiley face on it.',()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();});
       return;
@@ -7389,6 +7398,7 @@ function hermitIndulgePick(idx){
   downgradeItem(item);
   imbueItem(item,'burn_on_act',2);
   if(G.metrics&&!G.metrics.npcsMet.includes('hermit'))G.metrics.npcsMet.push('hermit');
+  if(G.metrics)G.metrics.hermitVisited=true;
   renderBoard();
   showBurdenPanel('THE HERMIT','Your mind is on fire. So is everything else.',()=>{G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();});
   clearTimeout(_burdenAutoTimeout);
