@@ -2017,8 +2017,19 @@ function getBoard(s){return s==='player'?board:enemyBoard;}
 function allSlots(s){return[...getBoard(s).front,...getBoard(s).back];}
 function aliveItems(s){return allSlots(s).filter(i=>i&&!i.broken);}
 
-function maxFrontSlots(){const b=G.day<=3?2:3;const bonus=G.neighborSlotBonus||0;return Math.min(3,b+Math.min(bonus,3-b));}
-function maxBackSlots(){const bb=G.day<=2?1:G.day<=4?2:3;const bf=G.day<=3?2:3;const fo=Math.min(G.neighborSlotBonus||0,Math.max(0,3-bf));return Math.min(3,bb+Math.max(0,(G.neighborSlotBonus||0)-fo));}
+function maxFrontSlots(){
+  // Day 1-2: 2 front  Day 3+: 3 front
+  const base=G.day<=2?2:3;
+  const bonus=G.neighborSlotBonus||0;
+  return Math.min(3,base+Math.min(bonus,Math.max(0,3-base)));
+}
+function maxBackSlots(){
+  // Day 1: 0  Day 2-3: 1  Day 4: 2  Day 5+: 3
+  const base=G.day<=1?0:G.day<=3?1:G.day<=4?2:3;
+  const frontBase=G.day<=2?2:3;
+  const frontBonusUsed=Math.min(G.neighborSlotBonus||0,Math.max(0,3-frontBase));
+  return Math.min(3,base+Math.max(0,(G.neighborSlotBonus||0)-frontBonusUsed));
+}
 function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
 function isJolted(item){return item&&item.hasteMs>0;}
 function countJoltedAllies(){return[...board.front,...board.back].filter(i=>i&&!i.broken&&isJolted(i)).length;}
@@ -3185,6 +3196,16 @@ function buildWildEnemyBoard(m){
   enemyBoard.front=m.front.map(toSlot);
   enemyBoard.back=m.back.map(toSlot);
   applyDifficultyToBoard([...enemyBoard.front,...enemyBoard.back],G.day);
+  // Apply Stranger mark — reduce marked item type to 50% HP
+  if(G.strangerMark){
+    [...enemyBoard.front,...enemyBoard.back].forEach(i=>{
+      if(i&&(i.itemKey===G.strangerMark||i.id===G.strangerMark)){
+        i.hp=Math.round(i.maxHp*0.5);
+        log('d','✦ Stranger mark — '+i.name+' starts at 50% HP');
+      }
+    });
+    G.strangerMark=null;
+  }
 }
 function showEncounterWildPick(){
   if(G.day===1){
@@ -5392,7 +5413,7 @@ function resetRun(){
   G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;G.consolationPending=false;G.monsterType='fox';G.monsterName='Kip';
   G.metrics={wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false,wildLostToday:false,trenchcoatFound:false,hermitVisited:false};
   G.burdens=[];G.forkBonusGold=false;G.betPending=false;G.neighborSlotBonus=0;
-  G.inventory=[];G.slotBonuses={front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}};G.nextEventIsWild=false;G.lockedSlots=[];
+  G.inventory=[];G.slotBonuses={front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}};G.nextEventIsWild=false;G.lockedSlots=[];G.strangerMark=null;
   board={front:[null,null,null],back:[null,null,null]};
   enemyBoard={front:[null,null,null],back:[null,null,null]};
   getTreeNodes().forEach(n=>treeState[n.id]=null);
@@ -7235,7 +7256,7 @@ function resolveEventChoice(choiceIdx){
       if(G.metrics&&!G.metrics.npcsMet.includes('stranger'))G.metrics.npcsMet.push('stranger');
       const spAdvance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
       const spWarn=()=>showBurdenPanel('THE STRANGER','"One more thing. Stay away from the Butcher." He is gone before you can ask what he means.',spAdvance);
-      strangerShowPeek(spWarn);
+      strangerShowBoardPeek(spWarn);
       return;
     }
 
@@ -7739,6 +7760,71 @@ function strangerShopBuy(idx){
 }
 function strangerShopSkip(){const onDone=window._strangerShopOnDone;window._strangerShopItems=null;window._strangerShopOnDone=null;if(onDone)onDone();}
 function strangerSwapSkip(){const onDone=window._strangerSwapOnDone;window._strangerSwapItems=null;window._strangerSwapOnDone=null;if(onDone)onDone();}
+
+// ── Stranger free-peek: tappable enemy board ──────────────────
+function strangerShowBoardPeek(onDone){
+  const pool=G.day===1?[DAY1_WILD]:getWildPool();
+  const m=pool[Math.floor(Math.random()*pool.length)];
+  setEncTitle('THE STRANGER — SCOUTING REPORT');
+  const makeCard=(item,cardIdx)=>{
+    const ic=getItemIcon(item);
+    const ih=(typeof ic==='string'&&ic.startsWith('http'))?
+      `<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`<span style="font-size:20px;">${ic}</span>`;
+    const key=item.itemKey||item.id||'';
+    return`<div class="dc" id="sbp-card-${cardIdx}" onclick="strangerMarkItem('${key}',${cardIdx})" style="cursor:pointer;position:relative;padding:6px;">
+      <div class="di">${ih}</div>
+      <div class="dn" style="font-size:8px;">${item.name}</div>
+      <div class="dd" style="font-size:7px;">${item.maxHp>0?item.maxHp+' HP':''}</div>
+      <div id="sbp-mark-${cardIdx}" style="display:none;position:absolute;top:2px;right:4px;font-size:13px;color:var(--gold);">✦</div>
+    </div>`;
+  };
+  const frontItems=m.front.filter(Boolean);
+  const backItems=m.back.filter(Boolean);
+  const frontCards=frontItems.map((it,i)=>makeCard(it,i)).join('');
+  const backCards=backItems.map((it,i)=>makeCard(it,i+3)).join('');
+  const iconHtml=m.img&&m.img.startsWith('https://')?
+    `<img src="${m.img}" style="width:32px;height:32px;object-fit:contain;margin-right:6px;vertical-align:middle;">`:`<span style="font-size:22px;">${m.icon}</span> `;
+  window._sbpOnDone=onDone;
+  window._sbpMarkedIdx=null;
+  setEncBody(
+    `<div style="font-size:12px;color:var(--dim);margin-bottom:6px;font-style:italic;">"He shows you something he shouldn\'t know."</div>`+
+    `<div style="display:flex;align-items:center;margin-bottom:6px;">${iconHtml}<span style="font-size:11px;font-weight:600;">${m.name}</span><span style="font-size:10px;color:var(--dim);margin-left:6px;">${m.tag}</span></div>`+
+    (frontCards?`<div style="font-size:9px;color:var(--muted);margin-bottom:2px;">FRONT</div><div class="draft-row" style="gap:4px;margin-bottom:4px;">${frontCards}</div>`:'')+
+    (backCards?`<div style="font-size:9px;color:var(--muted);margin-bottom:2px;">BACK</div><div class="draft-row" style="gap:4px;margin-bottom:4px;">${backCards}</div>`:'')+
+    `<div style="font-size:10px;color:var(--dim);font-style:italic;margin:4px 0 6px;">Tap an item to mark it — it starts the fight at half HP.</div>`+
+    `<div class="btn-row"><button class="btn btn-d" onclick="sbpDone()">SEEN ENOUGH</button></div>`
+  );
+}
+function strangerMarkItem(itemKey,cardIdx){
+  // Clear previous selection
+  if(window._sbpMarkedIdx!==null){
+    const prev=document.getElementById('sbp-mark-'+window._sbpMarkedIdx);
+    if(prev)prev.style.display='none';
+    const prevCard=document.getElementById('sbp-card-'+window._sbpMarkedIdx);
+    if(prevCard)prevCard.classList.remove('sel');
+  }
+  // Mark this item
+  window._sbpMarkedIdx=cardIdx;
+  G.strangerMark=itemKey;
+  const markEl=document.getElementById('sbp-mark-'+cardIdx);
+  if(markEl)markEl.style.display='block';
+  const cardEl=document.getElementById('sbp-card-'+cardIdx);
+  if(cardEl)cardEl.classList.add('sel');
+  // Confirm panel → then Butcher warning → advance
+  showBurdenPanel('THE STRANGER','"That one." He doesn\'t elaborate.',()=>{
+    const onDone=window._sbpOnDone;
+    window._sbpOnDone=null;
+    window._sbpMarkedIdx=null;
+    if(onDone)onDone();
+  });
+  clearTimeout(_burdenAutoTimeout);
+}
+function sbpDone(){
+  const onDone=window._sbpOnDone;
+  window._sbpOnDone=null;
+  window._sbpMarkedIdx=null;
+  if(onDone)onDone();
+}
 
 function tickBurdens(){
   // Called once per location entry from activateCurrentNode.
