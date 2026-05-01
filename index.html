@@ -6,7 +6,7 @@
 <title>ZORP</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&display=swap" rel="stylesheet">
 <style>
-:root{--gold:#f0c040;--honor-red:#e84040;--bg:#0e0b14;--panel:#1a1525;--card:#221a30;--card-h:#2d2440;--border:#3a2f50;--glow:#6040a0;--text:#e8d8ff;--dim:#7a6a90;--potential:#40c0ff;--hp:#50e080;--shield:#40a0ff;--act:#a060ff;--broken-bg:#18121e;--broken-b:#2a2035;--front:#e05050;--back:#5090e0;--fatigue:#ff6020;--sel:#ffe040;}
+:root{--gold:#f0c040;--honor-red:#e84040;--bg:#0e0b14;--panel:#1a1525;--card:#221a30;--card-h:#2d2440;--border:#3a2f50;--glow:#6040a0;--text:#f0e4ff;--dim:#b0a0cc;--muted:#9080b0;--potential:#50d0ff;--hp:#60e890;--shield:#50b0ff;--act:#b070ff;--broken-bg:#18121e;--broken-b:#2a2035;--front:#e85050;--back:#60a0e8;--fatigue:#ff7030;--sel:#ffe040;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;background-color:#0A0612;background-size:cover;background-position:center top;background-attachment:fixed;background-repeat:no-repeat;color:var(--text);font-family:'Crimson Pro',serif;}
 .topbar{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;background:rgba(10,8,18,.96);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-shrink:0;height:44px;}
@@ -59,7 +59,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .fl{font-family:'Cinzel',serif;font-size:7px;color:var(--fatigue);letter-spacing:.1em;margin-bottom:1px;}
 .battle-log{background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:6px;padding:5px 7px;height:64px;overflow-y:auto;font-size:9px;line-height:1.7;}
 .battle-log::-webkit-scrollbar{width:3px;}.battle-log::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-.lt{color:rgba(160,120,255,.5);margin-right:4px;}.ld{color:#e85050;}.lh{color:#50e080;}.ls{color:var(--shield);}.la{color:var(--act);}.lb{color:var(--fatigue);font-weight:700;}.lx{color:var(--dim);font-style:italic;}
+.lt{color:rgba(180,140,255,.75);margin-right:4px;}.ld{color:#f06060;}.lh{color:#60f090;}.ls{color:var(--shield);}.la{color:var(--act);}.lb{color:var(--fatigue);font-weight:700;}.lx{color:var(--dim);font-style:italic;}
 /* TYPE / SKILL PICK */
 .type-opts,.skill-opts{display:flex;gap:8px;justify-content:center;}
 .to,.sk-card{flex:1;max-width:200px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .18s;}
@@ -69,7 +69,7 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
 .sk-name{font-family:'Cinzel',serif;font-size:8px;font-weight:700;letter-spacing:.05em;margin-bottom:2px;}
 .sk-desc{font-size:8px;color:var(--dim);line-height:1.3;margin-bottom:4px;}
 .sk-rarity{font-family:'Cinzel',serif;font-size:7px;letter-spacing:.1em;}
-.rarity-beginner{color:#80c080;}.rarity-intermediate{color:#4080e0;}.rarity-advanced{color:#c060e0;}.rarity-mastered{color:#f0a020;}
+.rarity-beginner{color:#90d890;}.rarity-intermediate{color:#60a0f8;}.rarity-advanced{color:#d070f0;}.rarity-mastered{color:#f8b830;}
 /* WILD PICK */
 .wild-pick{display:flex;gap:8px;justify-content:center;flex-shrink:0;}
 .wp{flex:1;max-width:160px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center;cursor:pointer;transition:all .18s;}
@@ -1004,7 +1004,7 @@ const MOM_ITEMS={
         applyShield(s,a,'Worn Locket');
         const t=randomEnemyItem(opp(s));
         if(t)applyBurn(t,2,'Worn Locket');
-      },0,null,35,'armor','intermediate');
+      },2,null,35,'armor','intermediate');
     item.flavorText="She made you promise to keep it close.";
     item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||35,cls:'shield'},{icon:'🔥',value:2,cls:'burn'}];
     item.handleEvent=(event)=>{
@@ -1018,7 +1018,7 @@ const MOM_ITEMS={
   knitted_cap:()=>{
     const item=makeItem('knitted_cap','Knitted Cap','🧢','Armor',180,6000,
       'Plate random ally +25. First activation plates twice. On activation: 2 poison to random enemy.',
-      null,0,null,25,'armor','intermediate');
+      null,2,null,25,'armor','intermediate');
     item.flavorText="It's not stupid. Put it on.";
     item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||25,cls:'shield'},{icon:'☠️',value:2,cls:'poison'}];
     item._firstActivation=true;
@@ -1040,7 +1040,7 @@ const MOM_ITEMS={
         const t=pool[Math.floor(Math.random()*pool.length)];
         const bonus=(t.hp/t.maxHp)<0.5?8:0;
         applyDmgTo(t,a+bonus,"Dad's Old Knife",opp(s));
-      },0,null,22,'weapon','intermediate');
+      },2,null,22,'weapon','intermediate');
     item.flavorText="He'd want you to have it.";
     item.stats=[{icon:'⚔️',value:(i)=>(i.effectAmt||22)+'+8',cls:'dmg'}];
     return item;
@@ -1051,7 +1051,7 @@ const MOM_ITEMS={
       (s,a,self)=>{
         dealDmgRandom(opp(s),a,'Sharpening Stone');
         applyHaste(self,2000,'Sharpening Stone');
-      },0,null,14,'weapon','intermediate');
+      },2,null,14,'weapon','intermediate');
     item.flavorText="Keep it dry.";
     item.stats=[{icon:'⚔️',value:14,cls:'dmg'},{icon:'⚡',value:'2s',cls:'haste'}];
     return item;
@@ -1061,7 +1061,7 @@ const MOM_ITEMS={
       '16 dmg random. Applies 2s Wet to target hit.',
       (s,a,self)=>{
         dealDmgWithStatus(s,a,'Heavy Walking Stick','slow',2000);
-      },0,null,16,'weapon','intermediate');
+      },2,null,16,'weapon','intermediate');
     item.flavorText="For the road. Or whatever else comes up.";
     item.stats=[{icon:'⚔️',value:16,cls:'dmg'},{icon:'💧',value:'2s',cls:'slow'}];
     return item;
@@ -1070,7 +1070,7 @@ const MOM_ITEMS={
     const item=makeItem('grandmas_coin_purse',"Grandma's Coin Purse",'👛','Weapon',180,6000,
       '8 dmg random. Sells for double.',
       (s,a)=>dealDmgRandom(opp(s),a,"Grandma's Coin Purse"),
-      0,null,8,'weapon','intermediate');
+      2,null,8,'weapon','intermediate');
     item.flavorText="She tucked some spending money in there too.";
     item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||8,cls:'dmg'}];
     item.sellOverride=4;
@@ -1079,14 +1079,14 @@ const MOM_ITEMS={
 };
 const MOM_CONSOLATION_ITEMS={
   bandage_roll:()=>{
-    const item=makeItem('bandage_roll','Bandage Roll','🩹','Food',0,6000,'Heal 50 · 1 use.',(s,a)=>healItem(s,a,'Bandage Roll'),0,1,50);
+    const item=makeItem('bandage_roll','Bandage Roll','🩹','Food',0,6000,'Heal 50 · 1 use.',(s,a)=>healItem(s,a,'Bandage Roll'),2,1,50);
     item.itemRarity='beginner';item.itemType='provision';
     item.flavorText="Stop bleeding first.";
     item.stats=[{icon:'✚',value:(i)=>i.effectAmt||50,cls:'heal'}];
     return item;
   },
   river_stone:()=>{
-    const item=makeItem('river_stone',"Mom's Rock",'🪨','Definitely not Winston.',80,3500,'10 dmg random.',(s,a)=>dealDmgRandom(opp(s),a,"Mom's Rock"),0,null,10);
+    const item=makeItem('river_stone',"Mom's Rock",'🪨','Definitely not Winston.',80,3500,'10 dmg random.',(s,a)=>dealDmgRandom(opp(s),a,"Mom's Rock"),2,null,10);
     item.itemRarity='beginner';item.itemType='weapon';
     item.isWinston=false;
     item.flavorText="She said you could throw it if things got tough.";
@@ -1094,7 +1094,7 @@ const MOM_CONSOLATION_ITEMS={
     return item;
   },
   salad_bowl:()=>{
-    const item=makeItem('salad_bowl','Salad Bowl','🥗','Armor',120,4500,'Plate random ally +20.',(s,a)=>applyShield(s,a,'Salad Bowl'),0,null,20);
+    const item=makeItem('salad_bowl','Salad Bowl','🥗','Armor',120,4500,'Plate random ally +20.',(s,a)=>applyShield(s,a,'Salad Bowl'),2,null,20);
     item.itemRarity='beginner';item.itemType='armor';
     item.flavorText="Don't ask.";
     item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];
@@ -1902,7 +1902,7 @@ const DAY1_WILD={
   back:[null,null,null]
 };
 const WILD_MONSTERS=[
-  {name:'Thornback',icon:'🦔',img:THORNBACK_IMG,tag:'Prickly Fighter',front:[mk('left_claws'),mk('spark_charm'),null],back:[null,null,null]},
+  {name:'Thornback',icon:'🦔',img:THORNBACK_IMG,tag:'Prickly Fighter',front:[mkw('thornback_armor'),mkw('ironclad'),null],back:[null,null,null]},
   {name:'Mudpup',icon:'🐊',tag:'Swamp Crawler',front:[mk('bubble_shield'),mk('left_claws'),null],back:[null,null,null]},
   {name:'Gloomwing',icon:'🦇',tag:'Shadow Flyer',front:[mk('spark_charm'),mk('bubble_shield'),null],back:[null,null,null]},
 ];
@@ -2016,7 +2016,7 @@ function allSlots(s){return[...getBoard(s).front,...getBoard(s).back];}
 function aliveItems(s){return allSlots(s).filter(i=>i&&!i.broken);}
 
 function maxFrontSlots(){const b=G.day<=1?1:G.day<=3?2:3;const bonus=G.neighborSlotBonus||0;return Math.min(3,b+Math.min(bonus,3-b));}
-function maxBackSlots(){const bf=G.day<=1?1:G.day<=3?2:3;const bb=G.day<=2?1:G.day<=4?2:3;const fo=Math.min(G.neighborSlotBonus||0,Math.max(0,3-bf));return Math.min(3,bb+Math.max(0,(G.neighborSlotBonus||0)-fo));}
+function maxBackSlots(){const bf=G.day<=1?1:G.day<=3?2:3;const bb=G.day<=3?1:G.day<=4?2:3;const fo=Math.min(G.neighborSlotBonus||0,Math.max(0,3-bf));return Math.min(3,bb+Math.max(0,(G.neighborSlotBonus||0)-fo));}
 function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
 function isJolted(item){return item&&item.hasteMs>0;}
 function countJoltedAllies(){return[...board.front,...board.back].filter(i=>i&&!i.broken&&isJolted(i)).length;}
@@ -2623,6 +2623,11 @@ function getItemIcon(item){
   }
   return'<span>'+(item.icon||'?')+'</span>';
 }
+const RARITY_ORDER=['beginner','intermediate','advanced','mastered'];
+function getDisplayRarity(item){
+  const base=RARITY_ORDER.indexOf(item.itemRarity||'beginner');
+  return RARITY_ORDER[Math.min(base+(item.upgradeLevel||0),3)];
+}
 function renderBoard(){renderRow('frontSlots',board.front,'front',maxFrontSlots());renderRow('backSlots',board.back,'back',maxBackSlots());renderInventoryStrip();}
 function renderInventoryStrip(){
   const el=document.getElementById('inventoryStrip');if(!el)return;
@@ -2659,7 +2664,7 @@ function renderRow(cid,slots,rowType,maxSlots){
     }
     else if(item.broken){card.classList.add('broken-c');card.dataset.itemId=item.id;card.innerHTML='<div class="cbo">✕</div><div class="ci" style="opacity:.25"><div class="cicon" id="cicon-'+item.id+'">'+getItemIcon(item)+'</div><div class="cname">'+item.name+'</div></div><div class="card-df"></div>';card.onclick=(e)=>{e.stopPropagation();showItemInfo(item,false,null,null);};}
     else{
-      const rarityClass=item.itemRarity?'rarity-'+item.itemRarity:'';
+      const rarityClass='rarity-'+getDisplayRarity(item);
       card.className='ic '+rarityClass;
       if(G.selectedSlot&&G.selectedSlot.row===rowType&&G.selectedSlot.idx===idx)card.classList.add('sel');
       card.dataset.itemId=item.id;
@@ -3118,9 +3123,12 @@ function buyMomItem(key,free,isConsolation){
 }
 function buyItem(key,free){
   const f=getItemFactory(key);if(!f)return;
-  const t=f();if(!free&&G.gold<t.cost)return;if(!free)G.gold-=t.cost;
+  const t=f();
   const allSlots=[...board.front,...board.back];
   const existing=allSlots.find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+  // Upgrade cost scales with current tier: buying a duplicate upgrades the existing item
+  const actualCost=existing?Math.round(t.cost*UPGRADE_MULTS[existing.upgradeLevel+1]):t.cost;
+  if(!free&&G.gold<actualCost)return;if(!free)G.gold-=actualCost;
   if(existing){
     upgradeItem(existing);
     showNotif(existing.name+' upgraded to '+UPGRADE_NAMES[existing.upgradeLevel]+'!');
@@ -3143,7 +3151,7 @@ function buyItem(key,free){
   if(!placed)for(let i=0;i<maxBack&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
   if(!placed){showNotif('Board full! Open an item and hit SELL, or swap positions.',4000);return;}
   showNotif(item.name+' added!');
-  logEvent({event:'shop_buy',item_key:key,item_rarity:t.itemRarity||'',item_type:t.itemType||'',gold_spent:t.cost,gold_remaining:G.gold,upgraded:!!existing});
+  logEvent({event:'shop_buy',item_key:key,item_rarity:t.itemRarity||'',item_type:t.itemType||'',gold_spent:actualCost,gold_remaining:G.gold,upgraded:!!existing});
   updateUI();renderBoard();
   // Technique tome — show popup before advancing
   if(item.isTechnique){
@@ -4618,7 +4626,7 @@ function showItemInfo(item, isPlayerBoard=false, rowType=null, idx=null){
 
   // Rarity badge
   const rarityEl=document.getElementById('iipRarity');
-  const rar=item.itemRarity||'beginner';
+  const rar=getDisplayRarity(item);
   rarityEl.textContent=rar.toUpperCase();
   rarityEl.className='iip-rarity iip-rarity-'+rar;
 
@@ -5349,7 +5357,7 @@ function showWinstonPanel(){
 function resetRun(){
   stopBattle();
   G.gold=8;G.honor=13;G.maxHonor=13;G.wins=0;G.day=1;G.type=null;G.rivalDefeated=false;G.dayStep=0;G.selectedSlot=null;G.battleRunning=false;G.lastResult=null;G.wildChoice=null;G.pendingSkillNode=null;G.momGiftGiven=false;G.secondWindUsed=false;G.secondWindBuff=null;G.steadfastActive=false;G.consolationPending=false;G.monsterType='fox';G.monsterName='Kip';
-  G.metrics={wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false,wildLostToday:false};
+  G.metrics={wildWins:0,wildLosses:0,trainerWins:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false,wildLostToday:false,trenchcoatFound:false};
   G.burdens=[];G.forkBonusGold=false;G.betPending=false;G.neighborSlotBonus=0;
   G.inventory=[];G.slotBonuses={front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}};G.nextEventIsWild=false;G.lockedSlots=[];
   board={front:[null,null,null],back:[null,null,null]};
@@ -5519,12 +5527,12 @@ function pickTypedShop(typeId){
   const slots=[...allKeys].sort(()=>Math.random()-.5).slice(0,3);
   const cards=slots.map(key=>{
     const f=getItemFactory(key);if(!f)return'';
-    const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-    return `<div class="dc ${(!can&&t.cost>0)?'cant':''}" data-item-cost="${t.cost}" onclick="buyItem('${key}',false)">
+    const t=f();shopItemCache[key]=t;const displayCost=getShopItemCost(key,t.cost);const can=G.gold>=displayCost;
+    return `<div class="dc ${(!can&&displayCost>0)?'cant':''}" data-item-cost="${displayCost}" onclick="buyItem('${key}',false)">
       <div class="di">${getItemIcon(t)}</div>
       <div class="dn">${t.name}</div>
       <div class="dd">${t.desc}</div>
-      <div class="dp">🪙 ${t.cost}</div>
+      <div class="dp">🪙 ${displayCost}</div>
       <div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div>
     </div>`;
   }).join('');
@@ -5601,7 +5609,18 @@ function selectShopCard(idx){
   showShop(shops[idx]);
 }
 
-function showShop(shop){
+// Returns the cost to buy/upgrade this item from a shop.
+// If the player already owns a copy at upgradeLevel N, the next upgrade costs base * UPGRADE_MULTS[N+1].
+function getShopItemCost(key,baseCost){
+  if(!baseCost)return baseCost;
+  const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+  if(!existing)return baseCost;
+  return Math.round(baseCost*UPGRADE_MULTS[existing.upgradeLevel+1]);
+}
+
+function showShop(shop){checkTrenchcoat(shop,()=>_openShop(shop));}
+
+function _openShop(shop){
   shopItemCache={};
   const rarityOrder=['beginner','intermediate','advanced','mastered'];
   const tw=TIER_WEIGHTS[Math.min(Math.max(G.day,1),10)]||TIER_WEIGHTS[10];
@@ -5611,8 +5630,8 @@ function showShop(shop){
       const slots=generateShopSlots(G.day);
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
-        const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-        return`<div class="dc ${(!can&&t.cost>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${t.cost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        const t=f();shopItemCache[key]=t;const shopCost=getShopItemCost(key,t.cost);const can=G.gold>=shopCost;
+        return`<div class="dc ${(!can&&shopCost>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5624,8 +5643,8 @@ function showShop(shop){
       const slots=[...allKeys].sort(()=>Math.random()-.5).slice(0,3);
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
-        const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-        return`<div class="dc ${(!can&&t.cost>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${t.cost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        const t=f();shopItemCache[key]=t;const shopCostT=getShopItemCost(key,t.cost);const can=G.gold>=shopCostT;
+        return`<div class="dc ${(!can&&shopCostT>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostT}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5638,8 +5657,8 @@ function showShop(shop){
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
         const t=f();shopItemCache[key]=t;
-        const price=Math.max(1,Math.floor(t.cost*0.5));const can=G.gold>=price;
-        return`<div class="dc ${(!can&&price>0)?'cant':''}" onclick="buyItemAtPrice('${key}',${price})"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price} <span style="text-decoration:line-through;color:var(--dim);font-size:7px">${t.cost}</span></div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        const clearBase=getShopItemCost(key,t.cost);const price=Math.max(1,Math.floor(clearBase*0.5));const can=G.gold>=price;
+        return`<div class="dc ${(!can&&price>0)?'cant':''}" onclick="buyItemAtPrice('${key}',${price})"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price} <span style="text-decoration:line-through;color:var(--dim);font-size:7px">${clearBase}</span></div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5652,8 +5671,8 @@ function showShop(shop){
       const slots=[...pool].sort(()=>Math.random()-.5).slice(0,4);
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
-        const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-        return`<div class="dc ${(!can&&t.cost>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${t.cost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        const t=f();shopItemCache[key]=t;const shopCostBR=getShopItemCost(key,t.cost);const can=G.gold>=shopCostBR;
+        return`<div class="dc ${(!can&&shopCostBR>0)?'cant':''}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostBR}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5668,7 +5687,7 @@ function showShop(shop){
       const display=[...upgradeable].sort(()=>Math.random()-.5).slice(0,3);
       window._upgradeBenchItems=display;
       const cards=display.map((it,idx)=>{
-        const cost=it.cost||0;const can=G.gold>=cost;
+        const cost=Math.round(it.cost*UPGRADE_MULTS[it.upgradeLevel+1]);const can=G.gold>=cost;
         const fromLabel=UPGRADE_NAMES[it.upgradeLevel]||'Base';
         const toLabel=UPGRADE_NAMES[it.upgradeLevel+1]||'MAX';
         return`<div class="dc ${(!can&&cost>0)?'cant':''}" onclick="${can?`upgradeBenchBuy(${idx})`:''}"><div class="di">${getItemIcon(it)}</div><div class="dn">${it.name}</div><div class="dd">${fromLabel} → ${toLabel}</div><div class="dp">🪙 ${cost}</div></div>`;
@@ -5713,6 +5732,72 @@ function showShop(shop){
     }
     default:showEncounterShop(1);
   }
+}
+
+// ── Trenchcoat Easter Egg ──────────────────────────────────────
+function checkTrenchcoat(shop,onDone){
+  if(Math.random()>=0.1){onDone();return;}
+  const rarityOrder=['beginner','intermediate','advanced','mastered'];
+  const tw=TIER_WEIGHTS[Math.min(Math.max(G.day,1),10)]||TIER_WEIGHTS[10];
+  const mostCommon=rarityOrder.filter(r=>(tw[r]||0)>0).sort((a,b)=>(tw[b]||0)-(tw[a]||0))[0]||'beginner';
+  const idx=rarityOrder.indexOf(mostCommon);
+  const higherTier=rarityOrder[Math.min(idx+1,rarityOrder.length-1)];
+  const pool=getItemsOfRarity(higherTier);
+  if(!pool.length){onDone();return;}
+  const pickedKeys=[...pool].sort(()=>Math.random()-.5).slice(0,2);
+  const trenchItems=pickedKeys.map(key=>{
+    const f=getItemFactory(key);if(!f)return null;
+    const base=f();
+    const fullHp=Math.random()<0.05;
+    const hp=fullHp?base.maxHp:Math.round(base.maxHp*0.75);
+    return{key,base,hp};
+  }).filter(Boolean);
+  if(!trenchItems.length){onDone();return;}
+  if(G.metrics)G.metrics.trenchcoatFound=true;
+  window._trenchcoatItems=trenchItems;
+  window._trenchcoatOnDone=onDone;
+  setEncTitle('');
+  const cards=trenchItems.map((ti,i)=>{
+    const t=ti.base;
+    const ic=getItemIcon(t);
+    const icHtml=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
+    const can=G.gold>=t.cost;
+    const hpNote=ti.hp<t.maxHp?`<div style="font-size:7px;color:var(--honor-red);">⚠ ${ti.hp}/${t.maxHp} HP</div>`:'';
+    return`<div class="dc ${can?'':'cant'}" onclick="${can?`trenchcoatBuy(${i})`:''}"><div class="di">${icHtml}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div>${hpNote}<div class="dp">🪙 ${t.cost}</div></div>`;
+  }).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--dim);margin-bottom:10px;font-style:italic;">A figure. Two items visible. They make eye contact and say nothing.</div>
+    <div class="draft-row">${cards}</div>
+    <div class="btn-row"><button class="btn btn-d" onclick="trenchcoatClose()">✕ WALK AWAY</button></div>`);
+}
+
+function trenchcoatBuy(idx){
+  const ti=window._trenchcoatItems&&window._trenchcoatItems[idx];
+  if(!ti)return;
+  const t=ti.base;if(G.gold<t.cost)return;
+  G.gold-=t.cost;updateUI();
+  window._trenchcoatItems=null;
+  const onDone=window._trenchcoatOnDone||null;window._trenchcoatOnDone=null;
+  const allSlots=[...board.front,...board.back];
+  const existing=allSlots.find(i=>i&&(i.itemKey===ti.key||i.id===ti.key)&&i.upgradeLevel<3);
+  if(existing){upgradeItem(existing);showNotif(existing.name+' upgraded to '+UPGRADE_NAMES[existing.upgradeLevel]+'!');updateUI();renderBoard();if(onDone)onDone();return;}
+  const item=Object.assign({},t,{
+    id:ti.key+'_'+Math.random().toString(36).slice(2,7),
+    maxHp:ti.hp,hp:ti.hp,
+    shield:0,maxShield:0,actElapsed:0,actPct:0,
+    broken:false,uses:t.maxUses,upgradeLevel:0,effectAmt:t.baseEffect,imbues:[],
+  });
+  const mf=maxFrontSlots();const mb=maxBackSlots();let placed=false;
+  const slotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&slotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
+  if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
+  if(!placed){G.gold+=t.cost;updateUI();showNotif('Board full! Make room first.',3000);window._trenchcoatItems=[ti];window._trenchcoatOnDone=onDone;return;}
+  showNotif(item.name+' added!');updateUI();renderBoard();if(onDone)onDone();
+}
+
+function trenchcoatClose(){
+  window._trenchcoatItems=null;
+  const onDone=window._trenchcoatOnDone||null;window._trenchcoatOnDone=null;
+  if(onDone)onDone();
 }
 
 function buyItemAtPrice(key,price){
@@ -5878,6 +5963,41 @@ const WILD_FIGHT_OPTION={
     {id:'keep_moving',label:'Keep moving',requiresCost:false,cost:null,effect:null},
   ],
 };
+
+// ============================================================
+
+const QUESTS=[
+  {
+    id:'q_lost_purse',
+    label:'A dropped purse. You could keep it.',
+    better:{text:'3 gold inside.',effect:{type:'gold',amount:3}},
+    worse:{text:'Empty. Just leather.',effect:null},
+  },
+  {
+    id:'q_whetstone',
+    label:'A whetstone, half-buried. Still sharp.',
+    better:{text:'+5 damage to all front row items.',effect:{type:'imbue_row',row:'front',imbueType:'damage',amount:5}},
+    worse:{text:'Crumbles when you touch it.',effect:null},
+  },
+  {
+    id:'q_berries',
+    label:'Berries on the path. Probably fine.',
+    better:{text:'+10 max HP to a random item.',effect:{type:'imbue_random_item',imbueType:'hp',amount:10}},
+    worse:{text:'Not fine. A random item loses 8 max HP.',effect:{type:'hurt_random_item',amount:8}},
+  },
+  {
+    id:'q_old_map',
+    label:'A map. Most of it burned.',
+    better:{text:'Upgrade one item.',effect:{type:'quest_upgrade_pick'}},
+    worse:{text:'It was the map to somewhere else entirely.',effect:null},
+  },
+  {
+    id:'q_odd_box',
+    label:'A sealed box, left on a stump.',
+    better:{text:'Inside: something useful. Random imbue on a random item.',effect:{type:'imbue_random_item_random_type'}},
+    worse:{text:'Inside: a note that says nothing.',effect:null},
+  },
+];
 
 // ============================================================
 
@@ -6238,6 +6358,31 @@ const EVENTS=[
     ],
     resolution:'immediate',tags:['free','performance'],easter_egg:false,
   },
+  // ── THE NOTICE BOARD ──────────────────────────────────────────
+  {
+    id:'notice_board',name:'The Notice Board',tier:'beginner',image:null,
+    coverName:'The Notice Board',coverEmoji:'📋',coverLine:'Someone needs help.',
+    unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Notice Board',flavor:'Three requests. No names.',dialogue:null},
+    choices:[],
+    resolution:'immediate',tags:['free'],easter_egg:false,
+  },
+  // ── THE PUDDLE ────────────────────────────────────────────────
+  {
+    id:'the_puddle',name:'The Puddle',tier:'beginner',image:null,
+    coverName:'The Puddle',coverEmoji:'💧',coverLine:'It smells like something.',
+    unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Puddle',flavor:'A puddle of something. It could be water.',dialogue:null},
+    choices:[
+      {id:'drink',label:'Drink from it',cost:null,requiresCost:false,
+       effect:{type:'puddle_drink'},burden:null,outcomeText:null},
+      {id:'ignore',label:'Keep walking',cost:null,requiresCost:false,
+       effect:null,burden:null,outcomeText:'Good call.'},
+    ],
+    resolution:'immediate',tags:['free','forced'],easter_egg:false,
+  },
 ];
 
 let currentEvent=null;
@@ -6413,6 +6558,17 @@ function showEvent(event){
     return;
   }
   currentEvent=event;
+
+  // Notice Board — special rendering: quest cards bypass normal choice flow
+  if(event.id==='notice_board'){
+    const shuffled=[...QUESTS].sort(()=>Math.random()-.5).slice(0,3);
+    window._noticeQuests=shuffled;
+    setEncTitle('THE NOTICE BOARD');
+    const cards=shuffled.map((q,i)=>`<div class="dc" onclick="noticeQuestPick(${i})" style="text-align:left;padding:14px 12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;"><div class="dn" style="font-size:10px;">${q.label}</div><div class="dd">50/50 outcome</div></div>`).join('');
+    setEncBody(`<div style="font-size:13px;color:var(--dim);margin-bottom:8px;font-style:italic;">Someone needs help. Probably.</div><div class="draft-row" style="align-items:stretch;gap:8px;">${cards}</div>`);
+    return;
+  }
+
   setEncTitle('EVENT');
   const title=(event.prompt&&event.prompt.title)||event.name;
   const flavor=(event.prompt&&event.prompt.flavor)||event.desc||'';
@@ -6450,6 +6606,82 @@ function showEvent(event){
   </div>`);
 }
 
+function resolveQuest(quest){
+  const isGood=Math.random()<0.5;
+  const outcome=isGood?quest.better:quest.worse;
+  const effect=outcome.effect;
+  const text=outcome.text;
+  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  function showOutcome(extra){
+    const msg=text+(extra?'\n\n'+extra:'');
+    showBurdenPanel('NOTICE BOARD',msg,advance);
+    clearTimeout(_burdenAutoTimeout);
+  }
+  if(!effect){showOutcome();return;}
+  switch(effect.type){
+    case 'gold':
+      G.gold+=effect.amount;updateUI();
+      showOutcome();return;
+    case 'imbue_row':{
+      const rowItems=(effect.row==='front'?board.front:board.back).filter(i=>i&&!i.broken);
+      if(!rowItems.length){showOutcome('(Nothing in that row to imbue.)');return;}
+      rowItems.forEach(i=>imbueItem(i,effect.imbueType,effect.amount));
+      renderBoard();showOutcome();return;
+    }
+    case 'imbue_random_item':{
+      const pool=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      if(!pool.length){showOutcome('(Nothing to imbue.)');return;}
+      const t=pool[Math.floor(Math.random()*pool.length)];
+      imbueItem(t,effect.imbueType,effect.amount);
+      renderBoard();showOutcome();return;
+    }
+    case 'hurt_random_item':{
+      const pool=[...board.front,...board.back].filter(i=>i&&!i.broken&&i.maxHp>0);
+      if(!pool.length){showOutcome();return;}
+      const t=pool[Math.floor(Math.random()*pool.length)];
+      const loss=Math.max(1,effect.amount);
+      t.maxHp=Math.max(1,t.maxHp-loss);if(t.hp>t.maxHp)t.hp=t.maxHp;
+      renderBoard();showOutcome();return;
+    }
+    case 'imbue_random_item_random_type':{
+      const pool=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      if(!pool.length){showOutcome('(Nothing to imbue.)');return;}
+      const t=pool[Math.floor(Math.random()*pool.length)];
+      const types=['damage','hp','burn_on_act','poison_on_act'];
+      const amounts={damage:4,hp:8,burn_on_act:1,poison_on_act:1};
+      const typ=types[Math.floor(Math.random()*types.length)];
+      imbueItem(t,typ,amounts[typ]);
+      renderBoard();showOutcome();return;
+    }
+    case 'quest_upgrade_pick':{
+      const upgradeable=[...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3);
+      if(!upgradeable.length){showOutcome('(All items already fully upgraded.)');return;}
+      window._boardPickerItems=upgradeable;
+      window._boardPickerOnPick=(picked)=>{
+        upgradeItem(picked);renderBoard();
+        showBurdenPanel('NOTICE BOARD',picked.name+' upgraded.',advance);
+        clearTimeout(_burdenAutoTimeout);
+      };
+      setEncTitle('NOTICE BOARD — UPGRADE');
+      const ucards=upgradeable.map((item,idx)=>{
+        const icon=getItemIcon(item);
+        const iconHtml=(typeof icon==='string'&&icon.startsWith('http'))?`<img src="${icon}" style="width:26px;height:26px;object-fit:contain;">`:`${icon}`;
+        return`<div class="dc" onclick="boardPickerSelect(${idx})"><div class="di">${iconHtml}</div><div class="dn">${item.name}</div><div class="dd">Tier ${item.upgradeLevel} → ${item.upgradeLevel+1}</div></div>`;
+      }).join('');
+      setEncBody(`<div style="font-size:13px;color:var(--dim);margin-bottom:10px;">${text}</div><div class="draft-row" style="flex-wrap:wrap;">${ucards}</div>`);
+      return;
+    }
+    default:showOutcome();
+  }
+}
+
+function noticeQuestPick(idx){
+  const q=window._noticeQuests&&window._noticeQuests[idx];
+  if(!q)return;
+  window._noticeQuests=null;
+  resolveQuest(q);
+}
+
 function resolveEventChoice(choiceIdx){
   const event=currentEvent;
   if(!event)return;
@@ -6467,6 +6699,14 @@ function resolveEventChoice(choiceIdx){
 
   // Legacy: choice has a resolve() function (Phase 1 compatibility)
   if(choice.resolve){choice.resolve();return;}
+
+  // outcomeText helpers — declared early so surgeon viability guard can call advance()
+  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  const eventTitle=(event&&event.prompt&&event.prompt.title)||(event&&event.name)||'';
+  const done=choice.outcomeText?()=>{showBurdenPanel(eventTitle,choice.outcomeText,advance);clearTimeout(_burdenAutoTimeout);}:advance;
+
+  // Effect handler — declared early so surgeon viability guard can read effect.type
+  const effect=choice.effect;
 
   // Pre-viability check for honor costs — must run BEFORE cost deduction
   // (surgeon_upgrade is the only honor-cost event with a board-state viability guard)
@@ -6486,13 +6726,6 @@ function resolveEventChoice(choiceIdx){
     }
   }
 
-  // outcomeText helpers — immediate effects use done() instead of raw advance
-  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
-  const eventTitle=(event&&event.prompt&&event.prompt.title)||(event&&event.name)||'';
-  const done=choice.outcomeText?()=>{showBurdenPanel(eventTitle,choice.outcomeText,advance);clearTimeout(_burdenAutoTimeout);}:advance;
-
-  // Effect handler
-  const effect=choice.effect;
   if(!effect){done();return;}
 
   // Add burden if defined on choice (non-bet_debuff — that adds its own inline)
@@ -6520,8 +6753,9 @@ function resolveEventChoice(choiceIdx){
       showBoardPicker('Choose an item to imbue:',(item)=>{
         imbueItem(item,effect.imbueType,effect.amount);
         const gain=effect.imbueType==='damage'?'+'+effect.amount+' Damage':'+'+effect.amount+' HP';
+        renderBoard();
         showNotif(gain+' applied to '+item.name+'!');
-        G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+        done();
       });
       return;
 
@@ -6539,8 +6773,9 @@ function resolveEventChoice(choiceIdx){
       const imbueAllItems=[...board.front,...board.back].filter(i=>i);
       imbueAllItems.forEach(item=>{imbueItem(item,effect.imbueType,effect.amount);});
       const imbueLabel=effect.imbueType==='damage'?'Damage':'HP';
+      renderBoard();
       showNotif('+'+effect.amount+' '+imbueLabel+' to all items!');
-      G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+      done();
       return;
     }
 
@@ -6710,19 +6945,26 @@ function resolveEventChoice(choiceIdx){
       }
       // TIER 2 — 3+ trainer wins (skill pick)
       if(G.metrics.trainerWins>=3){
-        showNotif('"You\'ve beaten people who were supposed to beat you."');
-        showAnyNodeSkillPicker();return;
+        showBurdenPanel('THE CARTOGRAPHER','"You\'ve beaten people who were supposed to beat you."\n\nPick any node.',()=>{showAnyNodeSkillPicker();});
+        clearTimeout(_burdenAutoTimeout);
+        return;
       }
       // TIER 3 — 5+ wild wins (+5 damage all)
       if(G.metrics.wildWins>=5){
         const allIt=[...board.front,...board.back].filter(i=>i);
         allIt.forEach(it=>imbueItem(it,'damage',5));
-        showNotif('"You\'ve been in a lot of fights." +5 damage to all items!');done();return;
+        renderBoard();
+        showBurdenPanel('THE CARTOGRAPHER','"You\'ve been in a lot of fights for someone who didn\'t have to be."\n\n+5 damage to all items.',done);
+        clearTimeout(_burdenAutoTimeout);
+        return;
       }
       // TIER 4B — blacksmith only (no combined)
       if(hasBlacksmith){
         showBoardPicker('Her cousin fixed something for you. Pick an item:',(item)=>{
-          imbueItem(item,'hp',8);showNotif(item.name+' +8 max HP!');done();
+          imbueItem(item,'hp',8);
+          renderBoard();
+          showBurdenPanel('THE CARTOGRAPHER','"My cousin fixed something for you I hear."\n\n'+item.name+' gains +8 max HP.',done);
+          clearTimeout(_burdenAutoTimeout);
         });return;
       }
       // TIER 5 — fallback
@@ -6760,13 +7002,13 @@ function resolveEventChoice(choiceIdx){
 
     case 'blacksmith_free': {
       const allIt=[...board.front,...board.back].filter(i=>i);
-      if(!allIt.length){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+      if(!allIt.length){done();return;}
       const lowest=allIt.reduce((a,b)=>(a.maxHp||0)<=(b.maxHp||0)?a:b);
       imbueItem(lowest,'hp',5);
       if(G.metrics&&!G.metrics.npcsMet.includes('blacksmith'))G.metrics.npcsMet.push('blacksmith');
       renderBoard();
-      showNotif('She picks '+lowest.name+'. +5 max HP. She seems mildly less offended.');
-      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      showBurdenPanel('THE BLACKSMITH',lowest.name+' gains +5 max HP. She seems mildly less offended.',done);
+      clearTimeout(_burdenAutoTimeout);
       return;
     }
 
@@ -6774,8 +7016,9 @@ function resolveEventChoice(choiceIdx){
       if(G.metrics&&!G.metrics.npcsMet.includes('blacksmith'))G.metrics.npcsMet.push('blacksmith');
       showBoardPicker('She\'ll work on whichever one you hand her:',(item)=>{
         imbueItem(item,'hp',15);imbueItem(item,'damage',5);
-        showNotif(item.name+' — +15 max HP, +5 damage!');
-        G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+        renderBoard();
+        showBurdenPanel('THE BLACKSMITH',item.name+' gains +15 max HP and +5 damage.',done);
+        clearTimeout(_burdenAutoTimeout);
       });
       return;
     }
@@ -6867,7 +7110,7 @@ function resolveEventChoice(choiceIdx){
       const gOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
       for(let i=0;i<mf2&&!gPlaced;i++){if(!board.front[i]&&gOk('front',i)){board.front[i]=gItem;applySlotBonuses(gItem,'front');gPlaced=true;}}
       if(!gPlaced)for(let i=0;i<mb2&&!gPlaced;i++){if(!board.back[i]&&gOk('back',i)){board.back[i]=gItem;applySlotBonuses(gItem,'back');gPlaced=true;}}
-      if(gPlaced){renderBoard();showNotif(gItem.name+' added!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();}
+      if(gPlaced){renderBoard();showBurdenPanel('THE GAMBLER',gItem.name+' received.',done);clearTimeout(_burdenAutoTimeout);}
       else{
         // Board full — show swap picker for new item
         window._gamblersNewItem=gItem;
@@ -6940,15 +7183,15 @@ function resolveEventChoice(choiceIdx){
         payload:{originalEffects:gDmgOrig},onResolve:'gossip_resolve',active:true};
       G.burdens.push(gDmgBurden);if(G.metrics)G.metrics.burdensTaken++;
       renderBoard();renderCounterStrip();
-      showNotif('+10% damage to all items for 10 locations!');
-      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      showBurdenPanel('THE GOSSIP','+10% damage to all items for 10 locations.',done);
+      clearTimeout(_burdenAutoTimeout);
       return;
     }
 
     case 'gossip_wild': {
       G.nextEventIsWild=true;
-      showNotif('Something stirs in the next clearing...');
-      G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+      showBurdenPanel('THE GOSSIP','Something stirs ahead.',done);
+      clearTimeout(_burdenAutoTimeout);
       return;
     }
 
@@ -6968,6 +7211,39 @@ function resolveEventChoice(choiceIdx){
       return;
     }
 
+    case 'imbue_row':{
+      const rowItems2=(effect.row==='front'?board.front:board.back).filter(i=>i&&!i.broken);
+      if(!rowItems2.length){showNotif('Nothing in that row!');done();return;}
+      rowItems2.forEach(i=>imbueItem(i,effect.imbueType,effect.amount));
+      renderBoard();
+      showNotif('+'+effect.amount+' '+(effect.imbueType==='damage'?'Damage':'HP')+' to all '+effect.row+' row items!');
+      done();return;
+    }
+
+    case 'puddle_drink':{
+      const isGood2=Math.random()<0.5;
+      const advance2=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+      if(isGood2){
+        showBoardPicker('Your monster feels... better somehow. Pick an item:',(item)=>{
+          imbueItem(item,'hp',8);imbueItem(item,'damage',3);
+          renderBoard();
+          showBurdenPanel('THE PUDDLE',item.name+' gains +8 max HP and +3 damage.\n\nYou feel slightly unwell. Your monster is thriving.',advance2);
+          clearTimeout(_burdenAutoTimeout);
+        });
+      }else{
+        const puddlePool=[...board.front,...board.back].filter(i=>i&&!i.broken&&i.maxHp>0);
+        if(!puddlePool.length){done();return;}
+        const victim=puddlePool[Math.floor(Math.random()*puddlePool.length)];
+        const loss=Math.max(1,Math.floor(victim.maxHp*0.1));
+        victim.maxHp=Math.max(1,victim.maxHp-loss);
+        if(victim.hp>victim.maxHp)victim.hp=victim.maxHp;
+        renderBoard();
+        showBurdenPanel('THE PUDDLE','That was not water.\n\n'+victim.name+' loses '+loss+' max HP.\n\nYou also have diarrhea.',advance2);
+        clearTimeout(_burdenAutoTimeout);
+      }
+      return;
+    }
+
     default:
       G.dayStep++;updateUI();renderTrack();activateCurrentNode();
   }
@@ -6979,8 +7255,10 @@ function farmPickerSelect(idx){
   if(!item)return;
   window._farmPickerItems=null;
   upgradeItem(item);
-  showNotif(item.name+' upgraded!');
-  G.dayStep++;updateUI();renderBoard();renderTrack();activateCurrentNode();
+  renderBoard();
+  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  showBurdenPanel('THE FARMER','"Try this next time."\n\n'+item.name+' upgraded.',advance);
+  clearTimeout(_burdenAutoTimeout);
 }
 
 // ── Old Man's Cart helpers ────────────────────────────────────
@@ -7029,8 +7307,9 @@ function oldManCartTake(){
   if(placed){
     window._oldManNewItem=null;
     renderBoard();updateUI();
-    showNotif(cartItem.name+' added!');
-    G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+    const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+    showBurdenPanel("THE OLD MAN","He nods like this was expected.",advance);
+    clearTimeout(_burdenAutoTimeout);
   }else{
     // Board full: swap picker (sell existing at 50%)
     const existingItems=[...board.front,...board.back].filter(i=>i);
@@ -7069,8 +7348,9 @@ function oldManCartSwap(idx){
     if(board.back[i]===existing){board.back[i]=newItem;applySlotBonuses(newItem,'back');placed=true;break;}
   }
   renderBoard();updateUI();
-  showNotif(existing.name+' swapped for '+newItem.name+'!');
-  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  showBurdenPanel("THE OLD MAN","He nods like this was expected.",advance);
+  clearTimeout(_burdenAutoTimeout);
 }
 function oldManCartSell(){
   window._oldManExistingItems=null;window._oldManNewItem=null;
@@ -7124,9 +7404,11 @@ function cartoPickItem(idx){
     upgradeItem(item);renderBoard();
     const remaining=([...board.front,...board.back].filter(i=>i&&i.upgradeLevel<3&&i.id!==window._cartoFirstId));
     if(!remaining.length){
-      showNotif('Both upgrades done!');
       if(G.metrics&&!G.metrics.npcsMet.includes('cartographer'))G.metrics.npcsMet.push('cartographer');
-      G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;
+      const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+      showBurdenPanel('THE CARTOGRAPHER','"She looks at everything. She takes a long time."\n\nTwo items upgraded.',advance);
+      clearTimeout(_burdenAutoTimeout);
+      return;
     }
     window._cartoItems=remaining;
     setEncTitle('CARTOGRAPHER — UPGRADE 2 OF 2');
@@ -7135,8 +7417,9 @@ function cartoPickItem(idx){
   }else{
     upgradeItem(item);renderBoard();
     if(G.metrics&&!G.metrics.npcsMet.includes('cartographer'))G.metrics.npcsMet.push('cartographer');
-    showNotif('Two items upgraded!');
-    G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+    const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+    showBurdenPanel('THE CARTOGRAPHER','"She looks at everything. She takes a long time."\n\nTwo items upgraded.',advance);
+    clearTimeout(_burdenAutoTimeout);
   }
 }
 
@@ -7155,8 +7438,9 @@ function surgeonFirstPick(idx){
 function surgeonSecondPick(idx){
   const item=window._surgeonPool2&&window._surgeonPool2[idx];if(!item)return;
   upgradeItem(item);renderBoard();
-  showNotif('Two items upgraded!');
-  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  showBurdenPanel('THE SURGEON','Two items upgraded. She seems satisfied.',advance);
+  clearTimeout(_burdenAutoTimeout);
 }
 
 // ── Gambler new item swap ──────────────────────────────────────
@@ -7238,7 +7522,7 @@ function merchantsDaughterBuy(idx){
   G.gold-=price;
   // Check for duplicate — upgrade existing item instead of placing new one
   const mdDup=[...board.front,...board.back].find(i=>i&&i.itemKey===it.itemKey&&i.upgradeLevel<3);
-  if(mdDup){upgradeItem(mdDup);showNotif(mdDup.name+' upgraded!');updateUI();renderBoard();G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+  if(mdDup){upgradeItem(mdDup);renderBoard();updateUI();const adv=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};showBurdenPanel('THE STALL',mdDup.name+' upgraded.\n"You know, you really need to learn how to haggle."',adv);clearTimeout(_burdenAutoTimeout);return;}
   const newItem=Object.assign({},it,{id:(it.itemKey||'md')+'_'+Math.random().toString(36).slice(2,7),
     hp:it.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:it.maxUses,upgradeLevel:0,effectAmt:it.baseEffect,imbues:[]});
   const mf4=maxFrontSlots();const mb4=maxBackSlots();let p4=false;
@@ -7257,8 +7541,9 @@ function merchantsDaughterBuy(idx){
     return;
   }
   renderBoard();updateUI();
-  showNotif('"You know, you really need to learn how to haggle."');
-  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+  const adv2=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  showBurdenPanel('THE STALL',newItem.name+' purchased.\n"You know, you really need to learn how to haggle."',adv2);
+  clearTimeout(_burdenAutoTimeout);
 }
 function merchantsDaughterLeave(){
   window._mdItems=null;window._mdPrices=null;
@@ -7274,13 +7559,15 @@ function merchantsDaughterFullSwap(idx){
   for(let i=0;i<board.front.length;i++){if(board.front[i]===existing){board.front[i]=newItem;applySlotBonuses(newItem,'front');break;}}
   for(let i=0;i<board.back.length;i++){if(board.back[i]===existing){board.back[i]=newItem;applySlotBonuses(newItem,'back');break;}}
   renderBoard();updateUI();
-  showNotif('"You know, you really need to learn how to haggle."');
-  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  showBurdenPanel('THE STALL',newItem.name+' placed.\n"You know, you really need to learn how to haggle."',advance);
+  clearTimeout(_burdenAutoTimeout);
 }
 function merchantsDaughterDiscard(){
   window._mdFullExisting=null;window._mdFullItem=null;
-  showNotif('"You know, you really need to learn how to haggle."');
-  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  showBurdenPanel('THE STALL','Item discarded.\n"You know, you really need to learn how to haggle."',advance);
+  clearTimeout(_burdenAutoTimeout);
 }
 
 // ── Appraiser sell ────────────────────────────────────────────
@@ -7292,8 +7579,9 @@ function appraiserSell(idx){
   for(let i=0;i<board.front.length;i++){if(board.front[i]===item){board.front[i]=null;break;}}
   for(let i=0;i<board.back.length;i++){if(board.back[i]===item){board.back[i]=null;break;}}
   renderBoard();updateUI();
-  showNotif(item.name+' sold for 🪙'+pay+'!');
-  G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+  const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  showBurdenPanel('THE APPRAISER',item.name+' sold for 🪙'+pay+'.\n"Rarer than you think."',advance);
+  clearTimeout(_burdenAutoTimeout);
 }
 
 // ── Collector two-step trade ──────────────────────────────────
