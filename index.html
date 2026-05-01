@@ -2018,15 +2018,15 @@ function allSlots(s){return[...getBoard(s).front,...getBoard(s).back];}
 function aliveItems(s){return allSlots(s).filter(i=>i&&!i.broken);}
 
 function maxFrontSlots(){
-  // Day 1-2: 2 front  Day 3+: 3 front
-  const base=G.day<=2?2:3;
+  // Day 1: 1  Day 2-3: 2  Day 4+: 3
+  const base=G.day<=1?1:G.day<=3?2:3;
   const bonus=G.neighborSlotBonus||0;
   return Math.min(3,base+Math.min(bonus,Math.max(0,3-base)));
 }
 function maxBackSlots(){
-  // Day 1: 0  Day 2-3: 1  Day 4: 2  Day 5+: 3
-  const base=G.day<=1?0:G.day<=3?1:G.day<=4?2:3;
-  const frontBase=G.day<=2?2:3;
+  // Day 1-2: 1  Day 3-4: 2  Day 5+: 3
+  const base=G.day<=2?1:G.day<=4?2:3;
+  const frontBase=G.day<=1?1:G.day<=3?2:3;
   const frontBonusUsed=Math.min(G.neighborSlotBonus||0,Math.max(0,3-frontBase));
   return Math.min(3,base+Math.max(0,(G.neighborSlotBonus||0)-frontBonusUsed));
 }
@@ -2652,7 +2652,7 @@ function renderInventoryStrip(){
 }
 function showInventoryItem(idx){
   const item=G.inventory&&G.inventory[idx];if(!item)return;
-  showNotif(item.name+' — '+item.tag,3000);
+  showNotif(item.name+' — '+item.tag,5000);
 }
 function renderRow(cid,slots,rowType,maxSlots){
   const el=document.getElementById(cid);el.innerHTML='';
@@ -2927,7 +2927,7 @@ function showBurdenPanel(title,bodyText,onDone){
     <div style="font-size:13px;color:var(--text);line-height:1.65;">${bodyText}</div>
     <button class="btn btn-p" style="width:100%;margin-top:4px;" onclick="_doBurdenContinue()">Continue</button>
   </div>`);
-  _burdenAutoTimeout=setTimeout(_doBurdenContinue,2500);
+  // No auto-dismiss — panel requires manual Continue tap
 }
 
 // ─── Upgrade Pick (Priest easter egg) / Unlock Pick (The Bet) ─
@@ -3128,7 +3128,7 @@ function buyMomItem(key,free,isConsolation){
   const momSlotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
   for(let i=0;i<maxFront&&!placed;i++){if(!board.front[i]&&momSlotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
   if(!placed)for(let i=0;i<maxBack&&!placed;i++){if(!board.back[i]&&momSlotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
-  if(!placed){showNotif('Board full! Open an item and hit SELL to make room.',4000);return;}
+  if(!placed){showNotif('Board full! Open an item and hit SELL to make room.',5000);return;}
   showNotif(item.name+' received!');
   logEvent({event:'mom_pick',item_key:key,is_consolation:isConsolation});
   updateUI();
@@ -3163,7 +3163,7 @@ function buyItem(key,free){
   const slotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
   for(let i=0;i<maxFront&&!placed;i++){if(!board.front[i]&&slotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
   if(!placed)for(let i=0;i<maxBack&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
-  if(!placed){showNotif('Board full! Open an item and hit SELL, or swap positions.',4000);return;}
+  if(!placed){showNotif('Board full! Open an item and hit SELL, or swap positions.',5000);return;}
   showNotif(item.name+' added!');
   logEvent({event:'shop_buy',item_key:key,item_rarity:t.itemRarity||'',item_type:t.itemType||'',gold_spent:actualCost,gold_remaining:G.gold,upgraded:!!existing});
   updateUI();renderBoard();
@@ -4841,7 +4841,7 @@ function showTreeTip(node,e){
 }
 function hideTreeTip(){document.getElementById('treeTip').classList.remove('show');}
 let notifTimer;
-function showNotif(msg,duration=2400){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');clearTimeout(notifTimer);notifTimer=setTimeout(()=>el.classList.remove('show'),duration);}
+function showNotif(msg,duration=5000){const el=document.getElementById('notif');el.textContent=msg;el.classList.add('show');clearTimeout(notifTimer);notifTimer=setTimeout(()=>el.classList.remove('show'),duration);}
 
 // ============================================================
 // TUTORIAL SYSTEM
@@ -5872,7 +5872,7 @@ function trenchcoatBuy(idx){
   const slotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
   for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&slotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
   if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
-  if(!placed){G.gold+=t.cost;updateUI();showNotif('Board full! Make room first.',3000);window._trenchcoatItems=[ti];window._trenchcoatOnDone=onDone;return;}
+  if(!placed){G.gold+=t.cost;updateUI();showNotif('Board full! Make room first.',5000);window._trenchcoatItems=[ti];window._trenchcoatOnDone=onDone;return;}
   showNotif(item.name+' added!');updateUI();renderBoard();if(onDone)onDone();
 }
 
@@ -5894,7 +5894,7 @@ function buyItemAtPrice(key,price){
   const slotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
   for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&slotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
   if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
-  if(!placed){G.gold+=price;showNotif('Board full! Sell an item to make room.',3000);updateUI();return;}
+  if(!placed){G.gold+=price;showNotif('Board full! Sell an item to make room.',5000);updateUI();return;}
   showNotif(item.name+' added!');updateUI();renderBoard();skipShop();
 }
 
@@ -6002,7 +6002,7 @@ function wholesaleBuy(idx){
   const slotOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
   for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&slotOk('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
   if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&slotOk('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
-  if(!placed){G.gold+=price;showNotif('Board full!',3000);updateUI();renderWholesale();return;}
+  if(!placed){G.gold+=price;showNotif('Board full!',5000);updateUI();renderWholesale();return;}
   showNotif(item.name+' added!');
   keys.splice(idx,1);delete prices[key];
   Object.keys(prices).forEach(k=>{prices[k]=Math.max(1,(prices[k]||0)-1);});
@@ -6037,6 +6037,9 @@ const TIER_WEIGHTS={
 const WILD_FIGHT_OPTION={
   id:'bonus_wild_fight',
   name:'Something Stirs',
+  coverName:'Something Stirs',
+  coverLine:'You could ignore it.',
+  coverEmoji:'🌿',
   prompt:{title:'Something Stirs',flavor:'You sense movement in the grass. You could ignore it.'},
   tags:['wild'],
   easter_egg:false,
@@ -6050,34 +6053,34 @@ const WILD_FIGHT_OPTION={
 
 const QUESTS=[
   {
-    id:'q_lost_purse',
-    label:'A dropped purse. You could keep it.',
-    better:{text:'3 gold inside.',effect:{type:'gold',amount:3}},
-    worse:{text:'Empty. Just leather.',effect:null},
+    id:'q_scrufflings',
+    label:'Kill 3 Scrufflings. Easy enough.',
+    better:{text:'Three Scrufflings. None of them saw it coming.',effect:{type:'imbue_row',row:'front',imbueType:'damage',amount:4}},
+    worse:{text:'Three Scrufflings. One of them saw it coming.',effect:{type:'imbue_row',row:'front',imbueType:'damage',amount:2}},
   },
   {
-    id:'q_whetstone',
-    label:'A whetstone, half-buried. Still sharp.',
-    better:{text:'+5 damage to all front row items.',effect:{type:'imbue_row',row:'front',imbueType:'damage',amount:5}},
-    worse:{text:'Crumbles when you touch it.',effect:null},
+    id:'q_guard_road',
+    label:'Guard the road. Someone has to.',
+    better:{text:'Nothing happened. You stood there for a long time. Your back hurts. You feel stronger.',effect:{type:'imbue_row',row:'back',imbueType:'hp',amount:8}},
+    worse:{text:'Something happened. You handled it. Your back still hurts.',effect:{type:'imbue_row',row:'back',imbueType:'hp',amount:4}},
   },
   {
-    id:'q_berries',
-    label:'Berries on the path. Probably fine.',
-    better:{text:'+10 max HP to a random item.',effect:{type:'imbue_random_item',imbueType:'hp',amount:10}},
-    worse:{text:'Not fine. A random item loses 8 max HP.',effect:{type:'hurt_random_item',amount:8}},
+    id:'q_collect_herbs',
+    label:"Collect herbs for the village. Shouldn't take long.",
+    better:{text:"You found the herbs. Someone in the village hugged you. It was uncomfortable. They gave you something.",effect:{type:'gold',amount:3}},
+    worse:{text:"You found most of the herbs. Close enough. They seemed grateful anyway.",effect:{type:'gold',amount:1}},
   },
   {
-    id:'q_old_map',
-    label:'A map. Most of it burned.',
-    better:{text:'Upgrade one item.',effect:{type:'quest_upgrade_pick'}},
-    worse:{text:'It was the map to somewhere else entirely.',effect:null},
+    id:'q_investigate_cave',
+    label:'Investigate a cave. Probably nothing.',
+    better:{text:"There was definitely something in there. You didn't look directly at it.",effect:{type:'imbue_random_item_random_type'}},
+    worse:{text:'There was definitely something in there. You looked directly at it.',effect:{type:'imbue_pick',imbueType:'hp',amount:5}},
   },
   {
-    id:'q_odd_box',
-    label:'A sealed box, left on a stump.',
-    better:{text:'Inside: something useful. Random imbue on a random item.',effect:{type:'imbue_random_item_random_type'}},
-    worse:{text:'Inside: a note that says nothing.',effect:null},
+    id:'q_deliver_message',
+    label:"Deliver a message to the next town. Shouldn't take long.",
+    better:{text:"You thought about opening it the whole way there. You didn't. The recipient was surprised the seal was intact.",effect:{type:'upgrade_pick'}},
+    worse:{text:"You thought about opening it the whole way there. You gave in. The recipient noticed. Didn't say anything on account of your monster.",effect:{type:'gold',amount:3}},
   },
 ];
 
@@ -6152,7 +6155,7 @@ const EVENTS=[
   {
     id:'butcher',name:'The Butcher',tier:'intermediate',image:null,
     coverName:'The Butcher',coverEmoji:'🥩',coverLine:'He has a proposition.',
-    unlock:{minDay:2,maxDay:null,minWins:1,maxWins:5,excludeFlags:{loanActive:true}},
+    unlock:{minDay:2,maxDay:8,minWins:0,maxWins:5,excludeFlags:['loanActive']},
     prompt:{
       title:'The Butcher',
       flavor:'A large man with clean hands and a friendly smile says he can help you out.',
@@ -6171,9 +6174,9 @@ const EVENTS=[
   },
   // ── THE BET ───────────────────────────────────────────────
   {
-    id:'the_bet',name:'The Bet',tier:'advanced',image:null,
+    id:'the_bet',name:'The Bet',tier:'intermediate',image:null,
     coverName:'The Bet',coverEmoji:'🎲',coverLine:'He seems confident.',
-    unlock:{minDay:3,maxDay:null,minWins:2,maxWins:5},
+    unlock:{minDay:3,maxDay:null,minWins:0,maxWins:5},
     prompt:{
       title:'The Bet',
       flavor:'He seems very confident for someone betting against you.',
@@ -6443,25 +6446,23 @@ const EVENTS=[
   // ── THE NOTICE BOARD ──────────────────────────────────────────
   {
     id:'notice_board',name:'The Notice Board',tier:'beginner',image:null,
-    coverName:'The Notice Board',coverEmoji:'📋',coverLine:'Someone needs help.',
+    coverName:'The Notice Board',coverEmoji:'📌',coverLine:'Go on a tiny quest.',
     unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6},
     validSlots:null,state:null,
-    prompt:{image:null,title:'The Notice Board',flavor:'Three requests. No names.',dialogue:null},
+    prompt:{image:null,title:'The Notice Board',flavor:'Three notices. Someone needs help.',dialogue:null},
     choices:[],
     resolution:'immediate',tags:['free'],easter_egg:false,
   },
   // ── THE PUDDLE ────────────────────────────────────────────────
   {
     id:'the_puddle',name:'The Puddle',tier:'beginner',image:null,
-    coverName:'The Puddle',coverEmoji:'💧',coverLine:'It smells like something.',
+    coverName:'The Puddle',coverEmoji:'💧',coverLine:"It wasn't there yesterday.",
     unlock:{minDay:1,maxDay:4,minWins:0,maxWins:6},
     validSlots:null,state:null,
-    prompt:{image:null,title:'The Puddle',flavor:'A puddle of something. It could be water.',dialogue:null},
+    prompt:{image:null,title:'The Puddle',flavor:"It wasn't there yesterday. Your monster is already drinking from it.",dialogue:null},
     choices:[
-      {id:'drink',label:'Drink from it',cost:null,requiresCost:false,
+      {id:'drink',label:'Let it finish',cost:null,requiresCost:false,
        effect:{type:'puddle_drink'},burden:null,outcomeText:null},
-      {id:'ignore',label:'Keep walking',cost:null,requiresCost:false,
-       effect:null,burden:null,outcomeText:'Good call.'},
     ],
     resolution:'immediate',tags:['free','forced'],easter_egg:false,
   },
@@ -6483,9 +6484,13 @@ function getEventPool(day,slotCtx='any'){
     if(u.minWins!=null&&G.wins<u.minWins)return false;
     if(u.maxWins!=null&&G.wins>u.maxWins)return false;
     if(u.excludeFlags&&G.metrics){
-      for(const [field,val] of Object.entries(u.excludeFlags)){
-        if(val===true){if(G.metrics[field])return false;}
-        else if(G.metrics[field]===val)return false;
+      if(Array.isArray(u.excludeFlags)){
+        for(const field of u.excludeFlags){if(G.metrics[field])return false;}
+      }else{
+        for(const [field,val] of Object.entries(u.excludeFlags)){
+          if(val===true){if(G.metrics[field])return false;}
+          else if(G.metrics[field]===val)return false;
+        }
       }
     }
     // performance flag: truthy metric key OR numeric comparison like 'poisonApps>=5'
