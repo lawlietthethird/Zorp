@@ -5510,8 +5510,9 @@ function imbueItem(item,type,amount){
 
 // showBoardPicker — renders all non-null player items as selectable cards.
 // promptText: instruction shown above cards. onPick(item): called with chosen item.
-function showBoardPicker(promptText,onPick){
-  const items=[...board.front,...board.back].filter(i=>i);
+function showBoardPicker(promptText,onPick,filterFn){
+  let items=[...board.front,...board.back].filter(i=>i);
+  if(filterFn){const filtered=items.filter(filterFn);if(filtered.length)items=filtered;}
   if(!items.length){showNotif('No items on board.');return;}
   setEncTitle('CHOOSE AN ITEM');
   const cards=items.map((item,idx)=>{
@@ -6683,8 +6684,11 @@ function resolveQuest(quest){
       renderBoard();showOutcome();return;
     }
     case 'imbue_random_item':{
-      const pool=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      let pool=[...board.front,...board.back].filter(i=>i&&!i.broken);
       if(!pool.length){showOutcome('(Nothing to imbue.)');return;}
+      // Exclude pure passives with neither effectAmt nor maxHp
+      const _poolFilt=pool.filter(i=>(i.effectAmt||0)>0||(i.maxHp||0)>0);
+      if(_poolFilt.length)pool=_poolFilt;
       const t=pool[Math.floor(Math.random()*pool.length)];
       imbueItem(t,effect.imbueType,effect.amount);
       renderBoard();showOutcome();return;
@@ -6698,12 +6702,17 @@ function resolveQuest(quest){
       renderBoard();showOutcome();return;
     }
     case 'imbue_random_item_random_type':{
-      const pool=[...board.front,...board.back].filter(i=>i&&!i.broken);
-      if(!pool.length){showOutcome('(Nothing to imbue.)');return;}
-      const t=pool[Math.floor(Math.random()*pool.length)];
+      const _allItems=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      if(!_allItems.length){showOutcome('(Nothing to imbue.)');return;}
       const types=['damage','hp','burn_on_act','poison_on_act'];
       const amounts={damage:4,hp:8,burn_on_act:1,poison_on_act:1};
       const typ=types[Math.floor(Math.random()*types.length)];
+      // Filter by type: roll type first, then pick eligible item
+      let _eligible=typ==='hp'
+        ?_allItems.filter(i=>(i.maxHp||0)>0)
+        :_allItems.filter(i=>i.itemType==='weapon'&&(i.effectAmt||0)>0);
+      if(!_eligible.length)_eligible=_allItems; // fallback
+      const t=_eligible[Math.floor(Math.random()*_eligible.length)];
       imbueItem(t,typ,amounts[typ]);
       renderBoard();showOutcome();return;
     }
@@ -6803,15 +6812,22 @@ function resolveEventChoice(choiceIdx){
       done();
       return;
 
-    case 'imbue_pick':
+    case 'imbue_pick': {
+      // Filter picker by imbue type: damage → weapons only, hp → items with HP only
+      const _imbueFn=effect.imbueType==='damage'
+        ?i=>i.itemType==='weapon'&&(i.effectAmt||0)>0
+        :effect.imbueType==='hp'
+        ?i=>(i.maxHp||0)>0
+        :null;
       showBoardPicker('Choose an item to imbue:',(item)=>{
         imbueItem(item,effect.imbueType,effect.amount);
         const gain=effect.imbueType==='damage'?'+'+effect.amount+' Damage':'+'+effect.amount+' HP';
         renderBoard();
         showNotif(gain+' applied to '+item.name+'!');
         done();
-      });
+      },_imbueFn);
       return;
+    }
 
     case 'herbalist_imbue': {
       showBoardPicker('Let her work. Pick an item:',(item)=>{
@@ -6907,10 +6923,15 @@ function resolveEventChoice(choiceIdx){
     case 'imbue_random_item_random_type': {
       const kidItems=[...board.front,...board.back].filter(i=>i&&!i.broken);
       if(!kidItems.length){showNotif('No items to imbue!');G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
-      const kidItem=kidItems[Math.floor(Math.random()*kidItems.length)];
       const kidTypes=['damage','hp','burn_on_act','poison_on_act'];
       const kidAmounts={damage:4,hp:8,burn_on_act:1,poison_on_act:1};
       const kidType=kidTypes[Math.floor(Math.random()*kidTypes.length)];
+      // Roll type first, then pick eligible item
+      let kidEligible=kidType==='hp'
+        ?kidItems.filter(i=>(i.maxHp||0)>0)
+        :kidItems.filter(i=>i.itemType==='weapon'&&(i.effectAmt||0)>0);
+      if(!kidEligible.length)kidEligible=kidItems; // fallback
+      const kidItem=kidEligible[Math.floor(Math.random()*kidEligible.length)];
       imbueItem(kidItem,kidType,kidAmounts[kidType]);
       renderBoard();
       const kidOutcomes={
@@ -7281,12 +7302,13 @@ function resolveEventChoice(choiceIdx){
       const isGood2=Math.random()<0.5;
       const advance2=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
       if(isGood2){
+        // Filter to items that benefit from combined damage+HP buffs (exclude pure passives)
         showBoardPicker('Your monster feels... better somehow. Pick an item:',(item)=>{
           imbueItem(item,'hp',8);imbueItem(item,'damage',3);
           renderBoard();
           showBurdenPanel('THE PUDDLE',item.name+' gains +8 max HP and +3 damage.\n\nYou feel slightly unwell. Your monster is thriving.',advance2);
           clearTimeout(_burdenAutoTimeout);
-        });
+        },i=>(i.effectAmt||0)>0||(i.maxHp||0)>0);
       }else{
         const puddlePool=[...board.front,...board.back].filter(i=>i&&!i.broken&&i.maxHp>0);
         if(!puddlePool.length){done();return;}
