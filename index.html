@@ -847,8 +847,12 @@ function makeItem(key,name,icon,tag,maxHp,actMs,desc,effectFn,cost=0,uses=null,b
     hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0};
 }
 
+// UPGRADE_MULTS — used ONLY for scaling item stats (effectAmt, maxHp) on upgrade.
+// NOT used for pricing. Pricing is determined by TIER_COSTS per display rarity.
 const UPGRADE_MULTS=[1.0,1.25,1.6,2.0];
 const UPGRADE_NAMES=['','UPGRADED','ADVANCED','MASTERED'];
+// Canonical shop price per rarity tier. Single source of truth for item pricing.
+const TIER_COSTS={beginner:2,intermediate:4,advanced:6,mastered:8};
 
 const BACKGROUND_IMG='https://res.cloudinary.com/dgmzeqmfs/image/upload/q_auto/f_auto/v1777402359/ChatGPT_Image_Apr_28_2026_02_54_29_PM_zbfn2r.png';
 document.body.style.backgroundImage='url('+BACKGROUND_IMG+')';
@@ -1007,7 +1011,7 @@ const MOM_ITEMS={
         applyShield(s,a,'Worn Locket');
         const t=randomEnemyItem(opp(s));
         if(t)applyBurn(t,2,'Worn Locket');
-      },2,null,35,'armor','intermediate');
+      },2,null,35,'armor','beginner');
     item.flavorText="She made you promise to keep it close.";
     item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||35,cls:'shield'},{icon:'🔥',value:2,cls:'burn'}];
     item.handleEvent=(event)=>{
@@ -1021,7 +1025,7 @@ const MOM_ITEMS={
   knitted_cap:()=>{
     const item=makeItem('knitted_cap','Knitted Cap','🧢','Armor',180,6000,
       'Plate random ally +25. First activation plates twice. On activation: 2 poison to random enemy.',
-      null,2,null,25,'armor','intermediate');
+      null,2,null,25,'armor','beginner');
     item.flavorText="It's not stupid. Put it on.";
     item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||25,cls:'shield'},{icon:'☠️',value:2,cls:'poison'}];
     item._firstActivation=true;
@@ -1043,7 +1047,7 @@ const MOM_ITEMS={
         const t=pool[Math.floor(Math.random()*pool.length)];
         const bonus=(t.hp/t.maxHp)<0.5?8:0;
         applyDmgTo(t,a+bonus,"Dad's Old Knife",opp(s));
-      },2,null,22,'weapon','intermediate');
+      },2,null,22,'weapon','beginner');
     item.flavorText="He'd want you to have it.";
     item.stats=[{icon:'⚔️',value:(i)=>(i.effectAmt||22)+'+8',cls:'dmg'}];
     return item;
@@ -1054,7 +1058,7 @@ const MOM_ITEMS={
       (s,a,self)=>{
         dealDmgRandom(opp(s),a,'Sharpening Stone');
         applyHaste(self,2000,'Sharpening Stone');
-      },2,null,14,'weapon','intermediate');
+      },2,null,14,'weapon','beginner');
     item.flavorText="Keep it dry.";
     item.stats=[{icon:'⚔️',value:14,cls:'dmg'},{icon:'⚡',value:'2s',cls:'haste'}];
     return item;
@@ -1064,19 +1068,18 @@ const MOM_ITEMS={
       '16 dmg random. Applies 2s Wet to target hit.',
       (s,a,self)=>{
         dealDmgWithStatus(s,a,'Heavy Walking Stick','slow',2000);
-      },2,null,16,'weapon','intermediate');
+      },2,null,16,'weapon','beginner');
     item.flavorText="For the road. Or whatever else comes up.";
     item.stats=[{icon:'⚔️',value:16,cls:'dmg'},{icon:'💧',value:'2s',cls:'slow'}];
     return item;
   },
   grandmas_coin_purse:()=>{
     const item=makeItem('grandmas_coin_purse',"Grandma's Coin Purse",'👛','Weapon',180,6000,
-      '8 dmg random. Sells for double.',
+      '8 dmg random.',
       (s,a)=>dealDmgRandom(opp(s),a,"Grandma's Coin Purse"),
-      2,null,8,'weapon','intermediate');
+      2,null,8,'weapon','beginner');
     item.flavorText="She tucked some spending money in there too.";
     item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||8,cls:'dmg'}];
-    item.sellOverride=4;
     return item;
   },
 };
@@ -1125,7 +1128,7 @@ const PACIFIST_ITEMS={
   solidarity:()=>{
     const item=makeItem('solidarity','Solidarity','📜','Technique',0,0,
       'When a left or right neighbor is hit, deal 5 damage to the attacker.',
-      null,4,null,5,'technique','beginner');
+      null,2,null,5,'technique','beginner');
     item.isTechnique=true;
     item.isTargetable=false;
     item.flavorText='It feels every blow.';
@@ -1370,7 +1373,7 @@ const BURN_ITEMS={
       (s,a)=>{
         const t=randomEnemyItem(opp(s));
         if(t)applyBurn(t,a,'Stoke');
-      },3,null,4,'relic','beginner');
+      },2,null,4,'relic','beginner');
     item.flavorText='It keeps the fire fed.';
     item.stats=[{icon:'🔥',value:(i)=>i.effectAmt||4,cls:'burn'}];
     return item;
@@ -1384,7 +1387,7 @@ const BURN_ITEMS={
         const t=randomEnemyItem(opp(s));
         if(t)applyBurn(t,self._blazeCounter||1,'Blaze');
         self._blazeCounter=(self._blazeCounter||1)+1;
-      },5,null,8,'weapon','intermediate');
+      },4,null,8,'weapon','intermediate');
     item.flavorText='It only gets hotter.';
     item._blazeCounter=1;
     item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||8,cls:'dmg'},{icon:'🔥',value:'1+',cls:'burn'}];
@@ -1877,9 +1880,8 @@ function getItemsOfRarity(rarity,typeFilter){
 }
 function getSellValue(item){
   if(item.sellOverride!==null&&item.sellOverride!==undefined)return item.sellOverride;
-  const base={beginner:1,intermediate:2,advanced:4,mastered:8};
-  const tierBonus=[0,1,2,4];
-  return (base[getDisplayRarity(item)]||1)+(tierBonus[item.upgradeLevel]||0);
+  const TIER_SELL={beginner:1,intermediate:2,advanced:3,mastered:4};
+  return TIER_SELL[getDisplayRarity(item)]||1;
 }
 function upgradeItem(item){
   if(item.upgradeLevel>=3)return false;
@@ -3088,11 +3090,12 @@ function showEncounterShop(poolIdx){
       const t=f();shopItemCache[key]=t;
       const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key));
       const boardOk=hasOpenSlot()||!!existing;
-      const can=G.gold>=t.cost&&boardOk;
+      const displayCost=getShopItemCost(key,t.cost);
+      const can=G.gold>=displayCost&&boardOk;
       const label=existing?'⬆ UPGRADE':'NEW';
       const fullNote=(!boardOk&&!existing)?'<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>':'';
       const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" '+bfAttr+' onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div style="font-size:6px;font-family:Cinzel,serif;color:var(--gold);margin-bottom:2px">'+label+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+fullNote+'</div></div>';
+      return '<div class="dc '+((!can&&displayCost>0)?'cant':'')+'" data-item-cost="'+displayCost+'" '+bfAttr+' onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div style="font-size:6px;font-family:Cinzel,serif;color:var(--gold);margin-bottom:2px">'+label+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+displayCost+fullNote+'</div></div>';
     }).join('');
     setEncBody(dialogue+'<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -3111,10 +3114,11 @@ function showEncounterShop(poolIdx){
       const t=f();shopItemCache[key]=t;
       const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
       const boardOk=hasOpenSlot()||!!existing;
-      const can=G.gold>=t.cost&&boardOk;
+      const displayCost=getShopItemCost(key,t.cost);
+      const can=G.gold>=displayCost&&boardOk;
       const fullNote=(!boardOk&&!existing)?'<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>':'';
       const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" '+bfAttr+' onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+fullNote+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      return '<div class="dc '+((!can&&displayCost>0)?'cant':'')+'" data-item-cost="'+displayCost+'" '+bfAttr+' onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+displayCost+fullNote+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -3129,10 +3133,11 @@ function showEncounterShop(poolIdx){
       const t=f();shopItemCache[key]=t;
       const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
       const boardOk=hasOpenSlot()||!!existing;
-      const can=G.gold>=t.cost&&boardOk;
+      const displayCost=getShopItemCost(key,t.cost);
+      const can=G.gold>=displayCost&&boardOk;
       const fullNote=(!boardOk&&!existing)?'<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>':'';
       const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" '+bfAttr+' onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+fullNote+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      return '<div class="dc '+((!can&&displayCost>0)?'cant':'')+'" data-item-cost="'+displayCost+'" '+bfAttr+' onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+displayCost+fullNote+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -3163,8 +3168,8 @@ function buyItem(key,free){
   const t=f();
   const allSlots=[...board.front,...board.back];
   const existing=allSlots.find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
-  // Upgrade cost scales with current tier: buying a duplicate upgrades the existing item
-  const actualCost=existing?Math.round(t.cost*UPGRADE_MULTS[existing.upgradeLevel+1]):t.cost;
+  // Upgrade cost uses tier-based pricing via getShopItemCost
+  const actualCost=getShopItemCost(key,t.cost);
   if(!free&&G.gold<actualCost)return;if(!free)G.gold-=actualCost;
   if(existing){
     upgradeItem(existing);
@@ -5437,7 +5442,7 @@ function startFromTitle(){
   if(!wm){
     wm=document.createElement('div');
     wm.id='logo-watermark';
-    wm.style.cssText='position:absolute;top:4px;left:6px;width:72px;pointer-events:none;z-index:10;';
+    wm.style.cssText='position:absolute;top:4px;right:6px;left:auto;width:72px;pointer-events:none;z-index:10;';
     wm.innerHTML='<img src="'+ZORP_LOGO_IMG+'" style="width:72px;opacity:0.22;display:block;"/>';
     const enc=document.getElementById('encounterArea');
     if(enc)enc.appendChild(wm);else document.body.appendChild(wm);
@@ -5754,12 +5759,13 @@ function selectShopCard(idx){
 }
 
 // Returns the cost to buy/upgrade this item from a shop.
-// If the player already owns a copy at upgradeLevel N, the next upgrade costs base * UPGRADE_MULTS[N+1].
+// Fresh purchase: returns baseCost (the item's own tier price).
+// Upgrade purchase: returns TIER_COSTS for the next display rarity tier up.
 function getShopItemCost(key,baseCost){
-  if(!baseCost)return baseCost;
   const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
   if(!existing)return baseCost;
-  return Math.round(baseCost*UPGRADE_MULTS[existing.upgradeLevel+1]);
+  const nextRarity=getDisplayRarity({itemRarity:existing.itemRarity,upgradeLevel:existing.upgradeLevel+1});
+  return TIER_COSTS[nextRarity]||baseCost;
 }
 
 function showShop(shop){checkTrenchcoat(shop,()=>_openShop(shop));}
@@ -8114,10 +8120,11 @@ function pawnBrokerSell(idx){
     const pawnKey=it.itemKey||it.id||'';
     const pawnExisting=[...board.front,...board.back].find(bi=>bi&&(bi.itemKey===pawnKey||bi.id===pawnKey)&&bi.upgradeLevel<3);
     const pawnBoardOk=hasOpenSlot()||!!pawnExisting;
-    const can=G.gold>=(it.cost||1)&&pawnBoardOk;
+    const pawnDisplayCost=getShopItemCost(pawnKey,it.cost||1);
+    const can=G.gold>=pawnDisplayCost&&pawnBoardOk;
     const fullNote=(!pawnBoardOk&&!pawnExisting)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
     const bfAttr=(!pawnBoardOk&&!pawnExisting)?'data-board-full="1"':'';
-    return `<div class="dc ${can?'':'cant'}" data-item-cost="${it.cost||1}" ${bfAttr} onclick="${can?`pawnBrokerShopBuy(${i})`:''}"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">🪙 ${it.cost||1}${fullNote}</div></div>`;
+    return `<div class="dc ${can?'':'cant'}" data-item-cost="${pawnDisplayCost}" ${bfAttr} onclick="${can?`pawnBrokerShopBuy(${i})`:''}"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">🪙 ${pawnDisplayCost}${fullNote}</div></div>`;
   }).join('');
   setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">He pulls something out of the back. Slot locked for 5 stops.</div>
     <div class="draft-row">${pshop}</div>
@@ -8125,9 +8132,19 @@ function pawnBrokerSell(idx){
 }
 function pawnBrokerShopBuy(idx){
   const it=window._pawnShopItems&&window._pawnShopItems[idx];if(!it)return;
+  const key=it.itemKey||it.id||'';
+  const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+  const actualCost=getShopItemCost(key,it.cost||1);
+  if(G.gold<actualCost){return;}
   window._pawnShopItems=null;
-  if(G.gold<(it.cost||1)){return;}
-  G.gold-=(it.cost||1);
+  G.gold-=actualCost;
+  if(existing){
+    upgradeItem(existing);
+    renderBoard();updateUI();
+    showNotif(existing.name+' upgraded!');
+    G.dayStep++;updateUI();renderTrack();activateCurrentNode();
+    return;
+  }
   const newItem=Object.assign({},it,{id:(it.itemKey||'pw')+'_'+Math.random().toString(36).slice(2,7),
     hp:it.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:it.maxUses,upgradeLevel:0,effectAmt:it.baseEffect,imbues:[]});
   const mf3=maxFrontSlots();const mb3=maxBackSlots();let p3=false;

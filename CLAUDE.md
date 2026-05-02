@@ -242,7 +242,7 @@ const SHOPS = [
 | `typed` | 3 random items from `getTypedItemKeys(G.type)` | Standard via `getShopItemCost` |
 | `clearance` | 3 items of lowest day-weighted rarity | 50% of standard price |
 | `back_room` | 4 items of second-highest day-weighted rarity | Standard via `getShopItemCost` |
-| `upgrade_bench` | Up to 3 upgradeable player items | `item.cost × UPGRADE_MULTS[upgradeLevel+1]` |
+| `upgrade_bench` | Up to 3 upgradeable player items | `TIER_COSTS[nextDisplayRarity]` via `getShopItemCost` |
 | `loot_crate` | 2–3 blind crate options (typed, rarity, weapon) | Fixed: 4–10g by rarity |
 | `wholesale` | 5 items with discount scaling | Decreases per item bought |
 
@@ -256,11 +256,23 @@ const SHOPS = [
 
 `_openShop(shop)` — switches on `shop.type` to render the appropriate UI.
 
-`getShopItemCost(key, baseCost)` — if player already owns a copy of this item at `upgradeLevel < 3`, returns `baseCost × UPGRADE_MULTS[upgradeLevel+1]` (upgrade pricing). Otherwise returns `baseCost`.
+`getShopItemCost(key, baseCost)` — if player already owns a copy of this item at `upgradeLevel < 3`, returns `TIER_COSTS[nextRarity]` where `nextRarity = getDisplayRarity({itemRarity, upgradeLevel: existing.upgradeLevel+1})`. Otherwise returns `baseCost`. **Never uses UPGRADE_MULTS for pricing.**
 
-`getDisplayRarity(item)` — returns the item's effective rarity tier string, bumped by `upgradeLevel`. Used by `getSellValue()` and card border/badge rendering so upgraded items show and sell at higher rarity.
+`getDisplayRarity(item)` — returns the item's effective rarity tier string, bumped by `upgradeLevel` (capped at mastered). Used by `getSellValue()`, `getShopItemCost()`, and card border/badge rendering so upgraded items show and sell at higher rarity.
 
-`getSellValue(item)` — uses `getDisplayRarity(item)` for sell price. Base: beginner=1, intermediate=2, advanced=4, mastered=8. Plus tier bonus by upgradeLevel: +0/+1/+2/+4.
+`getSellValue(item)` — uses `getDisplayRarity(item)` for sell price via `TIER_SELL = {beginner:1, intermediate:2, advanced:3, mastered:4}`. No tier bonuses. Returns `item.sellOverride` if set.
+
+### Pricing Constants
+
+```js
+// Canonical shop price per rarity tier. Single source of truth for item pricing.
+const TIER_COSTS = {beginner:2, intermediate:4, advanced:6, mastered:8};
+
+// Used ONLY for scaling item stats (effectAmt, maxHp) on upgrade. NOT used for pricing.
+const UPGRADE_MULTS = [1.0, 1.25, 1.6, 2.0];
+```
+
+`UPGRADE_MULTS` touches `effectAmt` and `maxHp` exclusively — it is never involved in gold cost calculations. All pricing goes through `TIER_COSTS` keyed on `getDisplayRarity(item)`.
 
 ### Trenchcoat Easter Egg
 
@@ -1044,7 +1056,8 @@ If `G.betPending` is true at the start of `advanceDay`, clears flag and skips th
 
 - **Toast duration minimum:** `showNotif` default `duration=5000ms`. All explicit durations throughout the codebase are also ≥5000ms.
 - **Burden panels:** Never auto-dismiss. Require manual Continue tap. `_burdenAutoTimeout` exists but is never assigned in `showBurdenPanel`. All `clearTimeout(_burdenAutoTimeout)` calls are safe no-ops.
-- **getDisplayRarity(item):** Returns effective rarity bumped by upgradeLevel. Used by `getSellValue()` and card/badge rendering. Upgraded items display and sell at the higher rarity tier.
+- **getDisplayRarity(item):** Returns effective rarity bumped by upgradeLevel (capped at mastered). Used by `getSellValue()`, `getShopItemCost()`, and card/badge rendering. Upgraded items display and sell at the higher rarity tier.
+- **Pricing:** `TIER_COSTS={beginner:2,intermediate:4,advanced:6,mastered:8}` is the single source of truth for item buy prices. `UPGRADE_MULTS` is stats-only (effectAmt/maxHp scaling) — never used for pricing.
 - **DAMAGE_RECEIVED event `rawValue`:** Pre-shield damage amount. Used by Shame for accurate tracking.
 
 ---
