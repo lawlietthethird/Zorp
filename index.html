@@ -942,9 +942,9 @@ function markTutorialSeen(){
 }
 
 const ITEMS={
-  left_claws:()=>{const item=makeItem('left_claws','Hook','🐾','Weapon',100,4000,'4s → 15 dmg · leftmost enemy',(s,a)=>dealDmg(opp(s),a,'Hook'),2,null,15,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||15,cls:'dmg'}];return item;},
-  spark_charm:()=>{const item=makeItem('spark_charm','Surge','⚡','Weapon',80,3000,'3s → 13 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Surge'),2,null,13,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||13,cls:'dmg'}];return item;},
-  bubble_shield:()=>{const item=makeItem('bubble_shield','Bubble Shield','🫧','Armor',200,6000,'6s → Plate random ally +30',(s,a)=>applyShield(s,a,'Bubble Shield'),2,null,30,'armor','beginner');item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||30,cls:'shield'}];return item;},
+  left_claws:()=>{const item=makeItem('left_claws','Hook','🐾','Weapon',100,2000,'2s → 15 dmg · leftmost enemy',(s,a)=>dealDmg(opp(s),a,'Hook'),2,null,15,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||15,cls:'dmg'}];return item;},
+  spark_charm:()=>{const item=makeItem('spark_charm','Surge','⚡','Weapon',80,1500,'1.5s → 13 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Surge'),2,null,13,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||13,cls:'dmg'}];return item;},
+  bubble_shield:()=>{const item=makeItem('bubble_shield','Bubble Shield','🫧','Armor',200,3000,'3s → Plate random ally +30',(s,a)=>applyShield(s,a,'Bubble Shield'),2,null,30,'armor','beginner');item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||30,cls:'shield'}];return item;},
 };
 const SHOP_POOLS=[
   ['left_claws','spark_charm','bubble_shield'],
@@ -956,32 +956,32 @@ const NEGATIVE_STATUSES=new Set(['BURN_APPLIED','POISON_APPLIED','SLOW_APPLIED']
 // ---- TYPED ITEMS ----
 const TYPED_ITEMS={
   // ELECTRIC ⚡
-  lightning_claw:()=>{const item=makeItem('lightning_claw','Lightning Claw','⚡','Weapon',90,2500,'2.5s → 10 dmg · random + self Jolt 1.5s',(s,a,self)=>{dealDmgRandom(opp(s),a,'Lightning Claw');applyHaste(self,1500,'Lightning Claw');},8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'⚡',value:'1.5s',cls:'haste'}];return item;},
-  arc_bolt:()=>{const item=makeItem('arc_bolt','Arc Bolt','🌩️','Weapon',110,5000,'5s → 10 dmg · hits 2 random targets',(s,a)=>dealDmgTwoRandom(s,a,'Arc Bolt'),8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'}];return item;},
+  lightning_claw:()=>{const item=makeItem('lightning_claw','Lightning Claw','⚡','Weapon',90,1500,'1.5s → 10 dmg · random + self Jolt 1.5s',(s,a,self)=>{dealDmgRandom(opp(s),a,'Lightning Claw');applyHaste(self,1500,'Lightning Claw');},8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'⚡',value:'1.5s',cls:'haste'}];return item;},
+  arc_bolt:()=>{const item=makeItem('arc_bolt','Arc Bolt','🌩️','Weapon',110,2500,'2.5s → 10 dmg · hits 2 random targets',(s,a)=>dealDmgTwoRandom(s,a,'Arc Bolt'),8,null,10,'weapon','advanced');item.stats=[{icon:'⚔️⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'}];return item;},
   // FIRE 🔥
-  ember_fang:()=>{const item=makeItem('ember_fang','Inferno','🔥','Weapon',110,4000,'4s → 10 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,10,'Inferno','burn',a),4,null,3,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
-  cinder_claw:()=>{const item=makeItem('cinder_claw','Scorch','🌋','Weapon',90,3000,'3s → 5 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,5,'Scorch','burn',a),2,null,3,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||5,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
+  ember_fang:()=>{const item=makeItem('ember_fang','Inferno','🔥','Weapon',110,2000,'2s → 10 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,10,'Inferno','burn',a),4,null,3,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||10,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
+  cinder_claw:()=>{const item=makeItem('cinder_claw','Scorch','🌋','Weapon',90,1500,'1.5s → 5 dmg + 3 Burn',(s,a)=>dealDmgWithStatus(s,5,'Scorch','burn',a),2,null,3,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||5,cls:'dmg'},{icon:'🔥',value:(i)=>i.effectAmt||3,cls:'burn'}];return item;},
   // WATER 💧
-  tide_fang:()=>{const item=makeItem('tide_fang','Hydro Blast','🌊','Weapon',105,4000,'4s → 14 dmg + 2s Wet',(s,a)=>dealDmgWithStatus(s,a,'Hydro Blast','slow',2000),4,null,14,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||14,cls:'dmg'},{icon:'💧',value:'2s',cls:'slow'}];return item;},
-  tidal_shell:()=>{const item=makeItem('tidal_shell','Coral','🐌','Armor',180,8000,'8s → Plate random ally +40 + 1.5s Wet to enemy',(s,a)=>{applyShield(s,a,'Coral');const t=randomEnemyItem(opp(s));if(t)applySlow(t,1500,'Coral');},4,null,40,'armor','intermediate');item.stats=[{icon:'🛡',value:40,cls:'shield'},{icon:'💧',value:'1.5s',cls:'slow'}];return item;},
-  riptide:()=>{const item=makeItem('riptide','Riptide','🌀','Weapon',120,5000,'5s → 20 dmg · back row',(s,a)=>dealDmgBackRow(s,a,'Riptide'),8,null,20,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||20,cls:'dmg'}];return item;},
-  current_band:()=>{const item=makeItem('current_band','Water Gun','💧','Weapon',80,3000,'3s → 9 dmg + 1s Wet',(s,a)=>dealDmgWithStatus(s,a,'Water Gun','slow',1000),2,null,9,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||9,cls:'dmg'},{icon:'💧',value:'1s',cls:'slow'}];return item;},
+  tide_fang:()=>{const item=makeItem('tide_fang','Hydro Blast','🌊','Weapon',105,2000,'2s → 14 dmg + 2s Wet',(s,a)=>dealDmgWithStatus(s,a,'Hydro Blast','slow',2000),4,null,14,'weapon','intermediate');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||14,cls:'dmg'},{icon:'💧',value:'2s',cls:'slow'}];return item;},
+  tidal_shell:()=>{const item=makeItem('tidal_shell','Coral','🐌','Armor',180,4000,'4s → Plate random ally +40 + 1.5s Wet to enemy',(s,a)=>{applyShield(s,a,'Coral');const t=randomEnemyItem(opp(s));if(t)applySlow(t,1500,'Coral');},4,null,40,'armor','intermediate');item.stats=[{icon:'🛡',value:40,cls:'shield'},{icon:'💧',value:'1.5s',cls:'slow'}];return item;},
+  riptide:()=>{const item=makeItem('riptide','Riptide','🌀','Weapon',120,2500,'2.5s → 20 dmg · back row',(s,a)=>dealDmgBackRow(s,a,'Riptide'),8,null,20,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||20,cls:'dmg'}];return item;},
+  current_band:()=>{const item=makeItem('current_band','Water Gun','💧','Weapon',80,1500,'1.5s → 9 dmg + 1s Wet',(s,a)=>dealDmgWithStatus(s,a,'Water Gun','slow',1000),2,null,9,'weapon','beginner');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||9,cls:'dmg'},{icon:'💧',value:'1s',cls:'slow'}];return item;},
   // STEEL 🛡️
-  bulwark_stance:()=>{const item=makeItem('bulwark_stance','Reinforce','🛡️','Armor',150,5000,'5s → Plate ALL allies +20',(s,a)=>applyShieldAll(s,a,'Reinforce'),8,null,20,'armor','advanced');item.stats=[{icon:'🛡🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];return item;},
-  alloy_fang:()=>{const item=makeItem('alloy_fang','Steel Jaw','⚔️','Weapon',140,6000,'6s → 22 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Steel Jaw'),8,null,22,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||22,cls:'dmg'}];return item;},
+  bulwark_stance:()=>{const item=makeItem('bulwark_stance','Reinforce','🛡️','Armor',150,2500,'2.5s → Plate ALL allies +20',(s,a)=>applyShieldAll(s,a,'Reinforce'),8,null,20,'armor','advanced');item.stats=[{icon:'🛡🛡',value:(i)=>i.effectAmt||20,cls:'shield'}];return item;},
+  alloy_fang:()=>{const item=makeItem('alloy_fang','Steel Jaw','⚔️','Weapon',140,3000,'3s → 22 dmg · random',(s,a)=>dealDmgRandom(opp(s),a,'Steel Jaw'),8,null,22,'weapon','advanced');item.stats=[{icon:'⚔️',value:(i)=>i.effectAmt||22,cls:'dmg'}];return item;},
   // TOXIC ☠️
   venom_fang:()=>{
-    const item=makeItem('venom_fang','Venom Fang','🐍','Weapon',120,4000,
-      '1 poison to random front enemy every 4s. In slot 1: every 3s.',
+    const item=makeItem('venom_fang','Venom Fang','🐍','Weapon',120,2000,
+      '1 poison to random front enemy every 2s. In slot 1: every 1.5s.',
       (s,a,self)=>{
         // Check if in slot 1 (front[0])
         const inSlotOne=board.front[0]===self||enemyBoard.front[0]===self;
         if(inSlotOne){
-          self.actMs=3000;
-          self.baseActMs=3000;
+          self.actMs=1500;
+          self.baseActMs=1500;
         }else{
-          self.actMs=4000;
-          self.baseActMs=4000;
+          self.actMs=2000;
+          self.baseActMs=2000;
         }
         // Apply 1 poison to random front enemy
         const side=s==='player'?'enemy':'player';
@@ -992,7 +992,7 @@ const TYPED_ITEMS={
         applyPoison(t,1,'Venom Fang');
       },2,null,1,'weapon','beginner');
     item.flavorText='Position is everything.';
-    item.stats=[{icon:'☠️',value:'1/4s (3s slot1)',cls:'poison'}];
+    item.stats=[{icon:'☠️',value:'1/2s (1.5s slot1)',cls:'poison'}];
     return item;
   },
 };
@@ -1005,8 +1005,8 @@ const TYPED_ITEM_POOLS={
 };
 const MOM_ITEMS={
   worn_locket:()=>{
-    const item=makeItem('worn_locket','Worn Locket','🪙','Armor',200,7000,
-      'Plate random ally +35. On break: heal all 20hp. On activation: 2 burn to random enemy.',
+    const item=makeItem('worn_locket','Worn Locket','🪙','Armor',200,3500,
+      '3.5s → Plate random ally +35. On break: heal all 20hp. On activation: 2 burn to random enemy.',
       (s,a,self)=>{
         applyShield(s,a,'Worn Locket');
         const t=randomEnemyItem(opp(s));
@@ -1023,8 +1023,8 @@ const MOM_ITEMS={
     return item;
   },
   knitted_cap:()=>{
-    const item=makeItem('knitted_cap','Knitted Cap','🧢','Armor',180,6000,
-      'Plate random ally +25. First activation plates twice. On activation: 2 poison to random enemy.',
+    const item=makeItem('knitted_cap','Knitted Cap','🧢','Armor',180,3000,
+      '3s → Plate random ally +25. First activation plates twice. On activation: 2 poison to random enemy.',
       null,2,null,25,'armor','beginner');
     item.flavorText="It's not stupid. Put it on.";
     item.stats=[{icon:'🛡',value:(i)=>i.effectAmt||25,cls:'shield'},{icon:'☠️',value:2,cls:'poison'}];
@@ -1038,8 +1038,8 @@ const MOM_ITEMS={
     return item;
   },
   dads_knife:()=>{
-    const item=makeItem('dads_knife',"Dad's Old Knife",'🔪','Weapon',130,4500,
-      '22 dmg random. +8 if target below 50% HP.',
+    const item=makeItem('dads_knife',"Dad's Old Knife",'🔪','Weapon',130,2500,
+      '2.5s → 22 dmg random. +8 if target below 50% HP.',
       (s,a,self)=>{
         const b=getBoard(opp(s));const ft=b.front.filter(targetable);
         const pool=ft.length>0?ft:b.back.filter(targetable);
@@ -1053,8 +1053,8 @@ const MOM_ITEMS={
     return item;
   },
   sharpening_stone:()=>{
-    const item=makeItem('sharpening_stone','Sharpening Stone','🪨','Weapon',110,4000,
-      '14 dmg random. Applies 2s Jolt to self after activation.',
+    const item=makeItem('sharpening_stone','Sharpening Stone','🪨','Weapon',110,2000,
+      '2s → 14 dmg random. Applies 2s Jolt to self after activation.',
       (s,a,self)=>{
         dealDmgRandom(opp(s),a,'Sharpening Stone');
         applyHaste(self,2000,'Sharpening Stone');
@@ -1064,8 +1064,8 @@ const MOM_ITEMS={
     return item;
   },
   heavy_walking_stick:()=>{
-    const item=makeItem('heavy_walking_stick','Heavy Walking Stick','🪵','Weapon',130,5000,
-      '16 dmg random. Applies 2s Wet to target hit.',
+    const item=makeItem('heavy_walking_stick','Heavy Walking Stick','🪵','Weapon',130,2500,
+      '2.5s → 16 dmg random. Applies 2s Wet to target hit.',
       (s,a,self)=>{
         dealDmgWithStatus(s,a,'Heavy Walking Stick','slow',2000);
       },2,null,16,'weapon','beginner');
@@ -1074,8 +1074,8 @@ const MOM_ITEMS={
     return item;
   },
   grandmas_coin_purse:()=>{
-    const item=makeItem('grandmas_coin_purse',"Grandma's Coin Purse",'👛','Weapon',180,6000,
-      '8 dmg random.',
+    const item=makeItem('grandmas_coin_purse',"Grandma's Coin Purse",'👛','Weapon',180,3000,
+      '3s → 8 dmg random.',
       (s,a)=>dealDmgRandom(opp(s),a,"Grandma's Coin Purse"),
       2,null,8,'weapon','beginner');
     item.flavorText="She tucked some spending money in there too.";
@@ -1221,8 +1221,8 @@ const PACIFIST_ITEMS={
   },
 
   chrysalis:()=>{
-    const item=makeItem('chrysalis','Chrysalis','🫧','Armor',1,1000,
-      'Gains 2 plating every second. Breaks instantly if hit before building plating.',
+    const item=makeItem('chrysalis','Chrysalis','🫧','Armor',1,800,
+      'Gains 2 plating every 0.8s. Breaks instantly if hit before building plating.',
       (s,a,self)=>{
         self.shield=(self.shield||0)+(self.effectAmt||2);
         self.maxShield=Math.max(self.maxShield||0,self.shield);
@@ -1278,8 +1278,8 @@ const PACIFIST_ITEMS={
 const HEADBUTT_ITEMS={
 
   headbutt:()=>{
-    const item=makeItem('headbutt','Headbutt','🦬','Weapon',90,4000,
-      '22 dmg to leftmost enemy front row. Takes 11 self-damage per activation.',
+    const item=makeItem('headbutt','Headbutt','🦬','Weapon',90,2000,
+      '2s → 22 dmg to leftmost enemy front row. Takes 11 self-damage per activation.',
       (s,a,self)=>{
         const oSide=opp(s);
         const b=getBoard(oSide);
@@ -1344,8 +1344,8 @@ const HEADBUTT_ITEMS={
   },
 
   spite:()=>{
-    const item=makeItem('spite','Spite','😤','Weapon',50,1000,
-      '1 dmg/s to random enemy. Gains +1 damage each time any ally takes damage this battle.',
+    const item=makeItem('spite','Spite','😤','Weapon',50,800,
+      '1.25 dmg/s to random enemy. Gains +1 damage each time any ally takes damage this battle.',
       (s,a,self)=>{
         dealDmgRandom(opp(s),a,'Spite');
       },8,null,1,'weapon','advanced');
@@ -1368,8 +1368,8 @@ const HEADBUTT_ITEMS={
 const BURN_ITEMS={
 
   stoke:()=>{
-    const item=makeItem('stoke','Stoke','🪵','Relic',75,6000,
-      '6s → Apply 4 burn to a random enemy item.',
+    const item=makeItem('stoke','Stoke','🪵','Relic',75,3000,
+      '3s → Apply 4 burn to a random enemy item.',
       (s,a)=>{
         const t=randomEnemyItem(opp(s));
         if(t)applyBurn(t,a,'Stoke');
@@ -1380,8 +1380,8 @@ const BURN_ITEMS={
   },
 
   blaze:()=>{
-    const item=makeItem('blaze','Blaze','🔥','Weapon',110,4000,
-      '4s → 8 dmg + increasing burn. Burn grows with each activation.',
+    const item=makeItem('blaze','Blaze','🔥','Weapon',110,2000,
+      '2s → 8 dmg + increasing burn. Burn grows with each activation.',
       (s,a,self)=>{
         dealDmgRandom(opp(s),a,'Blaze');
         const t=randomEnemyItem(opp(s));
@@ -1444,8 +1444,8 @@ const BURN_ITEMS={
 const WATER_ITEMS={
 
   glacier:()=>{
-    const item=makeItem('glacier','Glacier','🧊','Armor',200,4000,
-      'Applies 2s Wet to a random enemy.',
+    const item=makeItem('glacier','Glacier','🧊','Armor',200,2000,
+      '2s → Applies 2s Wet to a random enemy.',
       (s,a,self)=>{
         const t=randomEnemyItem(opp(s));
         if(t)applySlow(t,2000,'Glacier');
@@ -1456,8 +1456,8 @@ const WATER_ITEMS={
   },
 
   hydro_cannon:()=>{
-    const item=makeItem('hydro_cannon','Hydro Cannon','💦','Weapon',110,4000,
-      '15 dmg to random enemy. 30 dmg if target is Wet.',
+    const item=makeItem('hydro_cannon','Hydro Cannon','💦','Weapon',110,2000,
+      '2s → 15 dmg to random enemy. 30 dmg if target is Wet.',
       (s,a,self)=>{
         const t=randomEnemyItem(opp(s));
         if(!t)return;
@@ -1472,8 +1472,8 @@ const WATER_ITEMS={
   },
 
   whirlpool:()=>{
-    const item=makeItem('whirlpool','Whirlpool','🌀','Armor',140,5000,
-      'Plate random ally +20. +40 if any enemy is currently Wet.',
+    const item=makeItem('whirlpool','Whirlpool','🌀','Armor',140,2500,
+      '2.5s → Plate random ally +20. +40 if any enemy is currently Wet.',
       (s,a,self)=>{
         const anyWet=[...enemyBoard.front,...enemyBoard.back]
           .some(i=>i&&!i.broken&&(i.slowMs||0)>0);
@@ -1487,8 +1487,8 @@ const WATER_ITEMS={
   },
 
   deluge:()=>{
-    const item=makeItem('deluge','Deluge','🌊','Weapon',120,5000,
-      'Deals damage equal to 5× total Wet applications this battle to one target.',
+    const item=makeItem('deluge','Deluge','🌊','Weapon',120,2500,
+      '2.5s → Deals damage equal to 5× total Wet applications this battle to one target.',
       (s,a,self)=>{
         const procs=battleState.slowProcsThisBattle||0;
         const dmg=Math.max(self.effectAmt||5,procs*(self.effectAmt||5));
@@ -1514,8 +1514,8 @@ const WATER_ITEMS={
   },
 
   hot_springs:()=>{
-    const item=makeItem('hot_springs','Hot Springs','♨️','Provision',0,7000,
-      'Heal lowest HP ally for 80. Starts with 1 use. Gains +1 use each time you apply Wet.',
+    const item=makeItem('hot_springs','Hot Springs','♨️','Provision',0,3500,
+      '3.5s → Heal lowest HP ally for 80. Starts with 1 use. Gains +1 use each time you apply Wet.',
       (s,a,self)=>{
         if((self.uses||0)<=0)return;
         healItem(s,self.effectAmt||80,'Hot Springs');
@@ -1530,8 +1530,8 @@ const WATER_ITEMS={
 const ELECTRIC_ITEMS={
 
   live_wire:()=>{
-    const item=makeItem('live_wire','Live Wire','⚡','Weapon',80,3000,
-      '12 dmg to random enemy. When Jolted: also applies 2 burn.',
+    const item=makeItem('live_wire','Live Wire','⚡','Weapon',80,1500,
+      '1.5s → 12 dmg to random enemy. When Jolted: also applies 2 burn.',
       (s,a,self)=>{
         const t=randomEnemyItem(opp(s));
         if(!t)return;
@@ -1551,8 +1551,8 @@ const ELECTRIC_ITEMS={
   },
 
   dual_shock:()=>{
-    const item=makeItem('dual_shock','Dual Shock','🌩️','Weapon',80,3000,
-      '10 dmg to rightmost enemy. When Jolted: also hits leftmost enemy.',
+    const item=makeItem('dual_shock','Dual Shock','🌩️','Weapon',80,1500,
+      '1.5s → 10 dmg to rightmost enemy. When Jolted: also hits leftmost enemy.',
       (s,a,self)=>{
         const isJolted=(self.hasteMs||0)>0;
         const b=enemyBoard;
@@ -1577,8 +1577,8 @@ const ELECTRIC_ITEMS={
   },
 
   charging_station:()=>{
-    const item=makeItem('charging_station','Charging Station','🔋','Armor',150,4000,
-      'Every 4s: applies 2s Jolt to left and right neighbors.',
+    const item=makeItem('charging_station','Charging Station','🔋','Armor',150,2000,
+      'Every 2s: applies 2s Jolt to left and right neighbors.',
       (s,a,self)=>{
         const neighbors=getNeighbors(self);
         if(neighbors.left&&!neighbors.left.broken){
@@ -1625,8 +1625,8 @@ const ELECTRIC_ITEMS={
 const STEEL_ITEMS={
 
   ironclad:()=>{
-    const item=makeItem('ironclad','Ironclad','🛡','Armor',200,5000,
-      'Plates left and right neighbors +20 each on activation.',
+    const item=makeItem('ironclad','Ironclad','🛡','Armor',200,2500,
+      '2.5s → Plates left and right neighbors +20 each on activation.',
       (s,a,self)=>{
         const neighbors=getNeighbors(self);
         if(neighbors.left&&!neighbors.left.broken){
@@ -1642,8 +1642,8 @@ const STEEL_ITEMS={
   },
 
   aegis:()=>{
-    const item=makeItem('aegis','Aegis','🔰','Armor',220,4000,
-      'Plates self +20, then deals damage equal to current shield to random enemy.',
+    const item=makeItem('aegis','Aegis','🔰','Armor',220,2000,
+      '2s → Plates self +20, then deals damage equal to current shield to random enemy.',
       (s,a,self)=>{
         applyShield(s,self.effectAmt||20,'Aegis',self);
         const dmg=self.shield||0;
@@ -1683,8 +1683,8 @@ const STEEL_ITEMS={
   },
 
   wrecking_ball:()=>{
-    const item=makeItem('wrecking_ball','Wrecking Ball','🪨','Armor',80,6000,
-      'Plates self +10 per activation. On death: deals half total side plating to frontmost enemy and item behind it.',
+    const item=makeItem('wrecking_ball','Wrecking Ball','🪨','Armor',80,3000,
+      '3s → Plates self +10 per activation. On death: deals half total side plating to frontmost enemy and item behind it.',
       (s,a,self)=>{
         applyShield(s,self.effectAmt||10,'Wrecking Ball',self);
       },8,null,10,'armor','advanced');
@@ -1763,8 +1763,8 @@ const POISON_ITEMS={
   },
 
   mithridate:()=>{
-    const item=makeItem('mithridate','Mithridate','⚗️','Armor',150,5000,
-      'Odd activations: heal items in odd slots 15hp. Even activations: 1 poison to 2 random enemy back items.',
+    const item=makeItem('mithridate','Mithridate','⚗️','Armor',150,2500,
+      '2.5s → Odd activations: heal items in odd slots 15hp. Even activations: 1 poison to 2 random enemy back items.',
       (s,a,self)=>{
         self._mithridateCount=(self._mithridateCount||0)+1;
         const isOdd=self._mithridateCount%2!==0;
@@ -4042,11 +4042,11 @@ function tickSide(b,side,tickMs){
       }
       if(item.uses!==null){item.uses--;if(item.uses<=0){item.broken=true;if(item.onBreak)item.onBreak(item);log('b',item.name+' consumed!');}}
     }
-    // Burn tick — every 500ms. shield*2 reduces damage first, remainder to HP
+    // Burn tick — every 2000ms. shield*2 reduces damage first, remainder to HP
     if(item.burnStack>0){
       item.burnTickMs+=tickMs;
-      while(item.burnTickMs>=500&&item.burnStack>0){
-        item.burnTickMs-=500;
+      while(item.burnTickMs>=2000&&item.burnStack>0){
+        item.burnTickMs-=2000;
         if(item.hitCount!==undefined&&item.hitCount!==null){
           item.hitCount--;
           log('d','Burn hit absorbed by '+item.name+' ('+item.hitCount+' hits remaining)');
@@ -4081,7 +4081,7 @@ function tickSide(b,side,tickMs){
         if(item.hp<=0&&!item.broken){checkAndBreak(item,side);}
       }
     }
-    // Poison tick — every 1000ms (2000ms if Immunity active on player side, 900ms if Festering active for enemy). bypasses shield
+    // Poison tick — every 2000ms (2000ms if Immunity active on player side, 900ms if Festering active for enemy). bypasses shield
     if(item.poisonStack>0){
       item.poisonTickMs+=tickMs;
       let poisonInterval;
@@ -4090,7 +4090,7 @@ function tickSide(b,side,tickMs){
       } else if(side==='enemy'&&activeSkills.some(s=>s.id==='festering')){
         poisonInterval=900;
       } else {
-        poisonInterval=1000;
+        poisonInterval=2000;
       }
       while(item.poisonTickMs>=poisonInterval&&item.poisonStack>0){
         item.poisonTickMs-=poisonInterval;
