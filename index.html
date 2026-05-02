@@ -5532,6 +5532,17 @@ function imbueItem(item,type,amount){
       }
     };
     item.imbues.push({type,amount});
+  }else if(type==='act_speed'){
+    // Reduce activation time by percentage. Floor at 500ms.
+    item.baseActMs=Math.max(500,Math.round(item.baseActMs*(1-amount/100)));
+    item.actMs=item.baseActMs;
+    item.imbues.push({type,amount});
+  }else if(type==='hp_pct'){
+    // Increase maxHp by percentage.
+    item.maxHp=Math.round((item.maxHp||0)*(1+amount/100));
+    item.baseMaxHp=item.maxHp;
+    item.hp=item.maxHp;
+    item.imbues.push({type,amount});
   }
 }
 
@@ -6466,6 +6477,69 @@ const EVENTS=[
     ],
     resolution:'immediate',tags:['free','forced'],easter_egg:false,
   },
+  // ── THE SHRINE ───────────────────────────────────────────────
+  {
+    id:'the_shrine',name:'The Shrine',tier:'intermediate',image:null,
+    coverName:'The Shrine',coverEmoji:'⛩️',coverLine:'Cool door.',
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Shrine',flavor:'Cool door.',dialogue:'"I need to get me one of these for my house."'},
+    effect:{type:'shrine_auto_fire'},
+    choices:[],
+    resolution:'immediate',tags:['free'],easter_egg:false,
+  },
+  // ── THE MOLT ─────────────────────────────────────────────────
+  {
+    id:'the_molt',name:'The Molt',tier:'intermediate',image:null,
+    coverName:'The Molt',coverEmoji:'🐛',coverLine:'Something was here recently.',
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Molt',flavor:'You stumble upon the shedding of a giant, gross thing.',dialogue:null},
+    choices:[
+      {id:'eat',label:'Let your monster eat it',cost:null,requiresCost:false,
+       effect:{type:'molt_eat'},burden:null,outcomeText:null},
+      {id:'leave',label:'Leave',cost:null,requiresCost:false,
+       effect:{type:'molt_leave'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free','risk'],easter_egg:false,
+  },
+  // ── THE CROW ─────────────────────────────────────────────────
+  {
+    id:'the_crow',name:'The Crow',tier:'intermediate',image:null,
+    coverName:'The Crow',coverEmoji:'🐦‍⬛',coverLine:'It drops something.',
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Crow',flavor:"A crow flies by with something shiny in its grasp. It drops. A coin? Idk if this was even worth it.",dialogue:null},
+    effect:{type:'crow_auto_fire'},
+    choices:[],
+    resolution:'immediate',tags:['free'],easter_egg:false,
+  },
+  // ── THE RUINS ────────────────────────────────────────────────
+  {
+    id:'the_ruins',name:'The Ruins',tier:'intermediate',image:null,
+    coverName:'The Ruins',coverEmoji:'🏚️',coverLine:'Someone left in a hurry.',
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Ruins',flavor:'Someone left in a hurry.',dialogue:null},
+    choices:[
+      {id:'search',label:'Search the ruins',cost:null,requiresCost:false,
+       effect:{type:'ruins_search'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free'],easter_egg:false,
+  },
+  // ── THE VETERAN ──────────────────────────────────────────────
+  {
+    id:'the_veteran',name:'The Veteran',tier:'intermediate',image:null,
+    coverName:'The Veteran',coverEmoji:'🎖️',coverLine:"He's seen worse.",
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:'wildLosses>=1',state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Veteran',flavor:"He watched the fight. He doesn't say anything about it.",dialogue:'"Don\'t know why I still carry this."'},
+    choices:[
+      {id:'accept',label:'Take it',cost:null,requiresCost:false,
+       effect:{type:'veteran_gift'},burden:null,outcomeText:'He nods once. Keeps walking.'},
+    ],
+    resolution:'immediate',tags:['free','performance'],easter_egg:false,
+  },
 ];
 
 let currentEvent=null;
@@ -6664,6 +6738,23 @@ function showEvent(event){
 
   // No-choice event: fire top-level effect immediately, show flavor, auto-advance after 1.5s
   if(!event.choices||!event.choices.length){
+    const _autoAdv=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+    // Shrine — speed imbue on random item, show panel
+    if(event.effect&&event.effect.type==='shrine_auto_fire'){
+      const shrinePool=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      if(!shrinePool.length){_autoAdv();return;}
+      const shrineItem=shrinePool[Math.floor(Math.random()*shrinePool.length)];
+      imbueItem(shrineItem,'act_speed',8);
+      renderBoard();
+      showBurdenPanel('THE SHRINE',shrineItem.name+' activates 8% faster.',_autoAdv);
+      return;
+    }
+    // Crow — +1 gold, show panel
+    if(event.effect&&event.effect.type==='crow_auto_fire'){
+      G.gold+=1;updateUI();
+      showBurdenPanel('THE CROW','A coin. Idk if this was even worth it.',_autoAdv);
+      return;
+    }
     if(event.effect&&event.effect.type==='generous_neighbor_slot'){
       G.neighborSlotBonus=(G.neighborSlotBonus||0)+1;
       renderBoard();updateUI();
@@ -6681,9 +6772,13 @@ function showEvent(event){
     const isHonorCost=c.cost&&c.cost.type==='honor';
     const cantAfford=c.requiresCost&&c.cost&&(
       (isGoldCost&&G.gold<c.cost.amount)||(isHonorCost&&G.honor<c.cost.amount));
+    // Molt eat: grey out if no upgraded items on board
+    const moltCantEat=event.id==='the_molt'&&c.id==='eat'&&
+      ![...board.front,...board.back].some(i=>i&&i.upgradeLevel>0);
+    const disabled=cantAfford||moltCantEat;
     const costLabel=isGoldCost?` (🪙${c.cost.amount})`:isHonorCost?` (${c.cost.amount} honor)`:'';
-    const style=cantAfford?'opacity:.4;pointer-events:none;':'';
-    return `<button class="btn btn-p" style="margin:4px 0;width:100%;text-align:left;padding:10px 14px;${style}" onclick="${cantAfford?'':('resolveEventChoice('+i+')')}">${c.label}${costLabel}</button>`;
+    const style=disabled?'opacity:.4;pointer-events:none;':'';
+    return `<button class="btn btn-p" style="margin:4px 0;width:100%;text-align:left;padding:10px 14px;${style}" onclick="${disabled?'':('resolveEventChoice('+i+')')}">${c.label}${costLabel}</button>`;
   }).join('');
   setEncBody(`<div style="display:flex;flex-direction:column;gap:12px;max-width:380px;margin:0 auto;padding:8px 0;">
     <div style="font-weight:700;font-size:15px;text-align:center;letter-spacing:.04em;">${title}</div>
@@ -7355,6 +7450,105 @@ function resolveEventChoice(choiceIdx){
       return;
     }
 
+    case 'molt_eat': {
+      const moltUpgraded=[...board.front,...board.back].filter(i=>i&&i.upgradeLevel>0);
+      if(!moltUpgraded.length){showNotif('Nothing worth eating for.');advance();return;}
+      showBoardPicker('Let it eat. Pick an upgraded item:',(item)=>{
+        downgradeItem(item);
+        // +20% to the NEW downgraded maxHp
+        item.maxHp=Math.round(item.maxHp*1.20);
+        item.baseMaxHp=item.maxHp;
+        item.hp=item.maxHp;
+        renderBoard();
+        showBurdenPanel('THE MOLT',item.name+' demoted. Gained +20% max HP at new tier.',advance);
+        clearTimeout(_burdenAutoTimeout);
+      },i=>i.upgradeLevel>0);
+      return;
+    }
+
+    case 'molt_leave': {
+      const moltPool=[...board.front,...board.back].filter(i=>i&&!i.broken);
+      if(!moltPool.length){advance();return;}
+      const moltItem=moltPool[Math.floor(Math.random()*moltPool.length)];
+      imbueItem(moltItem,'hp_pct',5);
+      renderBoard();
+      showBurdenPanel('THE MOLT','Your monster sighs in relief. '+moltItem.name+' gains +5% max HP.',advance);
+      clearTimeout(_burdenAutoTimeout);
+      return;
+    }
+
+    case 'ruins_search': {
+      const _tw=TIER_WEIGHTS[Math.min(Math.max(G.day,1),10)]||TIER_WEIGHTS[10];
+      const _rarities=['beginner','intermediate','advanced','mastered'];
+      const _domR=_rarities.reduce((best,r)=>(_tw[r]||0)>(_tw[best]||0)?r:best,'beginner');
+      const ruinsPool=getItemsOfRarity(_domR);
+      if(!ruinsPool.length){advance();return;}
+      const ruinsKey=ruinsPool[Math.floor(Math.random()*ruinsPool.length)];
+      const ruinsFactory=getItemFactory(ruinsKey);
+      if(!ruinsFactory){advance();return;}
+      const ruinsBase=ruinsFactory();
+      const ruinsItem=Object.assign({},ruinsBase,{
+        id:ruinsKey+'_'+Math.random().toString(36).slice(2,7),
+        hp:ruinsBase.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+        broken:false,uses:ruinsBase.maxUses,upgradeLevel:0,effectAmt:ruinsBase.baseEffect,imbues:[],
+      });
+      window._ruinsItem=ruinsItem;
+      window._ruinsAdvance=advance;
+      const _rIc=getItemIcon(ruinsItem);
+      const _rIcHtml=(typeof _rIc==='string'&&_rIc.startsWith('http'))
+        ?`<img src="${_rIc}" style="width:32px;height:32px;object-fit:contain;">`
+        :`<span style="font-size:32px;">${_rIc}</span>`;
+      setEncTitle('THE RUINS');
+      setEncBody(`<div style="display:flex;flex-direction:column;gap:12px;max-width:380px;margin:0 auto;padding:8px 0;">
+        <div style="font-size:13px;color:var(--dim);line-height:1.65;">You find something in the rubble.</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;">
+          <div style="margin-bottom:6px;">${_rIcHtml}</div>
+          <div style="font-family:'Cinzel',serif;font-size:10px;font-weight:700;letter-spacing:.05em;margin-bottom:4px;">${ruinsItem.name}</div>
+          <div style="font-size:9px;color:var(--dim);line-height:1.4;">${ruinsItem.desc||''}</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-p" style="flex:1;" onclick="ruinsTakeIt()">Take It</button>
+          <button class="btn btn-d" style="flex:1;" onclick="ruinsLeaveIt()">Leave It</button>
+        </div>
+      </div>`);
+      return;
+    }
+
+    case 'veteran_gift': {
+      let vetPool;
+      if(G.type){
+        vetPool=getTypedItemKeys(G.type);
+      }else{
+        const _vtw=TIER_WEIGHTS[Math.min(Math.max(G.day,1),10)]||TIER_WEIGHTS[10];
+        const _vrars=['beginner','intermediate','advanced','mastered'];
+        const _vdomR=_vrars.reduce((best,r)=>(_vtw[r]||0)>(_vtw[best]||0)?r:best,'beginner');
+        vetPool=getItemsOfRarity(_vdomR);
+      }
+      if(!vetPool||!vetPool.length){done();return;}
+      const vetKey=vetPool[Math.floor(Math.random()*vetPool.length)];
+      const vetFactory=getItemFactory(vetKey);
+      if(!vetFactory){done();return;}
+      const vetBase=vetFactory();
+      const vetItem=Object.assign({},vetBase,{
+        id:vetKey+'_'+Math.random().toString(36).slice(2,7),
+        hp:vetBase.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,
+        broken:false,uses:vetBase.maxUses,upgradeLevel:0,effectAmt:vetBase.baseEffect,imbues:[],
+      });
+      const mf3=maxFrontSlots();const mb3=maxBackSlots();let vetPlaced=false;
+      const vetOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+      for(let i=0;i<mf3&&!vetPlaced;i++){if(!board.front[i]&&vetOk('front',i)){board.front[i]=vetItem;applySlotBonuses(vetItem,'front');vetPlaced=true;}}
+      if(!vetPlaced)for(let i=0;i<mb3&&!vetPlaced;i++){if(!board.back[i]&&vetOk('back',i)){board.back[i]=vetItem;applySlotBonuses(vetItem,'back');vetPlaced=true;}}
+      if(vetPlaced){renderBoard();done();return;}
+      // Board full — swap picker
+      window._vetNewItem=vetItem;window._vetDone=done;
+      const vetExisting=[...board.front,...board.back].filter(i=>i);
+      window._vetSwapItems=vetExisting;
+      setEncTitle('THE VETERAN — SWAP ITEM');
+      const vcards=vetExisting.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="vetSwapPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Swap</div></div>`;}).join('');
+      setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Board full. Make room for ${vetItem.name}.</div><div class="draft-row" style="flex-wrap:wrap;">${vcards}</div>`);
+      return;
+    }
+
     default:
       G.dayStep++;updateUI();renderTrack();activateCurrentNode();
   }
@@ -7370,6 +7564,54 @@ function farmPickerSelect(idx){
   const advance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
   showBurdenPanel('THE FARMER','"Try this next time."\n\n'+item.name+' upgraded.',advance);
   clearTimeout(_burdenAutoTimeout);
+}
+
+// ── The Ruins helpers ─────────────────────────────────────────
+function ruinsTakeIt(){
+  const item=window._ruinsItem;
+  const advance=window._ruinsAdvance||function(){G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  window._ruinsItem=null;window._ruinsAdvance=null;
+  if(!item){advance();return;}
+  const mf=maxFrontSlots();const mb=maxBackSlots();let placed=false;
+  const ok=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&ok('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
+  if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&ok('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
+  if(placed){renderBoard();showBurdenPanel('THE RUINS',item.name+' added to your board.',advance);clearTimeout(_burdenAutoTimeout);return;}
+  // Board full — swap picker
+  window._ruinsNewItem=item;window._ruinsSwapAdv=advance;
+  const existing=[...board.front,...board.back].filter(i=>i);
+  window._ruinsSwapItems=existing;
+  setEncTitle('THE RUINS — SWAP ITEM');
+  const rcards=existing.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="ruinsSwapPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Swap — sell for 🪙${getSellValue(it)}</div></div>`;}).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Board full. Make room for ${item.name}.</div><div class="draft-row" style="flex-wrap:wrap;">${rcards}</div>`);
+}
+function ruinsLeaveIt(){
+  const advance=window._ruinsAdvance||function(){G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  window._ruinsItem=null;window._ruinsAdvance=null;
+  advance();
+}
+function ruinsSwapPick(idx){
+  const swapItem=window._ruinsSwapItems&&window._ruinsSwapItems[idx];
+  const newItem=window._ruinsNewItem;
+  const advance=window._ruinsSwapAdv||function(){G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  if(!swapItem||!newItem){advance();return;}
+  window._ruinsSwapItems=null;window._ruinsNewItem=null;window._ruinsSwapAdv=null;
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===swapItem){board.front[i]=newItem;applySlotBonuses(newItem,'front');renderBoard();showBurdenPanel('THE RUINS',newItem.name+' added.',advance);clearTimeout(_burdenAutoTimeout);return;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===swapItem){board.back[i]=newItem;applySlotBonuses(newItem,'back');renderBoard();showBurdenPanel('THE RUINS',newItem.name+' added.',advance);clearTimeout(_burdenAutoTimeout);return;}}
+  advance();
+}
+
+// ── The Veteran swap helper ───────────────────────────────────
+function vetSwapPick(idx){
+  const swapItem=window._vetSwapItems&&window._vetSwapItems[idx];
+  const newItem=window._vetNewItem;
+  const doneCb=window._vetDone;
+  if(!swapItem||!newItem){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+  window._vetSwapItems=null;window._vetNewItem=null;window._vetDone=null;
+  const fallback=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===swapItem){board.front[i]=newItem;applySlotBonuses(newItem,'front');renderBoard();if(doneCb)doneCb();else fallback();return;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===swapItem){board.back[i]=newItem;applySlotBonuses(newItem,'back');renderBoard();if(doneCb)doneCb();else fallback();return;}}
+  if(doneCb)doneCb();else fallback();
 }
 
 // ── Old Man's Cart helpers ────────────────────────────────────
