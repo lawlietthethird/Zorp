@@ -2032,6 +2032,13 @@ function maxBackSlots(){
   const frontBonusUsed=Math.min(G.neighborSlotBonus||0,Math.max(0,3-frontBase));
   return Math.min(3,base+Math.max(0,(G.neighborSlotBonus||0)-frontBonusUsed));
 }
+function hasOpenSlot(){
+  const mf=maxFrontSlots();const mb=maxBackSlots();
+  const lockOk=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf;i++){if(!board.front[i]&&lockOk('front',i))return true;}
+  for(let i=0;i<mb;i++){if(!board.back[i]&&lockOk('back',i))return true;}
+  return false;
+}
 function targetable(i){return i&&!i.broken&&(i.maxHp>0||i.isTargetable===true);}
 function isJolted(item){return item&&item.hasteMs>0;}
 function countJoltedAllies(){return[...board.front,...board.back].filter(i=>i&&!i.broken&&isJolted(i)).length;}
@@ -3078,10 +3085,14 @@ function showEncounterShop(poolIdx){
     }
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
-      const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
+      const t=f();shopItemCache[key]=t;
       const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key));
+      const boardOk=hasOpenSlot()||!!existing;
+      const can=G.gold>=t.cost&&boardOk;
       const label=existing?'⬆ UPGRADE':'NEW';
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div style="font-size:6px;font-family:Cinzel,serif;color:var(--gold);margin-bottom:2px">'+label+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div></div>';
+      const fullNote=(!boardOk&&!existing)?'<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>':'';
+      const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" '+bfAttr+' onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div style="font-size:6px;font-family:Cinzel,serif;color:var(--gold);margin-bottom:2px">'+label+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+fullNote+'</div></div>';
     }).join('');
     setEncBody(dialogue+'<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -3097,8 +3108,13 @@ function showEncounterShop(poolIdx){
     }
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
-      const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      const t=f();shopItemCache[key]=t;
+      const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+      const boardOk=hasOpenSlot()||!!existing;
+      const can=G.gold>=t.cost&&boardOk;
+      const fullNote=(!boardOk&&!existing)?'<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>':'';
+      const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" '+bfAttr+' onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+fullNote+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -3110,8 +3126,13 @@ function showEncounterShop(poolIdx){
     const slots=generateShopSlots(G.day,[],typeFilter);
     const cards=slots.map(key=>{
       const f=getItemFactory(key);if(!f)return'';
-      const t=f();shopItemCache[key]=t;const can=G.gold>=t.cost;
-      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
+      const t=f();shopItemCache[key]=t;
+      const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+      const boardOk=hasOpenSlot()||!!existing;
+      const can=G.gold>=t.cost&&boardOk;
+      const fullNote=(!boardOk&&!existing)?'<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>':'';
+      const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+      return '<div class="dc '+((!can&&t.cost>0)?'cant':'')+'" data-item-cost="'+t.cost+'" '+bfAttr+' onclick="buyItem(\''+key+'\',false)"><div class="di">'+getItemIcon(t)+'</div><div class="dn">'+t.name+'</div><div class="dd">'+t.desc+'</div><div class="dp">🪙 '+t.cost+fullNote+'</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache[\''+key+'\'])">ℹ</div></div>';
     }).join('');
     setEncBody('<div class="draft-row">'+cards+'</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>');
     return;
@@ -4792,6 +4813,7 @@ function refreshShopAffordability(){
   document.querySelectorAll('.dc[data-item-cost]').forEach(el=>{
     const cost=parseInt(el.dataset.itemCost,10);
     if(cost>0){
+      if(el.dataset.boardFull==='1'){el.classList.add('cant');return;}
       if(G.gold>=cost)el.classList.remove('cant');
       else el.classList.add('cant');
     }
@@ -5644,12 +5666,17 @@ function pickTypedShop(typeId){
   const slots=[...allKeys].sort(()=>Math.random()-.5).slice(0,3);
   const cards=slots.map(key=>{
     const f=getItemFactory(key);if(!f)return'';
-    const t=f();shopItemCache[key]=t;const displayCost=getShopItemCost(key,t.cost);const can=G.gold>=displayCost;
-    return `<div class="dc ${(!can&&displayCost>0)?'cant':''}" data-item-cost="${displayCost}" onclick="buyItem('${key}',false)">
+    const t=f();shopItemCache[key]=t;const displayCost=getShopItemCost(key,t.cost);
+    const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+    const boardOk=hasOpenSlot()||!!existing;
+    const can=G.gold>=displayCost&&boardOk;
+    const fullNote=(!boardOk&&!existing)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+    const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+    return `<div class="dc ${(!can&&displayCost>0)?'cant':''}" data-item-cost="${displayCost}" ${bfAttr} onclick="buyItem('${key}',false)">
       <div class="di">${getItemIcon(t)}</div>
       <div class="dn">${t.name}</div>
       <div class="dd">${t.desc}</div>
-      <div class="dp">🪙 ${displayCost}</div>
+      <div class="dp">🪙 ${displayCost}${fullNote}</div>
       <div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div>
     </div>`;
   }).join('');
@@ -5747,8 +5774,13 @@ function _openShop(shop){
       const slots=generateShopSlots(G.day);
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
-        const t=f();shopItemCache[key]=t;const shopCost=getShopItemCost(key,t.cost);const can=G.gold>=shopCost;
-        return`<div class="dc ${(!can&&shopCost>0)?'cant':''}" data-item-cost="${shopCost}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCost}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        const t=f();shopItemCache[key]=t;const shopCost=getShopItemCost(key,t.cost);
+        const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+        const boardOk=hasOpenSlot()||!!existing;
+        const can=G.gold>=shopCost&&boardOk;
+        const fullNote=(!boardOk&&!existing)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+        const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+        return`<div class="dc ${(!can&&shopCost>0)?'cant':''}" data-item-cost="${shopCost}" ${bfAttr} onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCost}${fullNote}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5760,8 +5792,13 @@ function _openShop(shop){
       const slots=[...allKeys].sort(()=>Math.random()-.5).slice(0,3);
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
-        const t=f();shopItemCache[key]=t;const shopCostT=getShopItemCost(key,t.cost);const can=G.gold>=shopCostT;
-        return`<div class="dc ${(!can&&shopCostT>0)?'cant':''}" data-item-cost="${shopCostT}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostT}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        const t=f();shopItemCache[key]=t;const shopCostT=getShopItemCost(key,t.cost);
+        const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+        const boardOk=hasOpenSlot()||!!existing;
+        const can=G.gold>=shopCostT&&boardOk;
+        const fullNote=(!boardOk&&!existing)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+        const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+        return`<div class="dc ${(!can&&shopCostT>0)?'cant':''}" data-item-cost="${shopCostT}" ${bfAttr} onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostT}${fullNote}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5774,8 +5811,13 @@ function _openShop(shop){
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
         const t=f();shopItemCache[key]=t;
-        const clearBase=getShopItemCost(key,t.cost);const price=Math.max(1,Math.floor(clearBase*0.5));const can=G.gold>=price;
-        return`<div class="dc ${(!can&&price>0)?'cant':''}" data-item-cost="${price}" onclick="buyItemAtPrice('${key}',${price})"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price} <span style="text-decoration:line-through;color:var(--dim);font-size:7px">${clearBase}</span></div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        const clearBase=getShopItemCost(key,t.cost);const price=Math.max(1,Math.floor(clearBase*0.5));
+        const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+        const boardOk=hasOpenSlot()||!!existing;
+        const can=G.gold>=price&&boardOk;
+        const fullNote=(!boardOk&&!existing)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+        const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+        return`<div class="dc ${(!can&&price>0)?'cant':''}" data-item-cost="${price}" ${bfAttr} onclick="buyItemAtPrice('${key}',${price})"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price} <span style="text-decoration:line-through;color:var(--dim);font-size:7px">${clearBase}</span>${fullNote}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5788,8 +5830,13 @@ function _openShop(shop){
       const slots=[...pool].sort(()=>Math.random()-.5).slice(0,4);
       const cards=slots.map(key=>{
         const f=getItemFactory(key);if(!f)return'';
-        const t=f();shopItemCache[key]=t;const shopCostBR=getShopItemCost(key,t.cost);const can=G.gold>=shopCostBR;
-        return`<div class="dc ${(!can&&shopCostBR>0)?'cant':''}" data-item-cost="${shopCostBR}" onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostBR}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
+        const t=f();shopItemCache[key]=t;const shopCostBR=getShopItemCost(key,t.cost);
+        const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+        const boardOk=hasOpenSlot()||!!existing;
+        const can=G.gold>=shopCostBR&&boardOk;
+        const fullNote=(!boardOk&&!existing)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+        const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+        return`<div class="dc ${(!can&&shopCostBR>0)?'cant':''}" data-item-cost="${shopCostBR}" ${bfAttr} onclick="buyItem('${key}',false)"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${shopCostBR}${fullNote}</div><div class="dc-info" onclick="event.stopPropagation();showItemInfo(shopItemCache['${key}'])">ℹ</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5827,8 +5874,11 @@ function _openShop(shop){
       crates.push({id:'weapon',name:'Attack Crate',price:4,desc:'One random weapon.'});
       window._lootCrates=crates;
       const cards=crates.slice(0,3).map((c,i)=>{
-        const can=G.gold>=c.price;
-        return`<div class="dc ${can?'':'cant'}" data-item-cost="${c.price}" onclick="${can?`lootCratePurchase(${i})`:''}"><div class="di">📦</div><div class="dn">${c.name}</div><div class="dd">${c.desc}</div><div class="dp">🪙 ${c.price}</div></div>`;
+        const open=hasOpenSlot();
+        const can=G.gold>=c.price&&open;
+        const fullNote=!open?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+        const bfAttr=!open?'data-board-full="1"':'';
+        return`<div class="dc ${can?'':'cant'}" data-item-cost="${c.price}" ${bfAttr} onclick="${can?`lootCratePurchase(${i})`:''}"><div class="di">📦</div><div class="dn">${c.name}</div><div class="dd">${c.desc}</div><div class="dp">🪙 ${c.price}${fullNote}</div></div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${cards}</div><div class="btn-row"><button class="btn btn-d" onclick="skipShop()">✕ LEAVE</button></div>`);
       break;
@@ -5878,9 +5928,13 @@ function checkTrenchcoat(shop,onDone){
     const t=ti.base;
     const ic=getItemIcon(t);
     const icHtml=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
-    const can=G.gold>=t.cost;
+    const existing=[...board.front,...board.back].find(it=>it&&(it.itemKey===ti.key||it.id===ti.key)&&it.upgradeLevel<3);
+    const boardOk=hasOpenSlot()||!!existing;
+    const can=G.gold>=t.cost&&boardOk;
     const hpNote=ti.hp<t.maxHp?`<div style="font-size:7px;color:var(--honor-red);">⚠ ${ti.hp}/${t.maxHp} HP</div>`:'';
-    return`<div class="dc ${can?'':'cant'}" data-item-cost="${t.cost}" onclick="${can?`trenchcoatBuy(${i})`:''}"><div class="di">${icHtml}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div>${hpNote}<div class="dp">🪙 ${t.cost}</div></div>`;
+    const fullNote=(!boardOk&&!existing)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+    const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+    return`<div class="dc ${can?'':'cant'}" data-item-cost="${t.cost}" ${bfAttr} onclick="${can?`trenchcoatBuy(${i})`:''}"><div class="di">${icHtml}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div>${hpNote}${fullNote}<div class="dp">🪙 ${t.cost}</div></div>`;
   }).join('');
   setEncBody(`<div style="font-size:13px;color:var(--dim);margin-bottom:10px;font-style:italic;">A figure. Two items visible. They make eye contact and say nothing.</div>
     <div class="draft-row">${cards}</div>
@@ -6010,8 +6064,13 @@ function renderWholesale(){
   }
   const cards=keys.map((key,idx)=>{
     const t=wItems[key];if(!t)return'';
-    const price=prices[key]||0;const can=G.gold>=price;
-    return`<div class="dc ${(!can&&price>0)?'cant':''}" data-item-cost="${price}" onclick="${can?`wholesaleBuy(${idx})`:''}"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price}</div></div>`;
+    const price=prices[key]||0;
+    const existing=[...board.front,...board.back].find(i=>i&&(i.itemKey===key||i.id===key)&&i.upgradeLevel<3);
+    const boardOk=hasOpenSlot()||!!existing;
+    const can=G.gold>=price&&boardOk;
+    const fullNote=(!boardOk&&!existing)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+    const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
+    return`<div class="dc ${(!can&&price>0)?'cant':''}" data-item-cost="${price}" ${bfAttr} onclick="${can?`wholesaleBuy(${idx})`:''}"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price}${fullNote}</div></div>`;
   }).join('');
   setEncBody(`<div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-p" onclick="wholesaleDone()">DONE →</button></div>`);
 }
@@ -7325,11 +7384,16 @@ function resolveEventChoice(choiceIdx){
       setEncTitle("THE MERCHANT'S DAUGHTER");
       const mdCards=window._mdItems.map((it,i)=>{
         const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
-        const can=G.gold>=window._mdPrices[i];
-        return `<div class="dc ${can?'':'cant'}" onclick="${can?`merchantsDaughterBuy(${i})`:''}">
+        const mdKey=it.itemKey||it.id||'';
+        const mdExisting=[...board.front,...board.back].find(bi=>bi&&(bi.itemKey===mdKey||bi.id===mdKey)&&bi.upgradeLevel<3);
+        const mdBoardOk=hasOpenSlot()||!!mdExisting;
+        const can=G.gold>=window._mdPrices[i]&&mdBoardOk;
+        const fullNote=(!mdBoardOk&&!mdExisting)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+        const bfAttr=(!mdBoardOk&&!mdExisting)?'data-board-full="1"':'';
+        return `<div class="dc ${can?'':'cant'}" ${bfAttr} data-item-cost="${window._mdPrices[i]}" onclick="${can?`merchantsDaughterBuy(${i})`:''}">
           <div class="di">${ih}</div><div class="dn">${it.name}</div>
           <div class="dd">${it.desc||''}</div>
-          <div class="dp">🪙 ${window._mdPrices[i]} <span style="font-size:8px;color:var(--dim);text-decoration:line-through">${it.cost}</span></div>
+          <div class="dp">🪙 ${window._mdPrices[i]} <span style="font-size:8px;color:var(--dim);text-decoration:line-through">${it.cost}</span>${fullNote}</div>
         </div>`;
       }).join('');
       setEncBody(`<div class="draft-row">${mdCards}</div>
@@ -7368,15 +7432,18 @@ function resolveEventChoice(choiceIdx){
     }
 
     case 'pawnbroker_deal': {
-      const allIt=[...board.front,...board.back].filter(i=>i);
-      if(!allIt.length){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
-      window._pawnItems=allIt;
-      setEncTitle('THE PAWNBROKER');
-      const pcards=allIt.map((it,i)=>{
-        const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
-        return `<div class="dc" onclick="pawnBrokerSell(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">🪙 ${it.cost||1} (full value)</div></div>`;
-      }).join('');
-      setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">He doesn't ask where you got it.</div><div class="draft-row" style="flex-wrap:wrap;">${pcards}</div>`);
+      showBurdenPanel('THE PAWNBROKER','The slot stays locked for 5 locations after the sale.\n\nStill want to make a deal?',()=>{
+        const allIt=[...board.front,...board.back].filter(i=>i);
+        if(!allIt.length){G.dayStep++;updateUI();renderTrack();activateCurrentNode();return;}
+        window._pawnItems=allIt;
+        setEncTitle('THE PAWNBROKER');
+        const pcards=allIt.map((it,i)=>{
+          const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
+          return `<div class="dc" onclick="pawnBrokerSell(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">🪙 ${it.cost||1} (full value)</div></div>`;
+        }).join('');
+        setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">He doesn't ask where you got it.</div><div class="draft-row" style="flex-wrap:wrap;">${pcards}</div>`);
+      });
+      clearTimeout(_burdenAutoTimeout);
       return;
     }
 
@@ -8044,8 +8111,13 @@ function pawnBrokerSell(idx){
   setEncTitle('THE PAWNBROKER — SHOP');
   const pshop=window._pawnShopItems.map((it,i)=>{
     const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;
-    const can=G.gold>=(it.cost||1);
-    return `<div class="dc ${can?'':'cant'}" onclick="${can?`pawnBrokerShopBuy(${i})`:''}"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">🪙 ${it.cost||1}</div></div>`;
+    const pawnKey=it.itemKey||it.id||'';
+    const pawnExisting=[...board.front,...board.back].find(bi=>bi&&(bi.itemKey===pawnKey||bi.id===pawnKey)&&bi.upgradeLevel<3);
+    const pawnBoardOk=hasOpenSlot()||!!pawnExisting;
+    const can=G.gold>=(it.cost||1)&&pawnBoardOk;
+    const fullNote=(!pawnBoardOk&&!pawnExisting)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
+    const bfAttr=(!pawnBoardOk&&!pawnExisting)?'data-board-full="1"':'';
+    return `<div class="dc ${can?'':'cant'}" data-item-cost="${it.cost||1}" ${bfAttr} onclick="${can?`pawnBrokerShopBuy(${i})`:''}"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div><div class="dp">🪙 ${it.cost||1}${fullNote}</div></div>`;
   }).join('');
   setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">He pulls something out of the back. Slot locked for 5 stops.</div>
     <div class="draft-row">${pshop}</div>
