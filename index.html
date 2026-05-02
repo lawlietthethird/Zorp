@@ -4135,6 +4135,12 @@ function tickSide(b,side,tickMs){
     }
   }
 }
+function getFatigueTarget(side){
+  const b=side==='player'?board:enemyBoard;
+  for(let i=0;i<b.front.length;i++){const item=b.front[i];if(item&&!item.broken&&item.maxHp>0)return item;}
+  for(let i=0;i<b.back.length;i++){const item=b.back[i];if(item&&!item.broken&&item.maxHp>0)return item;}
+  return null;
+}
 function startFatigue(){
   fireEvent({type:'FATIGUE_START',item:null,side:null,value:null,source:null});
   let fMs=0;const fw=document.getElementById('fatigueWrap');if(fw)fw.style.display='block';
@@ -4146,10 +4152,22 @@ function startFatigue(){
     const tt=document.getElementById('timerTxt');if(tt)tt.textContent='FATIGUE +'+playerDmg+'/'+(baseDmg);
     const ff=document.getElementById('fatigueFill');if(ff)ff.style.width=Math.min(100,fMs/12000*100)+'%';
     const actualPlayerDmg=G.steadfastActive?Math.round(playerDmg*0.5):playerDmg;
-    [...board.front,...board.back].forEach(item=>{if(item&&item.maxHp>0&&!item.broken)applyDmgTo(item,actualPlayerDmg,'Fatigue','player');});
-    [...enemyBoard.front,...enemyBoard.back].forEach(item=>{if(item&&item.maxHp>0&&!item.broken)applyDmgTo(item,Math.round(dmg*battleState.fatigueDamageMultiplier),'Fatigue','enemy');});
+    // Player side — damage first eligible item (front[0]→front[2], back[0]→back[2])
+    const playerTarget=getFatigueTarget('player');
+    if(playerTarget){
+      log('b','Fatigue → '+playerTarget.name);
+      applyDmgTo(playerTarget,actualPlayerDmg,'Fatigue','player');
+    }
+    // Enemy side — damage first eligible item
+    const enemyTarget=getFatigueTarget('enemy');
+    if(enemyTarget){
+      log('b','Fatigue → '+enemyTarget.name);
+      applyDmgTo(enemyTarget,Math.round(dmg*battleState.fatigueDamageMultiplier),'Fatigue','enemy');
+    }
     updateBattleBars();updateEnemyBars();
-    const pKO=checkKO('player'),eKO=checkKO('enemy');
+    // End battle when both sides have no targetable items remaining
+    const pKO=getFatigueTarget('player')===null&&checkKO('player');
+    const eKO=getFatigueTarget('enemy')===null&&checkKO('enemy');
     if(pKO&&eKO)endBattle('win');else if(pKO)endBattle('lose');else if(eKO)endBattle('win');
   },500);
 }
