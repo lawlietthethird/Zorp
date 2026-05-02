@@ -5543,6 +5543,28 @@ function imbueItem(item,type,amount){
     item.baseMaxHp=item.maxHp;
     item.hp=item.maxHp;
     item.imbues.push({type,amount});
+  }else if(type==='jolt_on_act'){
+    // On activation: apply amount seconds of haste to a random ally (excluding self).
+    const prev_j=item.handleEvent;
+    item.handleEvent=(event)=>{
+      if(prev_j)prev_j(event);
+      if(event.type==='ITEM_ACTIVATED'&&event.item===item){
+        const allies=[...board.front,...board.back].filter(i=>i&&!i.broken&&i!==item);
+        if(allies.length)applyHaste(allies[Math.floor(Math.random()*allies.length)],amount*1000,item.name);
+      }
+    };
+    item.imbues.push({type,amount});
+  }else if(type==='wet_on_act'){
+    // On activation: apply amount seconds of slow to a random enemy with maxHp > 0.
+    const prev_w=item.handleEvent;
+    item.handleEvent=(event)=>{
+      if(prev_w)prev_w(event);
+      if(event.type==='ITEM_ACTIVATED'&&event.item===item){
+        const t=randomEnemyItem('enemy');
+        if(t)applySlow(t,amount*1000,item.name);
+      }
+    };
+    item.imbues.push({type,amount});
   }
 }
 
@@ -6540,6 +6562,47 @@ const EVENTS=[
     ],
     resolution:'immediate',tags:['free','performance'],easter_egg:false,
   },
+  // ── THE TRAVELING MERCHANT ───────────────────────────────────
+  {
+    id:'traveling_merchant',name:'The Traveling Merchant',tier:'intermediate',image:null,
+    coverName:'The Traveling Merchant',coverEmoji:'🧑‍💼',coverLine:"He's between towns. So are you.",
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Traveling Merchant',flavor:'He needs a favor.',dialogue:null},
+    choices:[
+      {id:'fourth_hand',label:'He needs a fourth hand. Just for a minute.',sublabel:"Probably junk. But it's something.",cost:null,requiresCost:false,
+       effect:{type:'merchant_clearance'},burden:null,outcomeText:null},
+      {id:'look_away',label:'He needs someone to look the other way.',sublabel:'Could be anything. Usually is.',cost:null,requiresCost:false,
+       effect:{type:'merchant_generic'},burden:null,outcomeText:null},
+      {id:'forget',label:'He needs you to forget you saw him.',sublabel:'He knows what you are.',cost:null,requiresCost:false,
+       effect:{type:'merchant_typed'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free'],easter_egg:false,
+  },
+  // ── THE CACHE ────────────────────────────────────────────────
+  {
+    id:'the_cache',name:'The Cache',tier:'intermediate',image:null,
+    coverName:'The Cache',coverEmoji:'📦',coverLine:"How'd it get here?",
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Cache',flavor:"Looks like one of those supply crates from an FPS game. How'd it get here?",dialogue:null},
+    effect:{type:'cache_open'},
+    choices:[],
+    resolution:'immediate',tags:['free'],easter_egg:false,
+  },
+  // ── THE LETTER ───────────────────────────────────────────────
+  {
+    id:'the_letter',name:'The Letter',tier:'intermediate',image:null,
+    coverName:'The Letter',coverEmoji:'📩',coverLine:'It has your name on it.',
+    unlock:{minDay:2,maxDay:9,minWins:0,maxWins:6,performance:null,state:null,metricFlags:[],excludeFlags:[]},
+    validSlots:null,state:null,
+    prompt:{image:null,title:'The Letter',flavor:"It has your name on it. The handwriting is familiar but you can't place it.",dialogue:null},
+    choices:[
+      {id:'open',label:'Open it',cost:null,requiresCost:false,
+       effect:{type:'letter_open'},burden:null,outcomeText:null},
+    ],
+    resolution:'immediate',tags:['free'],easter_egg:false,
+  },
 ];
 
 let currentEvent=null;
@@ -6755,6 +6818,26 @@ function showEvent(event){
       showBurdenPanel('THE CROW','A coin. Idk if this was even worth it.',_autoAdv);
       return;
     }
+    // Cache — pick between 2 provision items
+    if(event.effect&&event.effect.type==='cache_open'){
+      const _provAll=[...new Set([
+        ...getItemsOfRarity('beginner',['provision']),
+        ...getItemsOfRarity('intermediate',['provision']),
+        ...getItemsOfRarity('advanced',['provision']),
+      ])];
+      if(!_provAll.length){_autoAdv();return;}
+      const _pick1=_provAll[Math.floor(Math.random()*_provAll.length)];
+      const _rem=_provAll.filter(k=>k!==_pick1);
+      const _pick2=_rem.length?_rem[Math.floor(Math.random()*_rem.length)]:_pick1;
+      const _mkProv=(key)=>{const f=getItemFactory(key);if(!f)return null;const b=f();return Object.assign({},b,{id:key+'_'+Math.random().toString(36).slice(2,7),hp:b.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:b.maxUses,upgradeLevel:0,effectAmt:b.baseEffect,imbues:[]});};
+      const _cItems=[_mkProv(_pick1),_mkProv(_pick2)].filter(Boolean);
+      if(!_cItems.length){_autoAdv();return;}
+      window._cacheItems=_cItems;window._cacheAdv=_autoAdv;
+      const _cCards=_cItems.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="cachePickItem(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">${it.desc||''}</div></div>`;}).join('');
+      setEncTitle('THE CACHE');
+      setEncBody(`<div style="display:flex;flex-direction:column;gap:12px;max-width:380px;margin:0 auto;padding:8px 0;"><div style="font-size:13px;color:var(--dim);line-height:1.65;">You crack it open.</div><div class="draft-row">${_cCards}</div></div>`);
+      return;
+    }
     if(event.effect&&event.effect.type==='generous_neighbor_slot'){
       G.neighborSlotBonus=(G.neighborSlotBonus||0)+1;
       renderBoard();updateUI();
@@ -6775,10 +6858,14 @@ function showEvent(event){
     // Molt eat: grey out if no upgraded items on board
     const moltCantEat=event.id==='the_molt'&&c.id==='eat'&&
       ![...board.front,...board.back].some(i=>i&&i.upgradeLevel>0);
-    const disabled=cantAfford||moltCantEat;
+    // Merchant typed: grey out if player is typeless
+    const merchantTypedDisabled=event.id==='traveling_merchant'&&c.id==='forget'&&
+      (!G.type||G.type==='typeless');
+    const disabled=cantAfford||moltCantEat||merchantTypedDisabled;
     const costLabel=isGoldCost?` (🪙${c.cost.amount})`:isHonorCost?` (${c.cost.amount} honor)`:'';
+    const sublabelHtml=c.sublabel?`<div style="font-size:10px;color:var(--muted);margin-top:2px;">${c.sublabel}</div>`:'';
     const style=disabled?'opacity:.4;pointer-events:none;':'';
-    return `<button class="btn btn-p" style="margin:4px 0;width:100%;text-align:left;padding:10px 14px;${style}" onclick="${disabled?'':('resolveEventChoice('+i+')')}">${c.label}${costLabel}</button>`;
+    return `<button class="btn btn-p" style="margin:4px 0;width:100%;text-align:left;padding:10px 14px;${style}" onclick="${disabled?'':('resolveEventChoice('+i+')')}"><div>${c.label}${costLabel}</div>${sublabelHtml}</button>`;
   }).join('');
   setEncBody(`<div style="display:flex;flex-direction:column;gap:12px;max-width:380px;margin:0 auto;padding:8px 0;">
     <div style="font-weight:700;font-size:15px;text-align:center;letter-spacing:.04em;">${title}</div>
@@ -7549,6 +7636,65 @@ function resolveEventChoice(choiceIdx){
       return;
     }
 
+    case 'merchant_clearance':
+    case 'merchant_generic':
+    case 'merchant_typed': {
+      // Determine item to give based on favour type
+      let _mPool=[];
+      if(effect.type==='merchant_clearance'){
+        // Lowest rarity with non-zero weight for current day
+        const _mtw=TIER_WEIGHTS[Math.min(Math.max(G.day,1),10)]||TIER_WEIGHTS[10];
+        const _mrars=['beginner','intermediate','advanced','mastered'];
+        const _mLow=_mrars.find(r=>(_mtw[r]||0)>0)||'beginner';
+        _mPool=getItemsOfRarity(_mLow);
+      }else if(effect.type==='merchant_typed'){
+        _mPool=G.type?getTypedItemKeys(G.type):getItemsOfRarity('beginner');
+      }else{
+        // merchant_generic — weighted by current day rarity
+        const _mgtw=TIER_WEIGHTS[Math.min(Math.max(G.day,1),10)]||TIER_WEIGHTS[10];
+        const _mgRars=['beginner','intermediate','advanced','mastered'];
+        const _mgDom=_mgRars.reduce((best,r)=>(_mgtw[r]||0)>(_mgtw[best]||0)?r:best,'beginner');
+        _mPool=getItemsOfRarity(_mgDom);
+      }
+      if(!_mPool||!_mPool.length){done();return;}
+      const _mKey=_mPool[Math.floor(Math.random()*_mPool.length)];
+      const _mFact=getItemFactory(_mKey);
+      if(!_mFact){done();return;}
+      const _mBase=_mFact();
+      const _mItem=Object.assign({},_mBase,{id:_mKey+'_'+Math.random().toString(36).slice(2,7),hp:_mBase.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:_mBase.maxUses,upgradeLevel:0,effectAmt:_mBase.baseEffect,imbues:[]});
+      const _mAdvance=advance;
+      merchantPlaceItem(_mItem,_mAdvance);
+      return;
+    }
+
+    case 'letter_open': {
+      const _isMoney=Math.random()<0.5;
+      if(_isMoney){
+        const _gold=Math.random()<0.5?2:1;
+        G.gold+=_gold;updateUI();
+        if(_gold===2){
+          showBurdenPanel('THE LETTER','"I heard you were out there doing this. Enclosed is something small. Don\'t spend it all at once.\n\n— Mom"',done);
+        }else{
+          showBurdenPanel('THE LETTER','"No note. Just the coin."',done);
+        }
+        clearTimeout(_burdenAutoTimeout);
+      }else{
+        const _lItems=[...board.front,...board.back].filter(i=>i&&!i.broken);
+        if(!_lItems.length){done();return;}
+        const _lItem=_lItems[Math.floor(Math.random()*_lItems.length)];
+        const _isJolt=Math.random()<0.5;
+        imbueItem(_lItem,_isJolt?'jolt_on_act':'wet_on_act',1);
+        renderBoard();
+        if(_isJolt){
+          showBurdenPanel('THE LETTER','"— Anonymous"',done);
+        }else{
+          showBurdenPanel('THE LETTER','"You\'re going to need this more than you think.\n\n— Not Gary"',done);
+        }
+        clearTimeout(_burdenAutoTimeout);
+      }
+      return;
+    }
+
     default:
       G.dayStep++;updateUI();renderTrack();activateCurrentNode();
   }
@@ -7612,6 +7758,63 @@ function vetSwapPick(idx){
   for(let i=0;i<board.front.length;i++){if(board.front[i]===swapItem){board.front[i]=newItem;applySlotBonuses(newItem,'front');renderBoard();if(doneCb)doneCb();else fallback();return;}}
   for(let i=0;i<board.back.length;i++){if(board.back[i]===swapItem){board.back[i]=newItem;applySlotBonuses(newItem,'back');renderBoard();if(doneCb)doneCb();else fallback();return;}}
   if(doneCb)doneCb();else fallback();
+}
+
+// ── Traveling Merchant placement ─────────────────────────────
+// Shared helper: place item on board, swap picker if full, then show panel and advance.
+function merchantPlaceItem(item,advance){
+  const mf=maxFrontSlots();const mb=maxBackSlots();let placed=false;
+  const ok=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&ok('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
+  if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&ok('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
+  if(placed){renderBoard();showBurdenPanel('THE TRAVELING MERCHANT','He hands you something. Neither of you mention it again.',advance);clearTimeout(_burdenAutoTimeout);return;}
+  // Board full — swap picker
+  window._merchantNewItem=item;window._merchantAdvance=advance;
+  const ex=[...board.front,...board.back].filter(i=>i);
+  window._merchantSwapItems=ex;
+  setEncTitle('THE TRAVELING MERCHANT — SWAP ITEM');
+  const mc=ex.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="merchantSwapPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Swap</div></div>`;}).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Board full. Make room for ${item.name}.</div><div class="draft-row" style="flex-wrap:wrap;">${mc}</div>`);
+}
+function merchantSwapPick(idx){
+  const swapItem=window._merchantSwapItems&&window._merchantSwapItems[idx];
+  const newItem=window._merchantNewItem;
+  const advance=window._merchantAdvance||function(){G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  if(!swapItem||!newItem){advance();return;}
+  window._merchantSwapItems=null;window._merchantNewItem=null;window._merchantAdvance=null;
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===swapItem){board.front[i]=newItem;applySlotBonuses(newItem,'front');renderBoard();showBurdenPanel('THE TRAVELING MERCHANT','He hands you something. Neither of you mention it again.',advance);clearTimeout(_burdenAutoTimeout);return;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===swapItem){board.back[i]=newItem;applySlotBonuses(newItem,'back');renderBoard();showBurdenPanel('THE TRAVELING MERCHANT','He hands you something. Neither of you mention it again.',advance);clearTimeout(_burdenAutoTimeout);return;}}
+  advance();
+}
+
+// ── The Cache helper ──────────────────────────────────────────
+function cachePickItem(idx){
+  const item=window._cacheItems&&window._cacheItems[idx];
+  const advance=window._cacheAdv||function(){G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  window._cacheItems=null;window._cacheAdv=null;
+  if(!item){advance();return;}
+  const mf=maxFrontSlots();const mb=maxBackSlots();let placed=false;
+  const ok=(row,i)=>!G.lockedSlots||!G.lockedSlots.some(ls=>ls.row===row&&ls.idx===i);
+  for(let i=0;i<mf&&!placed;i++){if(!board.front[i]&&ok('front',i)){board.front[i]=item;applySlotBonuses(item,'front');placed=true;}}
+  if(!placed)for(let i=0;i<mb&&!placed;i++){if(!board.back[i]&&ok('back',i)){board.back[i]=item;applySlotBonuses(item,'back');placed=true;}}
+  if(placed){renderBoard();showBurdenPanel('THE CACHE',"You don't look back.",advance);clearTimeout(_burdenAutoTimeout);return;}
+  // Board full — swap picker
+  window._cacheNewItem=item;window._cacheSwapAdv=advance;
+  const ex=[...board.front,...board.back].filter(i=>i);
+  window._cacheSwapItems=ex;
+  setEncTitle('THE CACHE — SWAP ITEM');
+  const cc=ex.map((it,i)=>{const ic=getItemIcon(it);const ih=(typeof ic==='string'&&ic.startsWith('http'))?`<img src="${ic}" style="width:26px;height:26px;object-fit:contain;">`:`${ic}`;return`<div class="dc" onclick="cacheSwapPick(${i})"><div class="di">${ih}</div><div class="dn">${it.name}</div><div class="dd">Swap</div></div>`;}).join('');
+  setEncBody(`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Board full. Make room for ${item.name}.</div><div class="draft-row" style="flex-wrap:wrap;">${cc}</div>`);
+}
+function cacheSwapPick(idx){
+  const swapItem=window._cacheSwapItems&&window._cacheSwapItems[idx];
+  const newItem=window._cacheNewItem;
+  const advance=window._cacheSwapAdv||function(){G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
+  if(!swapItem||!newItem){advance();return;}
+  window._cacheSwapItems=null;window._cacheNewItem=null;window._cacheSwapAdv=null;
+  for(let i=0;i<board.front.length;i++){if(board.front[i]===swapItem){board.front[i]=newItem;applySlotBonuses(newItem,'front');renderBoard();showBurdenPanel('THE CACHE',"You don't look back.",advance);clearTimeout(_burdenAutoTimeout);return;}}
+  for(let i=0;i<board.back.length;i++){if(board.back[i]===swapItem){board.back[i]=newItem;applySlotBonuses(newItem,'back');renderBoard();showBurdenPanel('THE CACHE',"You don't look back.",advance);clearTimeout(_burdenAutoTimeout);return;}}
+  advance();
 }
 
 // ── Old Man's Cart helpers ────────────────────────────────────
