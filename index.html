@@ -570,7 +570,6 @@ function getSkillMods(){
   const m={
     maxHpBonus:0,
     speedMult:1.0,
-    backSpeedMult:1.0,
     dmgBonus:0,
     platingMult:1.0,
     fatigueMult:1.0,
@@ -602,6 +601,8 @@ function getSkillMods(){
 
 function initBattleState(){
   battleState={
+    playerItems:[],
+    enemyItems:[],
     momentumBonus:0,
     fatigueDamageMultiplier:1,
     totalSidePlating:0,
@@ -821,7 +822,7 @@ function renderSkillTree(){
 // ============================================================
 // STATE
 // ============================================================
-const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',monsterType:'fox',rivalName:'Rival',tutorialSeen:false,secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false,betPending:false,difficulty:localStorage.getItem('zorpDifficulty')||'easy',metrics:{wildWins:0,wildLosses:0,trainerWins:0,trainersFought:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false,wildLostToday:false,bindingMaxed:false,trenchcoatFound:false,hermitVisited:false},burdens:[],forkBonusGold:false,neighborSlotBonus:0,inventory:[],slotBonuses:{front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}},nextEventIsWild:false,lockedSlots:[],bindings:[],bindingCount:0,strangerMark:null};
+const G={gold:8,honor:13,maxHonor:13,wins:0,day:1,type:null,rivalDefeated:false,dayStep:0,selectedSlot:null,battleRunning:false,lastResult:null,wildChoice:null,pendingSkillNode:null,momGiftGiven:false,monsterName:'Kip',monsterType:'fox',rivalName:'Rival',tutorialSeen:false,secondWindUsed:false,secondWindBuff:null,steadfastActive:false,consolationPending:false,betPending:false,difficulty:(()=>{try{return localStorage.getItem('zorpDifficulty')||'easy';}catch(e){return 'easy';}})(),metrics:{wildWins:0,wildLosses:0,trainerWins:0,trainersFought:0,poisonApps:0,burnApps:0,itemsSold:0,totalDamageDealt:0,itemsLostInBattle:0,burdensTaken:0,eventsDeclined:[],eventsCompleted:[],npcsMet:[],winsWithoutHonorLoss:0,butcherDeclines:0,hasWinston:false,loanActive:false,oathTaken:false,wildLostToday:false,bindingMaxed:false,trenchcoatFound:false,hermitVisited:false},burdens:[],forkBonusGold:false,neighborSlotBonus:0,inventory:[],slotBonuses:{front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}},nextEventIsWild:false,lockedSlots:[],bindings:[],bindingCount:0,strangerMark:null};
 let bannedTypes=[];
 let rivalRecord={wins:parseInt(localStorage.getItem('rivalWins')||'0'),losses:parseInt(localStorage.getItem('rivalLosses')||'0')};
 let lastOfferedTypes=[];
@@ -2116,6 +2117,7 @@ function checkAndBreak(item,side){
     // Fire ITEM_BROKEN before marking broken — handlers fire while item still exists
     fireEvent({type:'ITEM_BROKEN',item:item,side:side,value:0,source:null});
     item.broken=true;
+    if(battleState){battleState.playerItems=[...board.front,...board.back].filter(Boolean);battleState.enemyItems=[...enemyBoard.front,...enemyBoard.back].filter(Boolean);}
     if(side==='player'&&G.metrics)G.metrics.itemsLostInBattle++;
     if(item.onBreak)item.onBreak(item);
     log('b',item.name+' BROKEN!');
@@ -3798,7 +3800,7 @@ function updateEnemyBars(){
 let firingEvent=false;
 
 function fireEvent(event){
-  if(firingEvent)return;
+  if(firingEvent){console.warn('fireEvent dropped:',event.type,event);return;}
   firingEvent=true;
   // Notify item handlers
   [...board.front,...board.back,...enemyBoard.front,...enemyBoard.back].forEach(item=>{
@@ -3840,6 +3842,8 @@ function runBattle(type){
   const sb=document.getElementById('startBattleBtn');if(sb)sb.disabled=true;
   const speedBtn=document.getElementById('speedBtn');if(speedBtn)speedBtn.disabled=true;
   resetItemBattleState(board);resetItemBattleState(enemyBoard);
+  battleState.playerItems=[...board.front,...board.back].filter(Boolean);
+  battleState.enemyItems=[...enemyBoard.front,...enemyBoard.back].filter(Boolean);
   // Fizzle — halve effectAmt of untargetable enemy passive items at battle start
   if(activeSkills.some(s=>s.id==='fizzle')){
     [...enemyBoard.front,...enemyBoard.back].forEach(i=>{
@@ -3882,13 +3886,13 @@ function runBattle(type){
       battleState.benedictionMs=(battleState.benedictionMs||0)+step;
       if(battleState.benedictionMs>=5000){
         battleState.benedictionMs=0;
-        [...board.back].forEach(item=>{
-          if(item&&!item.broken&&item.maxHp>0&&item.hp<item.maxHp){
-            const actual=Math.min(item.maxHp-item.hp,15);
-            item.hp+=actual;
-            if(actual>0)log('h','✨ Benediction heals '+item.name+' +'+actual);
-          }
-        });
+        const _benedBackItems=board.back.filter(i=>i&&!i.broken&&i.maxHp>0&&i.hp<i.maxHp);
+        if(_benedBackItems.length){
+          const _benedTarget=_benedBackItems.reduce((a,c)=>(c.hp/c.maxHp)<(a.hp/a.maxHp)?c:a);
+          const actual=Math.min(_benedTarget.maxHp-_benedTarget.hp,15);
+          _benedTarget.hp+=actual;
+          if(actual>0)log('h','✨ Benediction heals '+_benedTarget.name+' +'+actual);
+        }
       }
     }
     // Ember Storm — at 20s apply 3 burn to all enemies (once per battle)
@@ -4059,7 +4063,6 @@ function tickSide(b,side,tickMs){
     let speedMult=statusSpeedMult;
     if(mods){
       speedMult*=mods.speedMult;
-      if(isBack(item))speedMult*=mods.backSpeedMult;
       if(slotNum===2)speedMult*=(mods.slot2SpeedMult||1.0);
       if(slotNum===5)speedMult*=(mods.slot5SpeedMult||1.0);
     }
@@ -4091,7 +4094,7 @@ function tickSide(b,side,tickMs){
         battleState.electricActivationCount=(battleState.electricActivationCount||0)+1;
         if(activeSkills.some(s=>s.id==='capacitor')&&!battleState.capacitorFired&&battleState.electricActivationCount>=8){
           battleState.capacitorFired=true;
-          [...board.front,...board.back].forEach(i=>{if(i&&!i.broken)applyHaste(i,2000,'Capacitor');});
+          battleState.playerItems.forEach(i=>{if(i&&!i.broken)applyHaste(i,2000,'Capacitor');});
           log('a','⚙️ Capacitor — full board Jolted 2s!');
         }
         // Feedback Loop — Jolted activating item deals 3 dmg to random enemy
@@ -4126,7 +4129,7 @@ function tickSide(b,side,tickMs){
         // Water typed skill player activation effects
         // Rampart — every player activation gives all other items 5 plating
         if(activeSkills.some(s=>s.id==='rampart')){
-          [...board.front,...board.back].forEach(i=>{if(i&&!i.broken&&i!==item&&i.maxHp>0){i.shield=(i.shield||0)+5;i.maxShield=Math.max(i.maxShield||0,i.shield);}});
+          battleState.playerItems.forEach(i=>{if(i&&!i.broken&&i!==item&&i.maxHp>0){i.shield=(i.shield||0)+5;i.maxShield=Math.max(i.maxShield||0,i.shield);}});
         }
         // Vanguard — back row activation gives front row 10 plating
         if(activeSkills.some(s=>s.id==='vanguard')&&board.back.includes(item)){
@@ -4134,7 +4137,7 @@ function tickSide(b,side,tickMs){
         }
         // Plate Mail — every player activation gives all other items 3 plating
         if(activeSkills.some(s=>s.id==='plate_mail')){
-          [...board.front,...board.back].forEach(i=>{if(i&&!i.broken&&i!==item&&i.maxHp>0){i.shield=(i.shield||0)+3;i.maxShield=Math.max(i.maxShield||0,i.shield);}});
+          battleState.playerItems.forEach(i=>{if(i&&!i.broken&&i!==item&&i.maxHp>0){i.shield=(i.shield||0)+3;i.maxShield=Math.max(i.maxShield||0,i.shield);}});
         }
         // Colony — front row activation triggers 1 poison on random enemy (if back row has alive items)
         if(activeSkills.some(s=>s.id==='colony')){
@@ -4142,7 +4145,7 @@ function tickSide(b,side,tickMs){
           if(isFrontRow){
             const backAlive=board.back.filter(i=>i&&!i.broken);
             if(backAlive.length){
-              const enemies=[...enemyBoard.front,...enemyBoard.back]
+              const enemies=battleState.enemyItems
                 .filter(i=>i&&!i.broken);
               if(enemies.length){
                 const t=enemies[Math.floor(Math.random()*enemies.length)];
@@ -4166,7 +4169,7 @@ function tickSide(b,side,tickMs){
       if(side==='player'&&slotNum===6){
         if(activeSkills.some(s=>s.id==='kickstart')&&battleState.kickstartCount<3){
           battleState.kickstartCount++;
-          const alive=[...board.front,...board.back].filter(i=>i&&!i.broken);
+          const alive=battleState.playerItems.filter(i=>i&&!i.broken);
           if(alive.length){
             const t=alive[Math.floor(Math.random()*alive.length)];
             applyHaste(t,2000,'Kickstart');
@@ -4175,7 +4178,7 @@ function tickSide(b,side,tickMs){
         }
         if(activeSkills.some(s=>s.id==='friction')&&battleState.frictionCount<3){
           battleState.frictionCount++;
-          const et=[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&!i.broken&&i.maxHp>0);
+          const et=battleState.enemyItems.filter(i=>i&&!i.broken&&i.maxHp>0);
           if(et.length){
             const t=et[Math.floor(Math.random()*et.length)];
             applySlow(t,2000,'Friction');
@@ -4217,7 +4220,7 @@ function tickSide(b,side,tickMs){
         }
         // Wildfire — 20% chance to spread 1 burn to another enemy on each burn tick
         if(side==='enemy'&&activeSkills.some(s=>s.id==='wildfire')&&Math.random()<0.20){
-          const others=[...enemyBoard.front,...enemyBoard.back].filter(i=>i&&!i.broken&&i!==item);
+          const others=battleState.enemyItems.filter(i=>i&&!i.broken&&i!==item);
           if(others.length){const wt=others[Math.floor(Math.random()*others.length)];applyBurn(wt,1,'Wildfire','player');}
           log('a','🌪️ Wildfire spreads!');
         }
@@ -4253,7 +4256,7 @@ function tickSide(b,side,tickMs){
         log('d','☠️ Poison '+item.name+' -'+pdmg+' HP');
         // Seeping — heal most wounded player ally 1 HP per enemy poison tick
         if(side==='enemy'&&activeSkills.some(s=>s.id==='seeping')){
-          const alive=[...board.front,...board.back]
+          const alive=battleState.playerItems
             .filter(i=>i&&!i.broken&&i.maxHp>0&&i.hp<i.maxHp);
           if(alive.length){
             const weakest=alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
@@ -4270,7 +4273,7 @@ function tickSide(b,side,tickMs){
     }
   });
   if(side==='player'){
-    const joltedCount=[...board.front,...board.back]
+    const joltedCount=battleState.playerItems
       .filter(i=>i&&!i.broken&&(i.hasteMs||0)>0).length;
     if(joltedCount>0){
       battleState.joltCumulativeMs+=(tickMs*joltedCount);
@@ -4325,6 +4328,7 @@ function checkKO(side){return aliveItems(side).filter(i=>i.maxHp>0).length===0;}
 // BATTLE END
 // ============================================================
 function endBattle(result){
+  const fatigueFired=fatigueInterval!==null;
   stopBattle();G.lastResult=result;
   if(currentBattleType!=='wild'&&G.metrics)G.metrics.trainersFought++;
   let title,sub,btnText='CONTINUE →',btnOnclick='continueAfterResult()';
@@ -4367,7 +4371,7 @@ function endBattle(result){
         const afterWinDlg=trainerWinner.dialogueAfterWin||'';
         sub='"'+afterWinDlg.replace(/\n/g,'<br>')+'"<br><br>— '+trainerWinner.name+'<br><br>Win '+G.wins+' of 6.';
       }
-      logEvent({event:'trainer_battle',result:'win',win_number:G.wins,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
+      logEvent({event:'trainer_battle',result:'win',win_number:G.wins,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueFired});
     }
   }else{
     if(currentBattleType==='wild'){
@@ -4387,7 +4391,7 @@ function endBattle(result){
       if(G.wins===5){rivalRecord.losses++;localStorage.setItem('rivalLosses',rivalRecord.losses);}
       sub='"'+afterLossDlg.replace(/\n/g,'<br>')+'"<br><br>— '+trainerLoser.name+'<br><br>Lost '+hl+' honor. '+G.honor+' remaining.'+(G.honor<=0?' SECOND WIND!':'');
       btnText=G.honor<=0?'SECOND WIND...':'TRY AGAIN →';
-      logEvent({event:'trainer_battle',result:'lose',win_number:G.wins,honor_lost:hl,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueInterval!==null});
+      logEvent({event:'trainer_battle',result:'lose',win_number:G.wins,honor_lost:hl,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueFired});
     }
   }
   updateUI();setEncTitle(title);
@@ -4740,8 +4744,11 @@ function rarityIcon(r){return{prestige:'✦',beginner:'◎',intermediate:'◈',a
 
 function getSkillOffers(nodeRarity){
   const takenSkillIds=activeSkills.map(s=>s.id);
-  const genericPool=[...(SKILLS[nodeRarity]||[])].filter(s=>!takenSkillIds.includes(s.id));
-  const typedPool=G.type?[...(TYPED_SKILLS[G.type]?.[nodeRarity]||[])].filter(s=>!takenSkillIds.includes(s.id)):[];
+  let genericPool=[...(SKILLS[nodeRarity]||[])].filter(s=>!takenSkillIds.includes(s.id));
+  let typedPool=G.type?[...(TYPED_SKILLS[G.type]?.[nodeRarity]||[])].filter(s=>!takenSkillIds.includes(s.id)):[];
+  // Ensure cross-pool dedup: neither pool offers skills already active
+  typedPool=typedPool.filter(s=>!takenSkillIds.includes(s.id));
+  genericPool=genericPool.filter(s=>!takenSkillIds.includes(s.id));
 
   const pickGeneric=()=>{
     if(!genericPool.length)return null;
@@ -6258,7 +6265,7 @@ function renderWholesale(){
     const can=G.gold>=price&&boardOk;
     const fullNote=(!boardOk&&!existing)?`<div style="font-size:7px;color:var(--honor-red);margin-top:1px;">Board full</div>`:'';
     const bfAttr=(!boardOk&&!existing)?'data-board-full="1"':'';
-    return`<div class="dc ${(!can&&price>0)?'cant':''}" data-item-cost="${price}" ${bfAttr} onclick="${can?`wholesaleBuy(${idx})`:''}"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp">🪙 ${price}${fullNote}</div></div>`;
+    return`<div id="wholesale-card-${idx}" class="dc ${(!can&&price>0)?'cant':''}" data-item-cost="${price}" ${bfAttr} onclick="${can?`wholesaleBuy(${idx})`:''}"><div class="di">${getItemIcon(t)}</div><div class="dn">${t.name}</div><div class="dd">${t.desc}</div><div class="dp wholesale-price">🪙 ${price}${fullNote}</div></div>`;
   }).join('');
   setEncBody(`<div class="draft-row" style="flex-wrap:wrap;">${cards}</div><div class="btn-row"><button class="btn btn-p" onclick="wholesaleDone()">DONE →</button></div>`);
 }
@@ -6277,7 +6284,9 @@ function wholesaleBuy(idx){
     updateUI();renderBoard();
     keys.splice(idx,1);delete prices[key];
     Object.keys(prices).forEach(k=>{prices[k]=Math.max(1,(prices[k]||0)-1);});
-    renderWholesale();return;
+    const _wCard=document.getElementById('wholesale-card-'+idx);if(_wCard)_wCard.remove();
+    keys.forEach((k,i)=>{const _wc=document.getElementById('wholesale-card-'+(i>=idx?i+1:i));if(_wc){const _wp=_wc.querySelector('.wholesale-price');if(_wp)_wp.textContent='🪙 '+(prices[k]||0);}});
+    return;
   }
   const item={...t,baseMaxHp:t.maxHp,baseActMs:t.actMs,upgradeLevel:0,hp:t.maxHp,shield:0,maxShield:0,actElapsed:0,actPct:0,broken:false,uses:t.maxUses,hasteMs:0,slowMs:0,burnStack:0,burnTickMs:0,poisonStack:0,poisonTickMs:0,_side:'player'};
   const mf=maxFrontSlots();const mb=maxBackSlots();let placed=false;
@@ -6288,7 +6297,9 @@ function wholesaleBuy(idx){
   showNotif(item.name+' added!');
   keys.splice(idx,1);delete prices[key];
   Object.keys(prices).forEach(k=>{prices[k]=Math.max(1,(prices[k]||0)-1);});
-  updateUI();renderBoard();renderWholesale();
+  updateUI();renderBoard();
+  const _wCard=document.getElementById('wholesale-card-'+idx);if(_wCard)_wCard.remove();
+  keys.forEach((k,i)=>{const _wc=document.getElementById('wholesale-card-'+(i>=idx?i+1:i));if(_wc){const _wp=_wc.querySelector('.wholesale-price');if(_wp)_wp.textContent='🪙 '+(prices[k]||0);}});
 }
 
 function wholesaleDone(){
@@ -7780,15 +7791,15 @@ function resolveEventChoice(choiceIdx){
 
     case 'gossip_clue': {
       const gossipAdvance=()=>{G.dayStep++;updateUI();renderTrack();activateCurrentNode();};
-      const done2=(G.metrics&&G.metrics.eventsCompleted)||[];
+      const completedEvents=(G.metrics&&G.metrics.eventsCompleted)||[];
       const hints=[
-        {found:done2.includes('winston')||((G.metrics&&G.metrics.hasWinston)||false),
+        {found:completedEvents.includes('winston')||((G.metrics&&G.metrics.hasWinston)||false),
          text:'He mentioned something about a rock. And a hermit. And a monk.'},
         {found:((G.metrics&&G.metrics.eventsCompleted)||[]).includes('priest'),
          text:'Apparently if you tell the Butcher no twice... something happens.'},
-        {found:done2.includes('old_mans_cart_sell'),
+        {found:completedEvents.includes('old_mans_cart_sell'),
          text:'Someone told me you can sell things you were just given. Immediately.'},
-        {found:done2.includes('the_cartographer'),
+        {found:completedEvents.includes('the_cartographer'),
          text:'The Cartographer has family everywhere. Everywhere.'},
       ];
       const undiscovered=hints.filter(h=>!h.found);
