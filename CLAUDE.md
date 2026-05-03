@@ -29,7 +29,7 @@ The battle engine uses a global event bus. `fireEvent(event)` dispatches to all 
 
 **Items use `handleEvent(event)`** for triggered effects. Passive multipliers stay in `getSkillMods()`. Skill handlers are registered as `sk._battleHandler` from `runBattle` (inline, not via `registerSkillHandlers` — that function has been removed).
 
-**`getNeighbors(item)`** returns `{side, row, index, left, right, behind, inFront}`.
+**`getNeighbors(item)`** returns `{side, row, index, left, right, behind, inFront}`. `behind` is only set (non-null) for front-row items pointing to the back-row item at the same index. `inFront` is only set for back-row items pointing to the front-row item at the same index. Neither is set for the other row direction.
 **`item._side`** is set in `resetItemBattleState` — use this to know which board an item belongs to inside handlers.
 
 ### Item System
@@ -101,9 +101,118 @@ Slots are numbered 1–6: front[0]=1, front[1]=2, front[2]=3, back[0]=4, back[1]
 
 Called every time an item is placed onto the board (shop buy, event placement, swap paths, mom gift). Reads `G.slotBonuses[rowType]` and applies any accumulated `maxHp` or `damage` bonuses to the newly placed item. **Must be called on all placement paths** — omitting it silently skips permanent slot bonuses.
 
+Guard: checks `item._slotBonusApplied` before applying and sets it to `true` immediately after. Prevents double-application on swap paths where the same item object may pass through placement code twice.
+
 ### `G.lockedSlots`
 
 Array of `{row, idx}` objects. Slots in this list cannot be used for free placement. All placement loops must check `G.lockedSlots` before assigning. `pawnbroker_unlock` removes entries. Initialized to `[]` in `resetRun`.
+
+---
+
+## Binding System
+
+Bindings link two board slots together so that battle events on one slot trigger effects on its partner.
+
+### `BINDING_SLOT_PAIRS` constant
+
+Five preset pairs. Only front-slot items can be slotA:
+
+```js
+const BINDING_SLOT_PAIRS=[
+  {a:{row:'front',idx:0}, b:{row:'front',idx:1}},
+  {a:{row:'front',idx:0}, b:{row:'back', idx:0}},
+  {a:{row:'front',idx:1}, b:{row:'front',idx:2}},
+  {a:{row:'front',idx:1}, b:{row:'back', idx:1}},
+  {a:{row:'front',idx:2}, b:{row:'back', idx:2}},
+];
+```
+
+### `G.bindings` array
+
+Each binding object: `{id, type, slotA:{row,idx}, slotB:{row,idx}, visualIndex}`.
+
+`visualIndex` is 1, 2, or 3 (assigned as `G.bindingCount+1` before the push). Controls the border CSS class and symbol shown on bound item cards.
+
+| visualIndex | CSS class | Symbol |
+|-------------|-----------|--------|
+| 1 | `binding-gold` | `✦` |
+| 2 | `binding-teal` | `◆` |
+| 3 | `binding-purple` | `❖` |
+
+### `G.bindingCount`
+
+Integer, 0–3. Incremented by `applyBinding`. When `bindingCount >= 3`, `G.metrics.bindingMaxed` is set to `true` and all further `applyBinding` calls return immediately. Max 3 bindings per run.
+
+### `getAvailableBindingPairs()`
+
+Filters `BINDING_SLOT_PAIRS` to pairs where neither slot is already present in `G.bindings` (as slotA or slotB). Returns array of eligible pairs.
+
+### `applyBinding(type)`
+
+1. Returns immediately if `G.metrics.bindingMaxed`.
+2. Calls `getAvailableBindingPairs()`. Returns immediately if empty.
+3. Picks a random pair.
+4. Creates binding object, pushes to `G.bindings`, increments `G.bindingCount`.
+5. Sets `G.metrics.bindingMaxed = true` if `bindingCount >= 3`.
+6. Calls `renderBoard()`.
+
+### `getBindingPartner(row, idx)`
+
+Searches `G.bindings` for any binding where slotA or slotB matches `{row, idx}`. Returns `{binding, partner}` where `partner` is the other slot object, or `null` if not found.
+
+### `getItemAtSlot(row, idx)`
+
+Returns `board.front[idx]` (if `row==='front'`) or `board.back[idx]`. Returns `null` for empty slots.
+
+### `getEnemyItemAtSlot(row, idx)`
+
+Same as `getItemAtSlot` but reads from `enemyBoard`.
+
+### `triggerBindingOnActivation(row, idx, side)`
+
+Called from `tickSide` when a player item activates (only fires when `side==='player'`). Looks up the binding partner via `getBindingPartner(row, idx)`. If the partner item exists, is not broken, and `!partnerItem._bindingFiring`:
+
+| Binding type | Effect |
+|---|---|
+| `investor` | Partner's `effectAmt` is boosted ×1.2 (rounded) for 1000ms, then restored. `_bindingFiring` is cleared in the timeout callback. |
+| `architect` | Applies 1000ms of haste to the partner item (`applyHaste`). |
+| `kelpie` | Applies 1000ms of slow (`applySlow`) to a random live enemy with `maxHp > 0`. |
+
+`_bindingFiring` is set on `partnerItem` before the switch and cleared after (except `investor`, which clears it in its 1s timeout).
+
+### `triggerBindingOnDamage(row, idx, side, amount)`
+
+Called from `applyDmgTo` after damage lands on a player item (`target._side==='player'`), when `target._row != null`. Guards on `side==='player'` and `!partnerItem._bindingFiring`:
+
+| Binding type | Effect |
+|---|---|
+| `monk` | Applies 15 plating to the partner item (`applyShield('player', 15, 'Monk Binding', partnerItem)`). |
+| `dryad` | Heals the partner item for 5 HP (direct `partnerItem.hp` add, capped at `maxHp`). |
+
+### Mirror binding — damage intercept in `applyDmgTo`
+
+Before shield processing (and before hitCount checks), `applyDmgTo` checks:
+- `target._side === 'player'`
+- `target._row != null` and `target._idx != null`
+- `!target._bindingFiring`
+
+If the target has a `mirror` binding and its partner is a live player item (`!broken`, `!_bindingFiring`), **all damage is rerouted to the partner**. Both `_bindingFiring` flags are set for the duration of the recursive `applyDmgTo` call on the partner, then cleared. The original target takes zero damage.
+
+### Visual rendering
+
+Bound item cards get a CSS class from `{1:'binding-gold', 2:'binding-teal', 3:'binding-purple'}` keyed on `binding.visualIndex`. A small overlay `<div class="binding-sym">` at top-right shows the symbol (`✦`/`◆`/`❖`). `.binding-sym` is `position:absolute; top:2px; right:3px; font-size:7px`.
+
+### `item._row`, `item._idx`
+
+Set in `resetItemBattleState` second pass for player items only. `board.front[idx]._row='front'` and `._idx=idx`, similarly for back row. Enemy items have `_row=null` and `_idx=null`. Used by `triggerBindingOnActivation`, `triggerBindingOnDamage`, and the mirror intercept.
+
+### `item._bindingFiring`
+
+Boolean. Set to `false` in `resetItemBattleState`. Set to `true` on `partnerItem` before a binding trigger fires; cleared after. Prevents recursive binding triggers (e.g., if item A is bound to item B and item B is also bound to item A via a different binding).
+
+### `item._breakHandled`
+
+Boolean. Set to `false` in `resetItemBattleState`. Set to `true` inside `checkAndBreak` at the very start of break processing. If `item.broken && item._breakHandled`, `checkAndBreak` returns immediately — prevents double-break firing within the same battle tick.
 
 ---
 
@@ -360,6 +469,24 @@ The following bugs were audited and fixed. Do not reintroduce them:
 - **`Shame`** — uses `DAMAGE_RECEIVED` event with `event.rawValue` (pre-shield damage), not `DAMAGE_DEALT`. Guards on `event.side==='enemy'`.
 - **`Arsonist`** — `handleEvent` on `BATTLE_START` skips items where `targetable(i)` is false (i.e., `maxHp===0` items such as provisions and relics). Only items with HP are burned.
 - **`applyShield` targetItem guard** — if `targetItem` is passed, checks `targetItem.maxHp > 0` before shielding. Items with `maxHp===0` cannot receive shields.
+- **`gambler_throw`** — honor deduction is handled by the generic cost handler (`cost:{type:'honor',amount:3}`). The `gambler_throw` case body does not deduct honor itself; the cost handler is authoritative.
+- **Training Dummy `hitCount` death path** — when `hitCount` reaches 0 inside `applyDmgTo`, `checkAndBreak` is called so break skills (Desperation, Phoenix Down, etc.) fire correctly. Previously the item was marked broken directly without going through `checkAndBreak`.
+- **`_breakHandled` flag** — `checkAndBreak` checks `item._breakHandled` before processing; sets it to `true` immediately. Prevents double-break firing within the same battle tick when multiple damage sources converge.
+- **`resetRun`** — no longer calls `showTitleScreen()` itself. All callers that need to go to the title screen (RESET button, PLAY AGAIN button, `goToTitleFromVictory`) call both `resetRun()` then `showTitleScreen()` explicitly.
+- **Venom Fang** — `effectFn` mutates only `actMs`, not `baseActMs`. `baseActMs` remains 2000 throughout the battle so `resetItemBattleState` restores correctly on next battle.
+- **Upgrade bench** — uses `getShopItemCost()` for upgrade pricing (which returns `TIER_COSTS[nextDisplayRarity]`), not `UPGRADE_MULTS`.
+- **`getNeighbors`** — `behind` returns the back-slot item for front-row items only (`row==='front'`). `inFront` returns the front-slot item for back-row items only (`row==='back'`). Neither returns values cross-direction.
+- **`applySlotBonuses`** — `_slotBonusApplied` guard prevents double-application when same item passes through placement code twice (e.g., on swap paths).
+- **`resolveQuest`** — `'upgrade_pick'` falls through to `'quest_upgrade_pick'` handler (`case 'upgrade_pick': // fallthrough`). Both use the same board-picker upgrade flow.
+- **`completedEvents` in `gossip_clue` handler** — the local variable is named `completedEvents` (reads `G.metrics.eventsCompleted`), not `done2`. It no longer shadows the outer `done` closure.
+- **`backSpeedMult` removed from `getSkillMods`** — it was always 1.0, never written by any skill. Removed to eliminate dead state.
+- **`Benediction`** — heals the lowest HP% back-row item each 5s tick (uses `reduce` to find minimum `hp/maxHp`), not the first back-row item.
+- **`getSkillOffers`** — filters `activeSkills` from both typed and generic pools before sampling (`takenSkillIds` dedup applied to both `typedPool` and `genericPool` to prevent offering already-owned skills).
+- **Wholesale** — removes single card DOM node on purchase (`document.getElementById('wholesale-card-'+idx).remove()`) without rebuilding the full list.
+- **`fatigueFired`** — captured as `const fatigueFired=fatigueInterval!==null` before `stopBattle()` clears `fatigueInterval`. Used in analytics/logEvent calls.
+- **`fireEvent` dropped events** — `fireEvent` logs `console.warn('fireEvent dropped:', event.type, event)` when the re-entrant guard is active. Makes cascade debugging visible.
+- **`localStorage` try/catch** — `G.difficulty` initial value wrapped in IIFE with try/catch for private-browsing safety: `(()=>{try{return localStorage.getItem('zorpDifficulty')||'easy';}catch(e){return 'easy';}})()`.
+- **Appraiser pay formula** — uses `Math.floor(getSellValue(item) * 1.5)` (not `Math.floor(item.cost * 1.5)`), so upgraded items sell at their upgrade-tier sell value × 1.5.
 
 ---
 
@@ -376,29 +503,25 @@ wildChoice:null, pendingSkillNode:null, momGiftGiven:false,
 monsterName:'Kip', monsterType:'fox', rivalName:'Rival', tutorialSeen:false,
 secondWindUsed:false, secondWindBuff:null, steadfastActive:false,
 consolationPending:false, betPending:false,
-difficulty: localStorage.getItem('zorpDifficulty') || 'easy',
+difficulty: (()=>{try{return localStorage.getItem('zorpDifficulty')||'easy';}catch(e){return 'easy';}})(),
 metrics: {
-  wildWins:0, wildLosses:0, trainerWins:0,
+  wildWins:0, wildLosses:0, trainerWins:0, trainersFought:0,
   poisonApps:0, burnApps:0, itemsSold:0,
   totalDamageDealt:0, itemsLostInBattle:0, burdensTaken:0,
   eventsDeclined:[], eventsCompleted:[], npcsMet:[],
   winsWithoutHonorLoss:0, butcherDeclines:0,
   hasWinston:false, loanActive:false, oathTaken:false,
-  wildLostToday:false
+  wildLostToday:false, bindingMaxed:false,
+  trenchcoatFound:false, hermitVisited:false
 },
 burdens: [],
 forkBonusGold:false, neighborSlotBonus:0,
 inventory:[], slotBonuses:{front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}},
-nextEventIsWild:false, lockedSlots:[]
+nextEventIsWild:false, lockedSlots:[],
+bindings:[], bindingCount:0, strangerMark:null
 ```
 
-Note: `trenchcoatFound:false` and `hermitVisited:false` are added to `G.metrics` in `resetRun()` but are not in the initial literal. `G.strangerMark` is also only set in `resetRun()` (not in the initial literal).
-
-**Additional fields set by `resetRun()` (not in initial literal):**
-
-| Field | Type | Purpose |
-|-------|------|---------|
-| `G.strangerMark` | string\|null | Item key to halve HP of that enemy item at wild battle start. Set by Stranger free peek. Cleared in `buildWildEnemyBoard`. |
+Note: All fields above — including `trenchcoatFound`, `hermitVisited`, `bindingMaxed`, `trainersFought`, `bindings`, `bindingCount`, and `strangerMark` — are now in the initial literal AND set in `resetRun()`. The `difficulty` field is wrapped in a try/catch IIFE for private-browsing safety.
 
 **`G.metrics` — increment sites:**
 
@@ -424,6 +547,8 @@ Note: `trenchcoatFound:false` and `hermitVisited:false` are added to `G.metrics`
 | `trenchcoatFound` | `checkTrenchcoat` on trigger | — |
 | `npcsMet` | push on meeting each NPC | Cartographer reward scaling |
 | `burdensTaken` | `fireBurdenHandler` when burden accepted | — |
+| `trainersFought` | `endBattle` — whenever `currentBattleType!=='wild'` (win or loss) | — |
+| `bindingMaxed` | `applyBinding` when `bindingCount >= 3` | Binding event `excludeFlags` |
 
 **`G.metrics.wildLostToday`** — set true on wild loss, false on day advance. Used as `performance` filter for the Unimpressed Farmer event.
 
@@ -511,12 +636,16 @@ resetItemBattleState(b)
 initBattleState()
 checkAndBreak(item, side)
 fireEvent(event)
-getSkillMods()                  // returns {maxHpBonus, speedMult, backSpeedMult, dmgBonus, platingMult, fatigueMult, globalMult, slot2SpeedMult, slot5SpeedMult}
+getSkillMods()                  // returns {maxHpBonus, speedMult, dmgBonus, platingMult, fatigueMult, globalMult, slot2SpeedMult, slot5SpeedMult}
+                                // NOTE: backSpeedMult was removed — it was always 1.0 and never written by any skill.
 getSkillOffers(nodeRarity)
 getFatigueTarget(side)          // returns first non-broken maxHp>0 item: front[0]→front[2], back[0]→back[2]
 ```
 
 ### `battleState` fields (initBattleState)
+
+Cached arrays (refreshed at battle start and in `checkAndBreak` after `item.broken=true`):
+`playerItems:[]`, `enemyItems:[]`.
 
 Generic / global:
 `momentumBonus:0`, `fatigueDamageMultiplier:1`, `totalSidePlating:0`, `burnApplicationsToEnemy:0`, `totalBurnApplied:0`, `fireworksThreshold:6`, `outbreakTriggered:false`, `slowProcsThisBattle:0`, `floodTriggered:false`, `wetDurationMult:1`, `joltCumulativeMs:0`, `thunderFired:false`, `poisonApplicationsToEnemy:0`, `phoenixDownAvailable:true`, `resilienceUsed:false`, `crescendoCount:0`, `crescendoReady:false`, `benedictionMs:0`, `kickstartCount:0`, `frictionCount:0`, `assembledActive:false`, `dualityApplied:false`, `ironHideActive:(skill active)`, `ironHideExpired:false`, `flowStateActive:false`, `predatorActive:false`, `warChestBonus:(Math.floor(G.gold/2) if active else 0)`.
@@ -535,7 +664,9 @@ Toxic: `virulenceCount:0`, `seepingHealMs:0`, `tippingPointFired:false`, `critic
 
 ### `resetItemBattleState`
 
-Per-item resets: `hp=maxHp, shield=0, maxShield=0, actElapsed=0, actPct=0, broken=false, uses=maxUses, hasteMs=0, slowMs=0, _slowMaxMs=0, burnStack=0, burnTickMs=0, poisonStack=0, poisonTickMs=0, _side=('player'|'enemy')`.
+Per-item resets: `hp=maxHp, shield=0, maxShield=0, actElapsed=0, actPct=0, broken=false, _breakHandled=false, uses=maxUses, hasteMs=0, slowMs=0, _slowMaxMs=0, burnStack=0, burnTickMs=0, poisonStack=0, poisonTickMs=0, _side=('player'|'enemy'), _bindingFiring=false, _row=null, _idx=null, _slotBonusApplied=false`.
+
+`item._row` and `item._idx` are then set in a second pass for player items: `board.front.forEach((item,idx)=>{if(item){item._row='front';item._idx=idx;}})` and similarly for back. Used by the binding system to locate items.
 
 Also runs second passes for `apotheosis`, `refrigeration`, `duality` (with `dualityApplied` flag), `assembled`, `iron_formation` (sets `ironFormationActive` if all 3 front filled).
 
@@ -558,6 +689,10 @@ Haste and slow cancel when both active (net 1.0×). `applyHaste` uses `Math.max`
 
 `startFatigue()` fires `FATIGUE_START` event, then runs a 500ms interval. Each tick: fatigue deals to `getFatigueTarget('player')` and `getFatigueTarget('enemy')` separately — **one item per side per tick**. Battle log shows `'Fatigue → [item name]'`. Base damage scales with time (starts at 2, +3 per 2s, cap 40). Player fatigue applies `fatigueMult` from skills. Enemy fatigue applies `battleState.fatigueDamageMultiplier` (set by Patience). `G.steadfastActive` halves player fatigue damage.
 
+### `applyDmgTo` — mirror binding intercept
+
+Before shield processing, `applyDmgTo` checks if the target has a `mirror` binding and a valid partner: if `target._side==='player'` and `target._row!=null` and `target._idx!=null` and `!target._bindingFiring`, it looks up the binding partner. If found and the partner is a live player item and `!partner._bindingFiring`, damage is rerouted entirely to the partner (both `_bindingFiring` flags are set during the recursive call to prevent loops). The original target takes zero damage. This intercept runs before hitCount checks and before shield processing.
+
 ### `applyShield` behavior
 
 - Default target: lowest HP% ally with `maxHp > 0`. This is intentional, not a regression.
@@ -578,7 +713,7 @@ Haste and slow cancel when both active (net 1.0×). `applyHaste` uses `Math.max`
 - **Ricochet:** No HP/timer. `handleEvent` on `DAMAGE_RECEIVED` fires when item directly behind takes damage. Deals 3 to random enemy.
 - **Arsonist:** No timer. `handleEvent` on `BATTLE_START` applies 5 burn to every non-broken item on both boards **where `targetable(i)` is true** (skips `maxHp===0` items). 160 HP — can be killed.
 - **Spite:** 50hp, **0.8s activation**. Increments `effectAmt` by 1 each time any ally takes damage (guards on `event.item._side==='player'`, `event.item!==item`, `!item.broken`). Deals effectAmt to random enemy on activation. `effectAmt` starts at 1, resets to 1 in `resetItemBattleState`.
-- **Venom Fang:** Position-aware. If `self===board.front[0]` or `enemyBoard.front[0]`, uses **1.5s** timer (sets `actMs` and `baseActMs`); otherwise **2s**. Applies 1 poison to random front enemy.
+- **Venom Fang:** Position-aware. `effectFn` checks board slot and sets only `self.actMs` (not `baseActMs`) to 1500 if in slot 1, otherwise 2000. Base actMs stays 2000 — the within-activation `actMs` mutation changes the effective next activation without altering the battle-reset baseline. Applies 1 poison to random front enemy.
 - **`battleState.fatigueDamageMultiplier`:** Default 1, set by `Patience` on `FATIGUE_START`. Applied to enemy fatigue damage in `startFatigue`.
 
 ### Poison mechanic — important
@@ -608,7 +743,7 @@ Poison stacks are permanently permanent. `poisonStack` is never decremented anyw
 
 Separate from the battle event bus. Handles narrative events on the day track between locations.
 
-### EVENTS Array — 33 entries
+### EVENTS Array — 39 entries
 
 Event schema: `{id, name, coverName, coverEmoji, coverLine, tier, image, unlock:{minDay,maxDay,minWins,maxWins,excludeFlags,performance,minHonor,metricFlags}, validSlots, state, prompt:{title,flavor,dialogue}, choices:[{id,label,cost,requiresCost,effect,burden,outcomeText}], resolution, tags, easter_egg}`
 
@@ -624,7 +759,7 @@ Event schema: `{id, name, coverName, coverEmoji, coverLine, tier, image, unlock:
 | ID | Name | Tier | Unlock | ValidSlots | Tags | Key mechanic |
 |----|------|------|--------|------------|------|-------------|
 | `the_rock` | The Rock | beginner | D1-4 | any | free,imbue | Pick: +5 dmg or +10 HP to one weapon/item |
-| `sharpening_stone` | The Sharpening Stone | beginner | D1-4 | any | paid,imbue | Free +3 dmg; or 2g for +7 dmg (weapon) |
+| `sharpening_stone` | The Sharpening Stone | beginner | D1-4 | any | paid,imbue | Free +3 dmg; or 4g for +7 dmg (weapon) |
 | `tax_collector` | The Tax Collector | intermediate | D2-8 | any | forced,imbue | Forced 2g (requiresCost:false), +3 dmg all items |
 | `fork_in_the_road` | The Fork In The Road | beginner | D1-6 | pre_wild | free,fork | Left: +1g on wild win; Right: skip wild, typed shop |
 | `butcher` | The Butcher | intermediate | D2-8, W0-5, excl:loanActive | any | burden,gold | Accept +6g + butcher_loan (repay 7 in 15 locs); Decline tracks butcherDeclines |
@@ -636,11 +771,11 @@ Event schema: `{id, name, coverName, coverEmoji, coverLine, tier, image, unlock:
 | `the_cartographer` | The Cartographer | intermediate | D4-10 | any | free,performance | Reward scales with npcsMet count |
 | `the_hermit` | The Hermit | intermediate | D2-9, excl:hermitVisited | any | free,risk | Indulge: downgrade item + burn imbue; Walk away: item loses 10% HP, gives Winston |
 | `the_blacksmith` | The Blacksmith | intermediate | D2-9 | any | paid,imbue | Free: she picks upgrades; 4g: player picks |
-| `merchants_daughter` | The Merchant's Daughter | intermediate | D2-8 | any | paid | 2g entry: 3 items at random prices; board-full: swap picker |
-| `the_appraiser` | The Appraiser | intermediate | D2-9 | any | free,paid | Sell one item for 150% normal price |
+| `merchants_daughter` | The Merchant's Daughter | intermediate | D2-8 | any | paid | Free browse: 3 intermediate items at ~50% prices; board-full: swap picker |
+| `the_appraiser` | The Appraiser | intermediate | D2-9 | any | free,paid | Sell one item for `Math.floor(getSellValue(item) * 1.5)` gold |
 | `the_oath` | The Oath | intermediate | D2-8, excl:oathTaken | any | burden,risk | Accept: debuffs back row + oath_resolve burden (restores + +35 maxHp back after 15 locs) |
 | `the_pawnbroker` | The Pawnbroker | intermediate | D3-9, W1+ | any | paid,burden | Shows warning panel first; Deal: gold for a locked slot (pawnbroker_unlock returns it in 5 locs) |
-| `the_surgeon` | The Surgeon | intermediate | D3-9, W1+, minHonor:5 | any | paid,honor | 4 honor: upgrade **two** items (pick first, then second) |
+| `the_surgeon` | The Surgeon | intermediate | D3-9, W1+, minHonor:6 | any | paid,honor | 5 honor: upgrade **two** items (pick first, then second) |
 | `the_gambler` | The Gambler | intermediate | D3-9, W1-5 | any | paid,burden,honor | Throw: -3 honor + receive a random advanced item; Refuse: HP ×0.75 (gambler_odds burden restores in 7 locs) |
 | `the_collector` | The Collector | intermediate | D3-9 | any | free,risk | Trade: sell worst item, get random higher rarity item |
 | `the_gossip` | The Gossip | intermediate | D3-9, W1+ | any | free | Three choices: clue / gossip_damage (burden) / gossip_wild (nextEventIsWild=true) |
@@ -656,6 +791,12 @@ Event schema: `{id, name, coverName, coverEmoji, coverLine, tier, image, unlock:
 | `traveling_merchant` | The Traveling Merchant | intermediate | D2-9 | any | free | Three favour options: clearance item / generic day-weighted item / typed item |
 | `the_cache` | The Cache | intermediate | D2-9 | any | free | Pick 1 of 2 random provision items |
 | `the_letter` | The Letter | intermediate | D2-9 | any | free | 50/50: gold (1–2g) OR random item gains `jolt_on_act` or `wet_on_act` +1s imbue |
+| `event_investor_binding` | The Investor | beginner | D1-6, excl:bindingMaxed | any | paid | Pay 4g: apply `investor` binding to a random available slot pair |
+| `event_architect_binding` | The Architect | intermediate | D2-8, excl:bindingMaxed | any | paid | Pay 4g: apply `architect` binding to a random available slot pair |
+| `event_monk_binding` | The Monk | intermediate | D3-9, excl:bindingMaxed | any | paid | Pay 4g: apply `monk` binding to a random available slot pair |
+| `event_kelpie_binding` | The Kelpie | intermediate | D2-8, excl:bindingMaxed | any | free | Auto-fires (no choice): apply `kelpie` binding immediately on event display |
+| `event_dryad_binding` | The Dryad | advanced | D5-10, excl:bindingMaxed | any | free | Accept gift (free): apply `dryad` binding to a random available slot pair |
+| `event_mirror_binding` | The Mirror | advanced | D6-10, excl:bindingMaxed | any | free | Accept binding (free): apply `mirror` binding to a random available slot pair |
 
 ### WILD_FIGHT_OPTION
 
@@ -718,6 +859,8 @@ resolveEventChoice(idx)
   // Cost check (gold/honor deduction) happens before the effect switch.
   // Pushes to eventsCompleted (idx===0 accept) or eventsDeclined (idx>0 decline).
 ```
+
+**`apply_binding` effect handler** (`case 'apply_binding':` in `resolveEventChoice`): calls `applyBinding(effect.bindingType)`. If a new binding was created (detected by `G.bindings.length` before/after), shows a burden panel naming the two bound slots with the binding's visual symbol (`✦`/`◆`/`❖`). If no pair was available (all pairs already bound), calls `done()` directly. The Kelpie event is special: it has empty `choices[]` and fires `applyBinding('kelpie')` automatically from the no-choice handler before the generic auto-advance.
 
 `TIER_WEIGHTS` — object keyed by day (1–10). Each entry: `{beginner, intermediate, advanced, mastered}` relative weights. Day 1: beginners only. By day 8+: mastered 50%, advanced 50%.
 
@@ -1137,7 +1280,7 @@ Keys unchanged, only `name` field updated:
 - **Steel-typed Win 6 counter board** — currently a placeholder; replace when Toxic enemy boards are designed against.
 - **Rival entry 6 dialogue/img polish** — `getDialogueBefore` / `getDialogueAfterLoss` exist as functions on the entry; check call sites stay correct as content evolves.
 - **Burden authoring** — `tickBurdens`, `fireBurdenHandler`, and `resolveBurden` are complete. Six burden handlers exist. New burdens can be added by extending the `onResolve` switch.
-- **Event content** — 33 events live. Effect handlers for all events are wired. Event flavour/dialogue text can be polished without architectural changes.
+- **Event content** — 39 events live (including 6 binding events). Effect handlers for all events are wired. Event flavour/dialogue text can be polished without architectural changes.
 - **Quest content** — 5 quests in QUESTS array. All effect types wired in `resolveQuest`.
 
 ---
@@ -1161,3 +1304,8 @@ Keys unchanged, only `name` field updated:
 - The hermit `walk_away` path gives Winston, not `indulge`. Do not swap them.
 - Burn tick is 2000ms. Poison tick base is 2000ms. Do not revert to 500ms/1000ms.
 - `getFatigueTarget` hits ONE item per side per fatigue tick — not all items. Do not revert to all-items fatigue.
+- `item._breakHandled` — set in `checkAndBreak` after first break processing. Prevents double-break within same battle tick. Reset to `false` in `resetItemBattleState`. Do not remove.
+- `battleState.playerItems` / `battleState.enemyItems` — cached item arrays. Initialized at battle start in `runBattle`, refreshed in `checkAndBreak` after `item.broken = true`. Both must stay in sync.
+- Binding system `_bindingFiring` guard — set on `partnerItem` before binding trigger, cleared after (or in timeout for `investor`). Prevents recursive binding triggers when bindings chain. Do not remove or weaken.
+- `G.bindings` / `G.bindingCount` / `G.metrics.bindingMaxed` — the binding system is capped at 3 bindings per run enforced by `applyBinding`. `bindingMaxed` flag is used as `excludeFlags` on all binding events.
+- `applySlotBonuses` `_slotBonusApplied` guard — prevents double-application on swap. Do not call `applySlotBonuses` on items that already have `_slotBonusApplied=true`.
