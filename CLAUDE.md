@@ -38,7 +38,7 @@ The battle engine uses a global event bus. `fireEvent(event)` dispatches to all 
 
 `getItemsOfRarity(rarity, typeFilter)` flattens the first 9 pools (not MOM pools) into one map and filters by rarity (and optional itemType filter). Falls back to a lower rarity if none match. Typed items are mixed in — typed players see the same shop pool as typeless.
 
-`makeItem(key, name, icon, tag, hp, actMs, desc, effectFn, sellOverride, ?, baseEffect, itemType, itemRarity)` is the constructor.
+`makeItem(key, name, icon, tag, maxHp, actMs, desc, effectFn, cost=0, uses=null, baseEffect=0, itemType='', itemRarity='')` is the constructor. Items also have a `sellOverride` field (initialized to `null`); if non-null, `getSellValue` returns it directly instead of the tier-based price.
 
 ### `effectFn` signature
 
@@ -165,7 +165,7 @@ Array of `{row, idx}` objects. Slots in this list cannot be used for free placem
 
 `bandage_roll, river_stone, salad_bowl`.
 
-`river_stone` — display name "Mom's Rock", tag "Definitely not Winston.", `isWinston:false`. It is not Winston.
+`river_stone` — display name "Mom's Rock", tag "She said you could throw it.", `isWinston:false`. It is not Winston.
 
 ---
 
@@ -328,7 +328,7 @@ All 60 typed skills are wired to battle effects. Generic skills are wired in `ge
 - `resilience` — first DAMAGE_RECEIVED grants +70 plating (`resilienceUsed`).
 - `refrigeration` — +1 use to all provisions in `resetItemBattleState`.
 - `momentum` (+4 per player activation), `crescendo` (5th activation ×2 effectAmt), `epicenter` (slot2/slot5 ×0.75 speed), `assembled` (×0.82 speed when 6/6 filled), `duality` (odd slots +10 effect, even +25 maxHp), `kickstart`/`friction` (slot 6 jolt/wet, max 3×), `benediction` (15 HP back row every 5s).
-- `endurance` (×0.6 fatigue), `last_stand`, `iron_hide` (10s safety), `phoenix_downed`, `echo`, `waterproof`/`grounded`, `immunity` (poison interval 2000ms), `asbestos` (-2 burn stacks), `shatter` (enemy plating /2), `war_chest` (+gold/2 dmg), `desperation` (×1.5 effectAmt on each break — never mutates `baseEffect`), `predator` (×1.5 globalMult at 3+ enemy breaks), `flow_state` (×1.15 globalMult at 20s+).
+- `endurance` (×0.6 fatigue), `last_stand`, `iron_hide` (10s safety), `phoenix_downed`, `echo`, `waterproof`/`grounded`, `immunity` (poison interval 2000ms — same as base, redundant but present), `asbestos` (-2 burn stacks), `shatter` (enemy plating /2), `war_chest` (+gold/2 dmg), `desperation` (×1.5 effectAmt on each break — never mutates `baseEffect`), `predator` (×1.5 globalMult at 3+ enemy breaks), `flow_state` (×1.15 globalMult at 20s+).
 - `apotheosis` — every player item with baseEffect gets effectAmt = round(baseEffect × UPGRADE_MULTS[3]).
 - `fizzle` — halves effectAmt and baseEffect of all enemy untargetable passives.
 
@@ -367,7 +367,7 @@ The following bugs were audited and fixed. Do not reintroduce them:
 
 ### G State Fields
 
-`G` is initialized at the top of the script and reset by `resetRun()`. Core fields:
+`G` is initialized at the top of the script and reset by `resetRun()`. Core fields (initial literal):
 
 ```
 gold:8, honor:13, maxHonor:13, wins:0, day:1, type:null, rivalDefeated:false,
@@ -375,7 +375,7 @@ dayStep:0, selectedSlot:null, battleRunning:false, lastResult:null,
 wildChoice:null, pendingSkillNode:null, momGiftGiven:false,
 monsterName:'Kip', monsterType:'fox', rivalName:'Rival', tutorialSeen:false,
 secondWindUsed:false, secondWindBuff:null, steadfastActive:false,
-consolationPending:false,
+consolationPending:false, betPending:false,
 difficulty: localStorage.getItem('zorpDifficulty') || 'easy',
 metrics: {
   wildWins:0, wildLosses:0, trainerWins:0,
@@ -384,22 +384,20 @@ metrics: {
   eventsDeclined:[], eventsCompleted:[], npcsMet:[],
   winsWithoutHonorLoss:0, butcherDeclines:0,
   hasWinston:false, loanActive:false, oathTaken:false,
-  wildLostToday:false, trenchcoatFound:false, hermitVisited:false
+  wildLostToday:false
 },
-burdens: []
+burdens: [],
+forkBonusGold:false, neighborSlotBonus:0,
+inventory:[], slotBonuses:{front:{maxHp:0,damage:0},back:{maxHp:0,damage:0}},
+nextEventIsWild:false, lockedSlots:[]
 ```
 
-**Additional fields reset by `resetRun()` (not in initial literal):**
+Note: `trenchcoatFound:false` and `hermitVisited:false` are added to `G.metrics` in `resetRun()` but are not in the initial literal. `G.strangerMark` is also only set in `resetRun()` (not in the initial literal).
+
+**Additional fields set by `resetRun()` (not in initial literal):**
 
 | Field | Type | Purpose |
 |-------|------|---------|
-| `G.forkBonusGold` | boolean | +1 gold on next wild win (fork_in_the_road left path). |
-| `G.betPending` | boolean | Bet burden resolved — skip next skill pick. |
-| `G.neighborSlotBonus` | number | Extra slots from The Generous Neighbor. Used by `maxFrontSlots()`/`maxBackSlots()`. |
-| `G.inventory` | array | Non-board items (currently: Winston `{id, name, icon, tag, isWinston}`). Shown in `renderInventoryStrip()`. |
-| `G.slotBonuses` | object | `{front:{maxHp,damage}, back:{maxHp,damage}}`. Accumulated from events (e.g. Oath gives back +35 maxHp). Applied on placement via `applySlotBonuses()`. |
-| `G.nextEventIsWild` | boolean | Next event node triggers a wild fight instead of an event. Set by Gossip wild hint. |
-| `G.lockedSlots` | array | `[{row,idx}]`. Slots blocked from free placement. Set by Pawnbroker, cleared by `pawnbroker_unlock` burden. |
 | `G.strangerMark` | string\|null | Item key to halve HP of that enemy item at wild battle start. Set by Stranger free peek. Cleared in `buildWildEnemyBoard`. |
 
 **`G.metrics` — increment sites:**
@@ -419,7 +417,7 @@ burdens: []
 | `eventsDeclined` | `resolveEventChoice` idx>0 | — |
 | `butcherDeclines` | `case 'butcher_decline'` effect handler | `checkEasterEggs()` |
 | `wildLostToday` | `endBattle` wild loss; reset to `false` in `advanceDay()` | Unimpressed Farmer unlock |
-| `oathTaken` | `case 'oath_debuff'` | Oath excludeFlags, Cult Accusation metricFlags (removed) |
+| `oathTaken` | `case 'oath_debuff'` | Oath excludeFlags |
 | `loanActive` | Set true when Butcher burden accepted; false when `butcher_collect` fires | Butcher excludeFlags |
 | `hasWinston` | `hermit_walk_away` effect | Win 6 screen, Monk arc |
 | `hermitVisited` | `hermit_indulge` and `hermit_walk_away` handlers | Hermit `excludeFlags:{hermitVisited:true}` |
@@ -475,6 +473,7 @@ Helpers:
 **NPC:** `PROFESSOR_IMG`.
 
 **Title screen / wild:** `ZORP_LOGO_IMG`, `SCRUFFLING_IMG`, `THORNBACK_IMG`.
+**Wild day 2:** `MUD_PUP_IMG` (Mudpup), `GLOOMWING_IMG` (Gloomwing). Both Cloudinary URLs.
 
 **Trainers:** `TRAINER_RIVAL_IMG, TRAINER_INVESTOR_IMG, TRAINER_ARCHITECT_IMG, TRAINER_MONK_IMG, TRAINER_MIRROR_IMG`. `TRAINER_RIVAL_RETURNS_IMG = TRAINER_RIVAL_IMG`.
 
@@ -514,6 +513,7 @@ checkAndBreak(item, side)
 fireEvent(event)
 getSkillMods()                  // returns {maxHpBonus, speedMult, backSpeedMult, dmgBonus, platingMult, fatigueMult, globalMult, slot2SpeedMult, slot5SpeedMult}
 getSkillOffers(nodeRarity)
+getFatigueTarget(side)          // returns first non-broken maxHp>0 item: front[0]→front[2], back[0]→back[2]
 ```
 
 ### `battleState` fields (initBattleState)
@@ -543,12 +543,20 @@ Also runs second passes for `apotheosis`, `refrigeration`, `duality` (with `dual
 
 | Status | Field | Tick interval | Damage rule |
 |---|---|---|---|
-| Burn | `burnStack`, `burnTickMs` | 500ms | `shield × 2` absorbs, remainder hits HP. `burnStack--` per tick. |
-| Poison | `poisonStack`, `poisonTickMs` | 1000ms (2000 with Immunity, 900 enemy w/ Festering) | Bypasses shield. Poison stacks are permanently permanent. `poisonStack` is never decremented anywhere in the codebase. The only writes to `poisonStack` are: `applyPoison` (adds stacks) and `resetItemBattleState` (zeroes at battle start). The tick loop deals `item.poisonStack` damage each tick but never reduces the stack. Stacks accumulate indefinitely until battle ends. |
+| Burn | `burnStack`, `burnTickMs` | **2000ms** | `shield × 2` absorbs, remainder hits HP. `burnStack--` per tick. |
+| Poison | `poisonStack`, `poisonTickMs` | **2000ms** base (900ms enemy w/ Festering) | Bypasses shield. Poison stacks are permanently permanent. `poisonStack` is never decremented anywhere in the codebase. The only writes to `poisonStack` are: `applyPoison` (adds stacks) and `resetItemBattleState` (zeroes at battle start). The tick loop deals `item.poisonStack` damage each tick but never reduces the stack. Stacks accumulate indefinitely until battle ends. |
 | Haste | `hasteMs` | Countdown | Speed multiplier 2.0 (faster activation). |
 | Slow | `slowMs` | Countdown | Speed multiplier 0.5 (slower activation). |
 
 Haste and slow cancel when both active (net 1.0×). `applyHaste` uses `Math.max`; `applySlow` uses additive `+` (Wet stacks duration).
+
+`immunity` skill sets `poisonInterval=2000` on player items — same as base, so no effective change.
+
+### Fatigue System
+
+`getFatigueTarget(side)` — returns the **first** non-broken item with `maxHp > 0` scanning front[0]→front[2] then back[0]→back[2]. Returns `null` if none found.
+
+`startFatigue()` fires `FATIGUE_START` event, then runs a 500ms interval. Each tick: fatigue deals to `getFatigueTarget('player')` and `getFatigueTarget('enemy')` separately — **one item per side per tick**. Battle log shows `'Fatigue → [item name]'`. Base damage scales with time (starts at 2, +3 per 2s, cap 40). Player fatigue applies `fatigueMult` from skills. Enemy fatigue applies `battleState.fatigueDamageMultiplier` (set by Patience). `G.steadfastActive` halves player fatigue damage.
 
 ### `applyShield` behavior
 
@@ -565,12 +573,12 @@ Haste and slow cancel when both active (net 1.0×). `applyHaste` uses `Math.max`
 
 - **hitCount items:** Training Dummy uses `hitCount` instead of HP. `targetable()` checks `isTargetable===true` as override. `applyDmgTo` checks `hitCount` before shield logic and absorbs damage entirely. Burn and poison decrement hitCount per tick.
 - **Technique items:** `isTechnique=true`. Bought as tomes, consumed on buy, placed as passive items. Show tome modal on purchase. Sell via `showTechSellModal`. Use `handleEvent` for all effects.
-- **Chrysalis:** 1 HP, 1s activation, gains plating each tick. Breaks instantly from any damage.
+- **Chrysalis:** 1 HP, **0.8s activation**, gains 2 plating each tick. Breaks instantly from any damage.
 - **Headbutt:** Deals damage to leftmost enemy front, then takes half as self-damage. Self-damage fires full `DAMAGE_RECEIVED` events.
 - **Ricochet:** No HP/timer. `handleEvent` on `DAMAGE_RECEIVED` fires when item directly behind takes damage. Deals 3 to random enemy.
 - **Arsonist:** No timer. `handleEvent` on `BATTLE_START` applies 5 burn to every non-broken item on both boards **where `targetable(i)` is true** (skips `maxHp===0` items). 160 HP — can be killed.
-- **Spite:** 50hp, 1s activation. Uses `_spiteCounter` (not effectAmt). `handleEvent` on `DAMAGE_RECEIVED` (matching side, not self) increments counter by 1. Resets to 1 in `resetItemBattleState`.
-- **Venom Fang:** Position-aware. If `self===board.front[0]` or `enemyBoard.front[0]`, uses 3s timer (sets `actMs` and `baseActMs`); otherwise 4s. Applies 1 poison to random front enemy.
+- **Spite:** 50hp, **0.8s activation**. Increments `effectAmt` by 1 each time any ally takes damage (guards on `event.item._side==='player'`, `event.item!==item`, `!item.broken`). Deals effectAmt to random enemy on activation. `effectAmt` starts at 1, resets to 1 in `resetItemBattleState`.
+- **Venom Fang:** Position-aware. If `self===board.front[0]` or `enemyBoard.front[0]`, uses **1.5s** timer (sets `actMs` and `baseActMs`); otherwise **2s**. Applies 1 poison to random front enemy.
 - **`battleState.fatigueDamageMultiplier`:** Default 1, set by `Patience` on `FATIGUE_START`. Applied to enemy fatigue damage in `startFatigue`.
 
 ### Poison mechanic — important
@@ -579,13 +587,28 @@ Poison stacks are permanently permanent. `poisonStack` is never decremented anyw
 
 `applyPoison` order: Pandemic (`stacks *= 2`, enemy targets only) → apply → Virulence (every 3rd player-applied application to enemy, +1 extra) → `poisonApplicationsToEnemy++` (enemy targets) → `checkOutbreak()` → Outbreak extra +1 (if triggered) → fireEvent → log.
 
+### Imbue Types
+
+`imbueItem(item, type, amount)` — applies an imbue effect to an item and records it in `item.imbues[]`.
+
+| type | Effect |
+|------|--------|
+| `damage` | Adds `amount` to `effectAmt` and `baseEffect`. |
+| `hp` | Adds `amount` to `maxHp`, `baseMaxHp`, and `hp`. |
+| `burn_on_act` | On activation: applies `amount` burn stacks to a random enemy (uses `handleEvent` wrapper). |
+| `poison_on_act` | On activation: applies `amount` poison stacks to a random enemy (uses `handleEvent` wrapper). |
+| `act_speed` | Reduces `baseActMs` by `amount`% (floor 500ms). Updates `actMs` immediately. |
+| `hp_pct` | Increases `maxHp` by `amount`% of current value. Updates `baseMaxHp` and `hp`. |
+| `jolt_on_act` | On activation: applies `amount` seconds of haste to a random ally (excluding self). |
+| `wet_on_act` | On activation: applies `amount` seconds of slow to a random enemy with `maxHp > 0`. |
+
 ---
 
 ## Run Event System
 
 Separate from the battle event bus. Handles narrative events on the day track between locations.
 
-### EVENTS Array — 25 entries
+### EVENTS Array — 33 entries
 
 Event schema: `{id, name, coverName, coverEmoji, coverLine, tier, image, unlock:{minDay,maxDay,minWins,maxWins,excludeFlags,performance,minHonor,metricFlags}, validSlots, state, prompt:{title,flavor,dialogue}, choices:[{id,label,cost,requiresCost,effect,burden,outcomeText}], resolution, tags, easter_egg}`
 
@@ -616,15 +639,23 @@ Event schema: `{id, name, coverName, coverEmoji, coverLine, tier, image, unlock:
 | `merchants_daughter` | The Merchant's Daughter | intermediate | D2-8 | any | paid | 2g entry: 3 items at random prices; board-full: swap picker |
 | `the_appraiser` | The Appraiser | intermediate | D2-9 | any | free,paid | Sell one item for 150% normal price |
 | `the_oath` | The Oath | intermediate | D2-8, excl:oathTaken | any | burden,risk | Accept: debuffs back row + oath_resolve burden (restores + +35 maxHp back after 15 locs) |
-| `the_pawnbroker` | The Pawnbroker | intermediate | D3-9, W1+ | any | paid,burden | Deal: gold for a locked slot (pawnbroker_unlock returns it) |
-| `the_surgeon` | The Surgeon | intermediate | D3-9, W1+, minHonor:5 | any | paid,honor | 4 honor: upgrade one item |
-| `the_gambler` | The Gambler | intermediate | D3-9, W1-5 | any | paid,burden,honor | Throw: -3 honor, HP halved (gambler burden restores); Refuse: gambler_refuse effect |
+| `the_pawnbroker` | The Pawnbroker | intermediate | D3-9, W1+ | any | paid,burden | Shows warning panel first; Deal: gold for a locked slot (pawnbroker_unlock returns it in 5 locs) |
+| `the_surgeon` | The Surgeon | intermediate | D3-9, W1+, minHonor:5 | any | paid,honor | 4 honor: upgrade **two** items (pick first, then second) |
+| `the_gambler` | The Gambler | intermediate | D3-9, W1-5 | any | paid,burden,honor | Throw: -3 honor + receive a random advanced item; Refuse: HP ×0.75 (gambler_odds burden restores in 7 locs) |
 | `the_collector` | The Collector | intermediate | D3-9 | any | free,risk | Trade: sell worst item, get random higher rarity item |
 | `the_gossip` | The Gossip | intermediate | D3-9, W1+ | any | free | Three choices: clue / gossip_damage (burden) / gossip_wild (nextEventIsWild=true) |
-| `the_stranger` | The Stranger | beginner | D1-5 | pre_wild | free,paid | Free: shows one wild monster board, tap item to mark it (50% HP start); 3g: sell + replace |
+| `the_stranger` | The Stranger | beginner | D1-5 | pre_wild | free,paid | Free: shows ONE random wild monster board, tap item to mark it (50% HP start); 3g: shows all options then sell/replace |
 | `the_herbalist` | The Herbalist | beginner | D2-8, perf:poisonApps>=5 | any | free,performance | Free herbalist_imbue on a weapon |
 | `notice_board` | The Notice Board | beginner | D1-4 | any | free | Shows 3 random quests (50/50 better/worse); player picks one |
 | `the_puddle` | The Puddle | beginner | D1-4 | any | free,forced | Forced single choice "Let it finish" → puddle_drink (50/50 good/bad) |
+| `the_shrine` | The Shrine | intermediate | D2-9 | any | free | Auto: random item gains `act_speed` -8% imbue. Shows burden panel with result. |
+| `the_molt` | The Molt | intermediate | D2-9 | any | free,risk | Eat: pick upgraded item → downgrade + gain +20% maxHp at new tier; Leave: random item gains `hp_pct` +5% |
+| `the_crow` | The Crow | intermediate | D2-9 | any | free | Auto: +1 gold. Shows burden panel. |
+| `the_ruins` | The Ruins | intermediate | D2-9 | any | free | Search: shows a random day-rarity item; player takes it or leaves it |
+| `the_veteran` | The Veteran | intermediate | D2-9, perf:wildLosses>=1 | any | free,performance | Take it: receives typed item (if typed) or day-weighted item; board full → swap picker |
+| `traveling_merchant` | The Traveling Merchant | intermediate | D2-9 | any | free | Three favour options: clearance item / generic day-weighted item / typed item |
+| `the_cache` | The Cache | intermediate | D2-9 | any | free | Pick 1 of 2 random provision items |
+| `the_letter` | The Letter | intermediate | D2-9 | any | free | 50/50: gold (1–2g) OR random item gains `jolt_on_act` or `wet_on_act` +1s imbue |
 
 ### WILD_FIGHT_OPTION
 
@@ -694,7 +725,7 @@ resolveEventChoice(idx)
 
 `showEvent(null)` — gracefully skips: `G.dayStep++; updateUI(); renderTrack(); activateCurrentNode()`.
 
-No-choice events (empty `choices[]`) fire their top-level `effect` immediately, show flavor text, and auto-advance after 1500ms. Used by `generous_neighbor`.
+No-choice events (empty `choices[]`) fire their top-level `effect` immediately, show flavor text, and auto-advance after 1500ms. Used by `generous_neighbor`. Shrine, Crow, and Cache have dedicated handlers in the no-choice block before the generic auto-advance.
 
 ---
 
@@ -986,9 +1017,12 @@ Single-page mobile portrait, no scroll, fixed viewport. Desktop at ≥600px uses
   html { zoom: 0.8; }
   .player-section { height: 402px; }
 }
+
+/* Event card status strip — positioned absolute at bottom of card */
+.ecard .sts { position: absolute; bottom: 16px; left: 0; right: 0; z-index: 3; margin: 0; min-height: 0; }
 ```
 
-ZORP watermark: position:absolute, top:4px, left:6px inside `#encounterArea`, opacity:0.22, width:72px. Added by `startFromTitle()`.
+ZORP watermark: position:absolute, top:4px, right:6px, left:auto inside `#encounterArea`, opacity:0.22, width:72px. Added by `startFromTitle()`.
 
 ---
 
@@ -1059,6 +1093,8 @@ If `G.betPending` is true at the start of `advanceDay`, clears flag and skips th
 - **getDisplayRarity(item):** Returns effective rarity bumped by upgradeLevel (capped at mastered). Used by `getSellValue()`, `getShopItemCost()`, and card/badge rendering. Upgraded items display and sell at the higher rarity tier.
 - **Pricing:** `TIER_COSTS={beginner:2,intermediate:4,advanced:6,mastered:8}` is the single source of truth for item buy prices. `UPGRADE_MULTS` is stats-only (effectAmt/maxHp scaling) — never used for pricing.
 - **DAMAGE_RECEIVED event `rawValue`:** Pre-shield damage amount. Used by Shame for accurate tracking.
+- **`.ecard .sts` CSS:** `position:absolute; bottom:16px; left:0; right:0; z-index:3` — status strip is absolutely positioned at the bottom of event cards.
+- **`hasOpenSlot()`:** Checks `G.lockedSlots` before returning true — locked slots are not counted as open.
 
 ---
 
@@ -1101,7 +1137,7 @@ Keys unchanged, only `name` field updated:
 - **Steel-typed Win 6 counter board** — currently a placeholder; replace when Toxic enemy boards are designed against.
 - **Rival entry 6 dialogue/img polish** — `getDialogueBefore` / `getDialogueAfterLoss` exist as functions on the entry; check call sites stay correct as content evolves.
 - **Burden authoring** — `tickBurdens`, `fireBurdenHandler`, and `resolveBurden` are complete. Six burden handlers exist. New burdens can be added by extending the `onResolve` switch.
-- **Event content** — 25 events live. Effect handlers for all events are wired. Event flavour/dialogue text can be polished without architectural changes.
+- **Event content** — 33 events live. Effect handlers for all events are wired. Event flavour/dialogue text can be polished without architectural changes.
 - **Quest content** — 5 quests in QUESTS array. All effect types wired in `resolveQuest`.
 
 ---
@@ -1123,3 +1159,5 @@ Keys unchanged, only `name` field updated:
 - `showBurdenPanel` has no auto-dismiss timeout. Do not add one. Panels require a manual Continue tap.
 - Slot numbering: front[0-2] = slots 1-3, back[0-2] = slots 4-6. The slot schedule is Day1=1F+1B, Day2=2F+1B, Day3=2F+2B, Day4=3F+2B, Day5+=3F+3B.
 - The hermit `walk_away` path gives Winston, not `indulge`. Do not swap them.
+- Burn tick is 2000ms. Poison tick base is 2000ms. Do not revert to 500ms/1000ms.
+- `getFatigueTarget` hits ONE item per side per fatigue tick — not all items. Do not revert to all-items fatigue.
