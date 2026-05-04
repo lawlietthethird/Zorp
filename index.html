@@ -243,6 +243,11 @@ body{position:fixed;inset:0;overflow:hidden;display:flex;flex-direction:column;b
   .page{flex-direction:row;align-items:stretch;max-width:none;margin:0;}
   .player-section{order:1;width:50%;height:auto;overflow-y:auto;flex-shrink:0;border-top:1px solid var(--border);border-radius:10px 0 0 10px;}
   .encounter{order:2;width:50%;height:auto;overflow-y:auto;overflow-x:hidden;border-radius:0 10px 10px 0;}
+  /* Fix enemy cards — restore max-width cap, set fixed height to match player card rows */
+  .ecard{width:calc(33.333% - 4px);max-width:110px;height:110px;flex-shrink:0;}
+  .eboard-row{align-items:flex-start;}
+  .enemy-info{width:120px;flex-shrink:0;}
+  .eicon{font-size:28px;}
 }
 .prof-screen{display:flex;gap:10px;align-items:flex-start;width:100%;}
 .prof-image{flex-shrink:0;width:140px;object-fit:contain;object-position:top;align-self:flex-start;}
