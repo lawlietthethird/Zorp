@@ -678,6 +678,16 @@ function initBattleState(){
     pandemicActive:false,
     colonySide:false,
     lastKillWasPoison:false,
+    itemStats:{},
+  };
+}
+
+function initItemStats(item,side){
+  if(!item||!battleState||!battleState.itemStats)return;
+  battleState.itemStats[item.id]={
+    name:item.name,icon:item.icon,side:side,
+    dmgDealt:0,dmgReceived:0,healsGiven:0,platingGiven:0,
+    burnDealt:0,poisonDealt:0,activations:0
   };
 }
 
@@ -2373,6 +2383,8 @@ function healItem(side,amount,src){
   const actual=Math.min(t.maxHp-t.hp,Math.round(amount*(side==='player'?getSkillMods().globalMult:1)));
   if(actual<=0)return;
   t.hp+=actual;log('h',src+' heals '+t.name+' +'+actual);flashCard(t.id,side,'h');
+  if(side==='player'&&battleState&&battleState.itemStats&&battleState.activatingItem&&battleState.activatingItem.id&&battleState.itemStats[battleState.activatingItem.id])
+    battleState.itemStats[battleState.activatingItem.id].healsGiven+=actual;
   fireEvent({type:'ITEM_HEALED',item:t,side:side,value:actual,source:null});
 }
 function healAll(side,amount,src){
@@ -2395,7 +2407,11 @@ function applyShield(side,amount,src,targetItem){
   }
   const t=targetItem&&!targetItem.broken&&targetItem.maxHp>0?targetItem:alive.reduce((a,b)=>(a.hp/a.maxHp)<(b.hp/b.maxHp)?a:b);
   t.shield=(t.shield||0)+actual;t.maxShield=Math.max(t.maxShield||0,t.shield);
-  if(side==='player')battleState.totalSidePlating+=actual;
+  if(side==='player'){
+    battleState.totalSidePlating+=actual;
+    if(battleState.itemStats&&battleState.activatingItem&&battleState.activatingItem.id&&battleState.itemStats[battleState.activatingItem.id])
+      battleState.itemStats[battleState.activatingItem.id].platingGiven+=actual;
+  }
   log('s',src+' plates '+t.name+' +'+actual);
 }
 function dealDmgTwoRandom(side,base,src){
@@ -2522,6 +2538,8 @@ function applyBurn(item,stacks,src,attackerSide='player'){
   if(attackerSide==='player'&&activeSkills.some(s=>s.id==='kindle'))stacks+=1;
   item.burnStack=(item.burnStack||0)+stacks;
   if(attackerSide==='player'&&item._side==='enemy'&&G.metrics)G.metrics.burnApps++;
+  if(attackerSide==='player'&&item._side==='enemy'&&battleState&&battleState.itemStats&&battleState.activatingItem&&battleState.activatingItem.id&&battleState.itemStats[battleState.activatingItem.id])
+    battleState.itemStats[battleState.activatingItem.id].burnDealt+=stacks;
   log('d','🔥 '+src+' BURN '+item.name+' +'+stacks);
   fireEvent({type:'BURN_APPLIED',item:item,side:item._side||null,value:stacks,source:null});
   if(item._side==='enemy'&&battleState){
@@ -2602,6 +2620,8 @@ function applyPoison(target,stacks,src){
   // Apply base stacks
   target.poisonStack=(target.poisonStack||0)+stacks;
   if(target._side==='enemy'&&G.metrics)G.metrics.poisonApps++;
+  if(target._side==='enemy'&&battleState&&battleState.itemStats&&battleState.activatingItem&&battleState.activatingItem.id&&battleState.itemStats[battleState.activatingItem.id])
+    battleState.itemStats[battleState.activatingItem.id].poisonDealt+=stacks;
   // Virulence — every 3rd player-applied poison to an enemy adds 1 extra stack
   if(target._side==='enemy'&&activeSkills.some(s=>s.id==='virulence')){
     battleState.virulenceCount=(battleState.virulenceCount||0)+1;
@@ -3821,6 +3841,17 @@ function fireEvent(event){
       catch(e){console.error('handleEvent error on '+item.name,e);}
     }
   });
+  // Per-item stat tracking
+  if(battleState&&battleState.itemStats){
+    if(event.type==='DAMAGE_DEALT'){
+      if(event.item&&event.item.id&&battleState.itemStats[event.item.id])
+        battleState.itemStats[event.item.id].dmgReceived+=event.value||0;
+      if(event.source&&typeof event.source==='object'&&event.source.id&&battleState.itemStats[event.source.id])
+        battleState.itemStats[event.source.id].dmgDealt+=event.value||0;
+    }else if(event.type==='ITEM_ACTIVATED'&&event.item&&event.item.id&&battleState.itemStats[event.item.id]){
+      battleState.itemStats[event.item.id].activations++;
+    }
+  }
   firingEvent=false;
 }
 
@@ -3856,6 +3887,9 @@ function runBattle(type){
   resetItemBattleState(board);resetItemBattleState(enemyBoard);
   battleState.playerItems=[...board.front,...board.back].filter(Boolean);
   battleState.enemyItems=[...enemyBoard.front,...enemyBoard.back].filter(Boolean);
+  // Per-item stat tracking init
+  battleState.playerItems.forEach(i=>initItemStats(i,'player'));
+  battleState.enemyItems.forEach(i=>initItemStats(i,'enemy'));
   // Fizzle — halve effectAmt of untargetable enemy passive items at battle start
   if(activeSkills.some(s=>s.id==='fizzle')){
     [...enemyBoard.front,...enemyBoard.back].forEach(i=>{
@@ -4339,6 +4373,55 @@ function checkKO(side){return aliveItems(side).filter(i=>i.maxHp>0).length===0;}
 // ============================================================
 // BATTLE END
 // ============================================================
+let _recapOnDone=null;
+function recapContinue(){if(_recapOnDone){const fn=_recapOnDone;_recapOnDone=null;fn();}}
+function showBattleRecap(onDone){
+  _recapOnDone=onDone;
+  setEncTitle('BATTLE RECAP');
+  const stats=battleState&&battleState.itemStats||{};
+  const pItems=battleState&&battleState.playerItems||[];
+  const eItems=battleState&&battleState.enemyItems||[];
+  function itemRow(item){
+    const st=stats[item.id];
+    if(!st)return '';
+    const pills=[];
+    if(st.dmgDealt>0)pills.push('<span style="color:#e84060;font-size:9px">⚔ '+st.dmgDealt+'</span>');
+    if(st.healsGiven>0)pills.push('<span style="color:#50e080;font-size:9px">❤ +'+st.healsGiven+'</span>');
+    if(st.platingGiven>0)pills.push('<span style="color:#60b8ff;font-size:9px">🛡 '+st.platingGiven+'</span>');
+    if(st.burnDealt>0)pills.push('<span style="color:#ff7030;font-size:9px">🔥 '+st.burnDealt+'</span>');
+    if(st.poisonDealt>0)pills.push('<span style="color:#a050e0;font-size:9px">☠ '+st.poisonDealt+'</span>');
+    if(st.dmgReceived>0)pills.push('<span style="color:#888;font-size:9px">−'+st.dmgReceived+'</span>');
+    if(st.activations>0)pills.push('<span style="color:var(--dim);font-size:9px">×'+st.activations+'</span>');
+    const nameColor=item.broken?'var(--dim)':'var(--text)';
+    const brk=item.broken?' <span style="color:var(--dim)">✕</span>':'';
+    return '<div style="display:flex;align-items:flex-start;gap:4px;padding:4px 2px;border-bottom:1px solid rgba(255,255,255,.05);">'
+      +'<span style="font-size:14px;line-height:1.2;flex-shrink:0">'+item.icon+'</span>'
+      +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:8px;font-family:\'Cinzel\',serif;color:'+nameColor+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+item.name+brk+'</div>'
+        +(pills.length?'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;">'+pills.join('')+'</div>':'<div style="font-size:8px;color:var(--dim)">—</div>')
+      +'</div>'
+    +'</div>';
+  }
+  const pHtml=pItems.map(itemRow).join('');
+  const eHtml=eItems.map(itemRow).join('');
+  setEncBody(
+    '<div style="display:flex;flex-direction:column;height:100%;gap:6px;">'
+    +'<div style="display:flex;gap:6px;flex:1;min-height:0;overflow:hidden;">'
+      +'<div style="flex:1;overflow-y:auto;">'
+        +'<div style="font-size:8px;font-family:\'Cinzel\',serif;color:var(--gold);letter-spacing:.06em;text-align:center;margin-bottom:4px;">YOUR TEAM</div>'
+        +(pHtml||'<div style="font-size:9px;color:var(--dim);text-align:center;">—</div>')
+      +'</div>'
+      +'<div style="width:1px;background:rgba(255,255,255,.1);flex-shrink:0;"></div>'
+      +'<div style="flex:1;overflow-y:auto;">'
+        +'<div style="font-size:8px;font-family:\'Cinzel\',serif;color:#e84060;letter-spacing:.06em;text-align:center;margin-bottom:4px;">ENEMY</div>'
+        +(eHtml||'<div style="font-size:9px;color:var(--dim);text-align:center;">—</div>')
+      +'</div>'
+    +'</div>'
+    +'<div class="btn-row" style="flex-shrink:0;"><button class="btn btn-p" onclick="recapContinue()">CONTINUE →</button></div>'
+    +'</div>'
+  );
+}
+
 function endBattle(result){
   const fatigueFired=fatigueInterval!==null;
   stopBattle();G.lastResult=result;
@@ -4406,9 +4489,12 @@ function endBattle(result){
       logEvent({event:'trainer_battle',result:'lose',win_number:G.wins,honor_lost:hl,board:boardSnapshot(),skills:activeSkills.map(s=>s.id),battle_duration_ms:battleMs,fatigue_triggered:fatigueFired});
     }
   }
-  updateUI();setEncTitle(title);
-  const titleClass=title==='FLAWLESS'?'re-flawless':result==='win'?'re-win':'re-lose';
-  setEncBody('<div class="result-enc"><div class="re-title '+titleClass+'">'+title+'</div><div class="re-sub">'+sub+'</div><div class="btn-row"><button class="btn btn-p" onclick="'+btnOnclick+'">'+btnText+'</button></div></div>');
+  updateUI();
+  showBattleRecap(()=>{
+    setEncTitle(title);
+    const titleClass=title==='FLAWLESS'?'re-flawless':result==='win'?'re-win':'re-lose';
+    setEncBody('<div class="result-enc"><div class="re-title '+titleClass+'">'+title+'</div><div class="re-sub">'+sub+'</div><div class="btn-row"><button class="btn btn-p" onclick="'+btnOnclick+'">'+btnText+'</button></div></div>');
+  });
 }
 
 function continueAfterResult(){
