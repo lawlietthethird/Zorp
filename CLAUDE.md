@@ -5,7 +5,7 @@
 Single self-contained HTML file game. All game logic, CSS, and HTML live in `index.html`. No build step, no dependencies, no external files. Open in browser to play.
 
 - Hosted on GitHub Pages from this repo.
-- Target device: mobile portrait (with desktop `html{zoom:0.8}` at `@media(min-width:600px)` replicating 80% browser zoom).
+- Target device: mobile portrait. Desktop responsive: `@media(min-width:600px)` applies `html{zoom:0.8}` (replicates 80% mobile zoom); `@media(min-width:700px)` resets `html{zoom:1.0}` and switches to a side-by-side layout (player board left 50%, encounter right 50%).
 - Run length: 6 wins to victory. Honor pool 13. Max ~11 days. Perfect run (6-0, honor 13) → FLAWLESS screen.
 - Board: 3 front × 3 back = 6 slots max.
 
@@ -487,6 +487,7 @@ The following bugs were audited and fixed. Do not reintroduce them:
 - **`fireEvent` dropped events** — `fireEvent` logs `console.warn('fireEvent dropped:', event.type, event)` when the re-entrant guard is active. Makes cascade debugging visible.
 - **`localStorage` try/catch** — `G.difficulty` initial value wrapped in IIFE with try/catch for private-browsing safety: `(()=>{try{return localStorage.getItem('zorpDifficulty')||'easy';}catch(e){return 'easy';}})()`.
 - **Appraiser pay formula** — uses `Math.floor(getSellValue(item) * 1.5)` (not `Math.floor(item.cost * 1.5)`), so upgraded items sell at their upgrade-tier sell value × 1.5.
+- **`refrigeration` fix** — `resetItemBattleState` only increments `item.uses` (not `item.maxUses`). Previously `maxUses++` was also applied, permanently inflating `maxUses` each battle and compounding on repeated runs. Now `uses` is boosted each battle without mutating the permanent cap.
 
 ---
 
@@ -640,6 +641,9 @@ getSkillMods()                  // returns {maxHpBonus, speedMult, dmgBonus, pla
                                 // NOTE: backSpeedMult was removed — it was always 1.0 and never written by any skill.
 getSkillOffers(nodeRarity)
 getFatigueTarget(side)          // returns first non-broken maxHp>0 item: front[0]→front[2], back[0]→back[2]
+initItemStats(item, side)       // populates battleState.itemStats[item.id] with zeroed stat counters
+showBattleRecap(onDone)         // renders post-battle recap screen; calls onDone() when player taps Continue
+recapContinue()                 // executes _recapOnDone closure; advances to result screen
 ```
 
 ### `battleState` fields (initBattleState)
@@ -648,13 +652,17 @@ Cached arrays (refreshed at battle start and in `checkAndBreak` after `item.brok
 `playerItems:[]`, `enemyItems:[]`.
 
 Generic / global:
-`momentumBonus:0`, `fatigueDamageMultiplier:1`, `totalSidePlating:0`, `burnApplicationsToEnemy:0`, `totalBurnApplied:0`, `fireworksThreshold:6`, `outbreakTriggered:false`, `slowProcsThisBattle:0`, `floodTriggered:false`, `wetDurationMult:1`, `joltCumulativeMs:0`, `thunderFired:false`, `poisonApplicationsToEnemy:0`, `phoenixDownAvailable:true`, `resilienceUsed:false`, `crescendoCount:0`, `crescendoReady:false`, `benedictionMs:0`, `kickstartCount:0`, `frictionCount:0`, `assembledActive:false`, `dualityApplied:false`, `ironHideActive:(skill active)`, `ironHideExpired:false`, `flowStateActive:false`, `predatorActive:false`, `warChestBonus:(Math.floor(G.gold/2) if active else 0)`.
+`momentumBonus:0`, `fatigueDamageMultiplier:1`, `totalSidePlating:0`, `burnApplicationsToEnemy:0`, `totalBurnApplied:0`, `fireworksThreshold:6`, `outbreakTriggered:false`, `slowProcsThisBattle:0`, `floodTriggered:false`, `wetDurationMult:1`, `joltCumulativeMs:0`, `thunderFired:false`, `poisonApplicationsToEnemy:0`, `phoenixDownAvailable:true`, `resilienceUsed:false`, `crescendoCount:0`, `crescendoReady:false`, `benedictionMs:0`, `kickstartCount:0`, `frictionCount:0`, `assembledActive:false`, `dualityApplied:false`, `ironHideActive:(skill active)`, `ironHideExpired:false`, `flowStateActive:false`, `predatorActive:false`, `warChestBonus:(Math.floor(G.gold/2) if active else 0)`, `itemStats:{}`.
 
 `totalBurnApplied` — cumulative burn stacks applied to enemy items this battle. Incremented in `applyBurn` when `item._side==='enemy'`. Used by **Backdraft** skill.
+
+`itemStats` — keyed by `item.id`. Each entry: `{name, icon, side, dmgDealt, dmgReceived, healsGiven, platingGiven, burnDealt, poisonDealt, activations}`. Populated by `initItemStats` at battle start; updated via `fireEvent` (DAMAGE_DEALT, ITEM_ACTIVATED) and direct hooks in `applyBurn`/`applyPoison`/`healItem`/`applyShield`. Used by `showBattleRecap`.
 
 Electric: `electricActivationCount:0`, `capacitorFired:false`, `thunderclapFired:false`, `dischargeCount:0`, `dischargeFired:false`, `overchargeCount:0`, `conductorBonuses:{}`.
 
 Fire: `emberStormFired:false`, `hearthMs:0`, `activatingItem:null`.
+
+`activatingItem` — set to the item object in `tickSide` immediately before calling `effectFn`, cleared to `null` after. **Used globally** for stat attribution in `applyBurn`/`applyPoison`/`healItem`/`applyShield` hooks — not Fire-specific. Allows those action functions to credit the correct source item even when the event `source` field is null or a string.
 
 Water: `wetSecondsAccumulated:0`, `deepCurrentBonus:0`, `tidalForceActive:false`, `maelstromMs:0`, `tsunamiFired:false`, `floodGateFired:false`.
 
@@ -736,6 +744,50 @@ Poison stacks are permanently permanent. `poisonStack` is never decremented anyw
 | `hp_pct` | Increases `maxHp` by `amount`% of current value. Updates `baseMaxHp` and `hp`. |
 | `jolt_on_act` | On activation: applies `amount` seconds of haste to a random ally (excluding self). |
 | `wet_on_act` | On activation: applies `amount` seconds of slow to a random enemy with `maxHp > 0`. |
+
+---
+
+## Post-Battle Recap
+
+### Overview
+
+A recap screen is shown between battle end and the result screen. `endBattle` calls `showBattleRecap(onDone)` where `onDone` renders the result screen. The player taps **CONTINUE** to advance.
+
+### Stat Tracking
+
+`battleState.itemStats` — object keyed by `item.id`. Populated by `initItemStats(item, side)` called in `runBattle` after caching `playerItems`/`enemyItems`.
+
+Each stat object: `{name, icon, side, dmgDealt, dmgReceived, healsGiven, platingGiven, burnDealt, poisonDealt, activations}`.
+
+**Update sources:**
+
+| Stat | Where updated |
+|------|---------------|
+| `dmgDealt` | `fireEvent` — `DAMAGE_DEALT`, `event.source` (object type guard: `typeof event.source === 'object'`) |
+| `dmgReceived` | `fireEvent` — `DAMAGE_DEALT`, `event.item` (the damaged target) |
+| `activations` | `fireEvent` — `ITEM_ACTIVATED`, `event.item` |
+| `burnDealt` | `applyBurn` — direct hook, guarded `attackerSide==='player' && item._side==='enemy'` |
+| `poisonDealt` | `applyPoison` — direct hook, guarded `target._side==='enemy'` |
+| `healsGiven` | `healItem` — direct hook, guarded `side==='player'`; uses `actual` (capped heal amount) |
+| `platingGiven` | `applyShield` — direct hook inside `side==='player'` branch; uses `actual` |
+
+For `burnDealt`/`poisonDealt`/`healsGiven`/`platingGiven`: attributed via `battleState.activatingItem` (set in `tickSide` before `effectFn`, cleared after). Stat hooks check `battleState.activatingItem` and `battleState.itemStats[battleState.activatingItem.id]` before writing.
+
+**`DAMAGE_DEALT` source type guard:** `event.source` is an item object for weapon attacks but a string (e.g. `'Poison'`) for status damage. Guard prevents treating string sources as item refs: `typeof event.source === 'object'`.
+
+### `showBattleRecap(onDone)`
+
+Module-level `_recapOnDone` stores the callback. Renders a two-column layout:
+- **YOUR TEAM** (left) — player items by `side==='player'`
+- **ENEMY TEAM** (right) — enemy items by `side==='enemy'`
+
+Per item: icon + name header; stat pills shown only when value > 0 (⚔️ dmgDealt, 🛡 dmgReceived, 💚 healsGiven, 🔵 platingGiven, 🔥 burnDealt, ☠️ poisonDealt, ⚡ activations).
+
+**CONTINUE button** calls `recapContinue()` → executes `_recapOnDone()`.
+
+`item.icon` is always the emoji field (Cloudinary URLs only returned by `getItemIcon(item)` for MOM items; `item.icon` field itself is always emoji).
+
+`showBattleRecap` is called even for zero-stat battles — the screen is always shown. Stat pills are omitted when value is 0 (not hidden via CSS — simply not rendered).
 
 ---
 
@@ -1131,7 +1183,10 @@ Front row Advanced (upgradeLevel 2), back row Intermediate-Advanced (upgradeLeve
 
 ## Layout
 
-Single-page mobile portrait, no scroll, fixed viewport. Desktop at ≥600px uses `html { zoom: 0.8 }` to replicate 80% browser zoom.
+Single-page mobile portrait, no scroll, fixed viewport. Two responsive breakpoints:
+
+- **≥600px** — `html{zoom:0.8}` replicates 80% mobile zoom (single-column layout preserved).
+- **≥700px** — `html{zoom:1.0}` and side-by-side layout: player board left 50%, encounter right 50%. Enemy item cards constrained to `max-width:110px; height:110px`.
 
 ```css
 .encounter {
@@ -1159,6 +1214,15 @@ Single-page mobile portrait, no scroll, fixed viewport. Desktop at ≥600px uses
 @media(min-width:600px) {
   html { zoom: 0.8; }
   .player-section { height: 402px; }
+  .ecard { width: calc(33.333% - 4px); max-width: none; }
+}
+@media(min-width:700px) {
+  html { zoom: 1.0; }
+  .page { flex-direction: row; align-items: stretch; max-width: none; margin: 0; }
+  .player-section { order: 1; width: 50%; height: auto; }
+  .encounter { order: 2; width: 50%; height: auto; }
+  .ecard { width: calc(33.333% - 4px); max-width: 110px; height: 110px; flex-shrink: 0; }
+  .eicon { font-size: 28px; }
 }
 
 /* Event card status strip — positioned absolute at bottom of card */
@@ -1217,6 +1281,16 @@ Win 6 → game over. `goToTitleFromVictory()` calls `resetRun()` then `showTitle
 
 `advanceDay()` only increments the day and fires `activateCurrentNode()`. It does NOT trigger type select — that happens entirely in the post-win chain before `advanceDay` is called.
 
+### `confirmPickType(id)`
+
+Intercepts typed card clicks in `showTypeSelect`. Shows a `showBurdenPanel` confirmation before committing to `pickType(id)`. Body text lists consequences:
+- `✗ Lose Potential`
+- `✗ No bond node this win`
+- `✓ Typed items & skills`
+- `This choice is permanent.`
+
+If the player taps Continue, `pickType(id)` is called. The type selection card HTML also shows this text at `font-size:10px` below the type name and icon.
+
 If `G.betPending` is true at the start of `advanceDay`, clears flag and skips the skill pick (The Bet burden consumed the pick).
 
 ### Second Wind
@@ -1238,6 +1312,7 @@ If `G.betPending` is true at the start of `advanceDay`, clears flag and skips th
 - **DAMAGE_RECEIVED event `rawValue`:** Pre-shield damage amount. Used by Shame for accurate tracking.
 - **`.ecard .sts` CSS:** `position:absolute; bottom:16px; left:0; right:0; z-index:3` — status strip is absolutely positioned at the bottom of event cards.
 - **`hasOpenSlot()`:** Checks `G.lockedSlots` before returning true — locked slots are not counted as open.
+- **Verified font sizes (CSS):** `.notif`=18px, `.btn`=16px, `.iip-desc`=18px (item info panel description), `.dn`=16px (shop card name), `.dd`=13px (shop card description). `showBurdenPanel` title and body are both 13px (not 20px/18px). Event prompt title inline style=15px, event flavor=13px.
 
 ---
 
@@ -1282,6 +1357,7 @@ Keys unchanged, only `name` field updated:
 - **Burden authoring** — `tickBurdens`, `fireBurdenHandler`, and `resolveBurden` are complete. Six burden handlers exist. New burdens can be added by extending the `onResolve` switch.
 - **Event content** — 39 events live (including 6 binding events). Effect handlers for all events are wired. Event flavour/dialogue text can be polished without architectural changes.
 - **Quest content** — 5 quests in QUESTS array. All effect types wired in `resolveQuest`.
+- **Damage helper side convention bugs (unfixed)** — `dealDmgTwoRandom`, `dealDmgBackRow`, and `dealDmgWithStatus` use the **attacker-side** `side` convention (player's `effectFn` passes `opp(side)='enemy'`), but internally compute `attackerMods = side==='player' ? null : getSkillMods()`. When `side==='enemy'` (enemy target, player attacking), this correctly applies mods. However `dealDmgBackRow` fallback bug: when back row is empty it calls `dealDmgRandom(side, dmg, src)` passing the attacker-convention `side` (e.g. `'player'`), but `dealDmgRandom` uses target-convention — so `'player'` would target the player's own board. Also `dealDmgWithStatus` calls `dealDmgRandom(side, base, src)` with attacker side before status apply. These are known issues, not yet fixed — coordinate any fix with the `side` convention audit.
 
 ---
 
@@ -1309,3 +1385,7 @@ Keys unchanged, only `name` field updated:
 - Binding system `_bindingFiring` guard — set on `partnerItem` before binding trigger, cleared after (or in timeout for `investor`). Prevents recursive binding triggers when bindings chain. Do not remove or weaken.
 - `G.bindings` / `G.bindingCount` / `G.metrics.bindingMaxed` — the binding system is capped at 3 bindings per run enforced by `applyBinding`. `bindingMaxed` flag is used as `excludeFlags` on all binding events.
 - `applySlotBonuses` `_slotBonusApplied` guard — prevents double-application on swap. Do not call `applySlotBonuses` on items that already have `_slotBonusApplied=true`.
+- `battleState.activatingItem` — set in `tickSide` before `effectFn`, cleared after. Used by recap stat hooks in `applyBurn`/`applyPoison`/`healItem`/`applyShield` to attribute stats to the correct source item. Do not clear it inside those functions before the stat hook runs.
+- `battleState.itemStats` — populated at battle start via `initItemStats`. Do not reset or clear it mid-battle. `showBattleRecap` reads it after `stopBattle()`.
+- `recapContinue()` / `_recapOnDone` — the result screen rendering is deferred into a closure stored in `_recapOnDone`. Do not call result-screen rendering directly from `endBattle` — always route through `showBattleRecap(onDone)`.
+- `refrigeration` skill increments only `item.uses`, never `item.maxUses`. Do not add `maxUses++` back.
