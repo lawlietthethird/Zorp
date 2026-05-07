@@ -4671,9 +4671,17 @@ function showTypeSelect(){
   const nonBanned=TYPES.filter(t=>!bannedTypes.includes(t.id));
   const pool=[...nonBanned].sort(()=>Math.random()-.5).slice(0,2);
   lastOfferedTypes=pool.map(t=>t.id);
-  const typeCards=pool.map(t=>`<div class="to" onclick="pickType('${t.id}')" style="${TYPE_COLORS[t.id]||''}"><div class="ti">${t.icon}</div><div class="tn">${t.name}</div><div class="td">${t.desc}</div><div style="margin-top:4px;font-size:6px;font-family:'Cinzel',serif;letter-spacing:.03em"><span style="color:#e84060">✗ Lose Potential</span><br><span style="color:#50e080">✓ Typed items &amp; skills</span></div></div>`).join('');
+  const typeCards=pool.map(t=>`<div class="to" onclick="confirmPickType('${t.id}')" style="${TYPE_COLORS[t.id]||''}"><div class="ti">${t.icon}</div><div class="tn">${t.name}</div><div class="td">${t.desc}</div><div style="margin-top:4px;font-size:10px;font-family:'Cinzel',serif;letter-spacing:.03em"><span style="color:#e84060">✗ Lose Potential</span><br><span style="color:#e84060">✗ No bond node this win</span><br><span style="color:#50e080">✓ Typed items &amp; skills</span><br><span style="color:var(--dim)">This choice is permanent.</span></div></div>`).join('');
   const typelessCard=`<div class="to" onclick="pickType('typeless')" style="border-color:var(--potential)"><div class="ti">✦</div><div class="tn">TYPELESS</div><div class="td" style="margin-top:2px"><span style="color:#50e080">✓ Keep Potential (+25%)</span><br><span style="color:#50e080">✓ Next bond node</span><br><span style="color:var(--dim)">May ban one type.</span></div></div>`;
   setEncBody(`<div class="dialogue" style="margin-bottom:6px"><div class="dlg-name">${G.monsterName.toUpperCase()}</div>Something settled. A pull toward a direction — not a label, a path.</div><div class="type-opts">${typeCards}${typelessCard}</div>`);
+}
+function confirmPickType(id){
+  const t=TYPES.find(x=>x.id===id);if(!t)return;
+  showBurdenPanel(
+    t.name.toUpperCase(),
+    'You will lose Potential and your bond node this win.\nYou will gain '+t.name+' items, skills, and the typed shop.\n\nThis cannot be changed.',
+    ()=>pickType(id)
+  );
 }
 function pickType(id){
   if(id==='typeless'){
