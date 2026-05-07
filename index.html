@@ -4019,7 +4019,7 @@ function resetItemBattleState(b){
     // Refrigeration — +1 use to all provisions
     if(isPlayer&&activeSkills.some(s=>s.id==='refrigeration')){
       if(item.itemType==='provision'&&item.uses!==null){
-        item.uses++;item.maxUses++;
+        item.uses++; // transient +1 for this battle only — do NOT touch maxUses
       }
     }
   });
