@@ -4999,7 +4999,7 @@ function refreshShopAffordability(){
   document.querySelectorAll('.dc[data-item-cost]').forEach(el=>{
     const cost=parseInt(el.dataset.itemCost,10);
     if(cost>0){
-      if(el.dataset.boardFull==='1'){el.classList.add('cant');return;}
+      if(el.dataset.boardFull==='1'){if(hasOpenSlot()){el.dataset.boardFull='0';}else{el.classList.add('cant');return;}}
       if(G.gold>=cost)el.classList.remove('cant');
       else el.classList.add('cant');
     }
